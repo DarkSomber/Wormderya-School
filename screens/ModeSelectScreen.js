@@ -1,5 +1,12 @@
 import React from "react";
-import { View, Text, StyleSheet, StatusBar, Image } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  StatusBar,
+  Image,
+  ImageBackground,
+} from "react-native";
 import AppButton from "../components/AppButton";
 
 /**
@@ -35,9 +42,11 @@ export default function ModeSelectScreen({
   //   </ImageBackground>
 
   return (
-    <View style={styles.background}>
-      <StatusBar barStyle="dark-content" />
-
+    <ImageBackground
+      source={require("../assets/Final/MainBackground.png")}
+      style={styles.background}
+      resizeMode="contain"
+    >
       <View style={styles.container}>
         <Image
           source={require("../assets/Final/WormderyaLogo.png")}
@@ -46,13 +55,12 @@ export default function ModeSelectScreen({
         />
 
         {/* ---------- CHARACTER PLACEHOLDER ---------- */}
-        {/* Later swap this whole block for:
-                    <Image source={require('../../assets/character.png')} style={styles.characterImage} resizeMode="contain" />
-                */}
         <View style={styles.characterPlaceholder}>
-          <Text style={styles.characterPlaceholderText}>
-            CHARACTER{"\n"}ART
-          </Text>
+          <Image
+            source={require("../assets/Final/MainCharacter.png")}
+            style={styles.characterImage}
+            resizeMode="contain"
+          />
         </View>
 
         {/* ---------- MENU BUTTONS ---------- */}
@@ -73,7 +81,7 @@ export default function ModeSelectScreen({
           />
         </View>
       </View>
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -101,10 +109,6 @@ const styles = StyleSheet.create({
     width: 180,
     height: 180,
     borderRadius: 90,
-    borderWidth: 2,
-    borderColor: "#8a5a30",
-    borderStyle: "dashed",
-    backgroundColor: "rgba(255,255,255,0.35)",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 30,
