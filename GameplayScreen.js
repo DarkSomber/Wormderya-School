@@ -1,8 +1,12 @@
-import React from 'react';
+import React, {useState} from 'react';
+import PopupModal from './PopupModal';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, Image, ImageBackground } from 'react-native';
 
 export default function GameplayScreen({ onOpenStore }) {
+  const [showWinModal, setShowWinModal] = useState(false);
+  const [showRushHourModal, setShowRushHourModal] = useState(false);
+  const [showQuitModal, handleConfirmQuit] = useState(true);
   return (
     <View style={styles.screenWrapper}>
       <View style={styles.container}>
@@ -79,6 +83,36 @@ export default function GameplayScreen({ onOpenStore }) {
 
         <StatusBar style="light" />
       </View>
+
+      {/* Pop-ups */}
+      <PopupModal
+      visible={showWinModal}
+      title="You WON!!!"
+      extraMessage="Tomorrow is another day"
+      score= '1000' // Dynamic state variable (e.g., 1000)
+      buttonText="Yeah!"
+      buttonColor="#FFE194"
+      onPress={() => setShowWinModal(false)}
+      />
+
+      <PopupModal
+      visible={showQuitModal}
+      title={`Are you sure you\nwant to quit?`}
+      message="All your current progress will disappear and will not be saved!"
+      buttonText="Quit :("
+      buttonColor="#FFB3B3" // Soft Red/Pink button
+      onPress={() => handleConfirmQuit(false)}
+      />
+
+      <PopupModal
+      visible={showRushHourModal}
+      title={`Rush Hour!`}
+      message="Time's against you!"
+      extraMessage="The customers are hungry! Spell out words as fast as you can, remember the longer the better!"
+      buttonText="Yeah!"
+      buttonColor="#FFE194"
+      onPress={() => setShowRushHourModal(false)}
+      />
     </View>
   );
 }

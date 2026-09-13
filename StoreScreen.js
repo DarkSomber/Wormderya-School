@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
+import PopupModal from './PopupModal';
 import { StyleSheet, View, Image, ImageBackground, Text } from 'react-native';
 
 export default function StoreScreen({ onBack }) {
+  const [showRattyModal, setShowRattyModal] = useState(false);
+  const [showThankYouModal, setShowThankYouModal] = useState(false);
+  
   return (
     <View style={styles.screenWrapper}>
       <View style={styles.container}>
@@ -88,6 +92,25 @@ export default function StoreScreen({ onBack }) {
         />
 
       </View>
+
+      {/* Pop-ups */}
+      <PopupModal
+      visible={showRattyModal}
+      title={`Mr. Ratty will\nremember you`}
+      message="The next time Mr. Ratty will appear, prices will have a chance to inflate."
+      buttonText="uh..."
+      buttonColor="#FFE194" // Yellow
+      onPress={() => setShowRattyModal(false)}
+      />
+
+      <PopupModal
+      visible={showThankYouModal}
+      title={`Thank you for\nyour patronage!`}
+      message="The next time Mr. Ratty will appear, prices will have a chance to get a discount."
+      buttonText="Thank you!"
+      buttonColor="#FFE194" // Yellow
+      onPress={() => setShowThankYouModal(false)}
+      />
     </View>
   );
 }
