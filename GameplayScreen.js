@@ -1,12 +1,15 @@
-import React, {useState} from 'react';
-import PopupModal from './PopupModal';
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Image, ImageBackground } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, ImageBackground, Image,StatusBar } from 'react-native';
+import RushHourModal from './RushHourModal';
+import QuitModal from './QuitModal';
+import LevelResultModal from './LevelResultModal';
 
 export default function GameplayScreen({ onOpenStore }) {
-  const [showWinModal, setShowWinModal] = useState(false);
-  const [showRushHourModal, setShowRushHourModal] = useState(false);
-  const [showQuitModal, handleConfirmQuit] = useState(true);
+// Modal visibility states
+  const [showRushHour, setShowRushHour] = useState(false);
+  const [showQuit, setShowQuit] = useState(false);
+  const [levelResult, setLevelResult] = useState(null); // null | 'win' | 'lose'
+  const playerScore = 1500; //Change to whatever number
   return (
     <View style={styles.screenWrapper}>
       <View style={styles.container}>
@@ -84,35 +87,31 @@ export default function GameplayScreen({ onOpenStore }) {
         <StatusBar style="light" />
       </View>
 
-      {/* Pop-ups */}
-      <PopupModal
-      visible={showWinModal}
-      title="You WON!!!"
-      extraMessage="Tomorrow is another day"
-      score= '1000' // Dynamic state variable (e.g., 1000)
-      buttonText="Yeah!"
-      buttonColor="#FFE194"
-      onPress={() => setShowWinModal(false)}
+      <View>
+
+      {/* --- MODAL COMPONENTS --- */}
+
+      {/* 1. Rush Hour Modal */}
+      <RushHourModal
+        visible={showRushHour}
+        onDismiss={() => setShowRushHour(false)}
       />
 
-      <PopupModal
-      visible={showQuitModal}
-      title={`Are you sure you\nwant to quit?`}
-      message="All your current progress will disappear and will not be saved!"
-      buttonText="Quit :("
-      buttonColor="#FFB3B3" // Soft Red/Pink button
-      onPress={() => handleConfirmQuit(false)}
+      {/* 2. Quit Modal */}
+      <QuitModal
+        visible={showQuit}
+        onQuit={() => setShowQuit(false)}
       />
 
-      <PopupModal
-      visible={showRushHourModal}
-      title={`Rush Hour!`}
-      message="Time's against you!"
-      extraMessage="The customers are hungry! Spell out words as fast as you can, remember the longer the better!"
-      buttonText="Yeah!"
-      buttonColor="#FFE194"
-      onPress={() => setShowRushHourModal(false)}
+      {/* 3. Level Result (Win / Game Over) Modal */}
+      <LevelResultModal
+        visible={levelResult !== null}
+        type={levelResult || 'win'}
+        score={playerScore}
+        onConfirm={() => setLevelResult(null)}
       />
+
+      </View>
     </View>
   );
 }

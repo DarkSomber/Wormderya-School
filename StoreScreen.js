@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import PopupModal from './PopupModal';
-import { StyleSheet, View, Image, ImageBackground, Text } from 'react-native';
+import ShopOutcomeModal from './ShopOutcomeModal';
+import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Text } from 'react-native';
 
 export default function StoreScreen({ onBack }) {
-  const [showRattyModal, setShowRattyModal] = useState(false);
-  const [showThankYouModal, setShowThankYouModal] = useState(false);
-  
+// null = hidden | 'inflate' = price rise | 'discount' = price drop
+  const [rattyOutcome, setRattyOutcome] = useState('null');
   return (
     <View style={styles.screenWrapper}>
       <View style={styles.container}>
@@ -86,30 +85,22 @@ export default function StoreScreen({ onBack }) {
         </ImageBackground>
 
         {/* 4. BOTTOM "NO THANK YOU!" BUTTON PNG */}
+        <TouchableOpacity onPress={() => setRattyOutcome('inflate')}>
         <Image 
-          source={require('./assets/Placeholder/DeclineButton.png')} 
-          style={styles.backButtonImage} 
+        source={require('./assets/Placeholder/DeclineButton.png')} 
+        style={styles.backButtonImage} 
         />
+        </TouchableOpacity>
+
 
       </View>
 
-      {/* Pop-ups */}
-      <PopupModal
-      visible={showRattyModal}
-      title={`Mr. Ratty will\nremember you`}
-      message="The next time Mr. Ratty will appear, prices will have a chance to inflate."
-      buttonText="uh..."
-      buttonColor="#FFE194" // Yellow
-      onPress={() => setShowRattyModal(false)}
-      />
-
-      <PopupModal
-      visible={showThankYouModal}
-      title={`Thank you for\nyour patronage!`}
-      message="The next time Mr. Ratty will appear, prices will have a chance to get a discount."
-      buttonText="Thank you!"
-      buttonColor="#FFE194" // Yellow
-      onPress={() => setShowThankYouModal(false)}
+      {/* SHOP OUTCOME MODAL */}
+      <ShopOutcomeModal
+        visible={rattyOutcome !== null}
+        outcome={rattyOutcome}
+        onDismiss={() => setRattyOutcome(null)}
+        
       />
     </View>
   );

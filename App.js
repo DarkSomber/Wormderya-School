@@ -4,7 +4,7 @@ import StoreScreen from './StoreScreen';
 
 export default function App() {
   // Switch between 'gameplay' and 'store'
-  const [currentScreen, setCurrentScreen] = useState('store');
+  const [currentScreen, setCurrentScreen] = useState('gameplay');
 
   if (currentScreen === 'store') {
     return <StoreScreen onBack={() => setCurrentScreen('gameplay')} />;
