@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, StatusBar } from "react-native";
+import { View, Text, StyleSheet, StatusBar, Image } from "react-native";
 import AppButton from "../components/AppButton";
 
 /**
@@ -39,35 +39,37 @@ export default function ModeSelectScreen({
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.container}>
-        {/* ---------- TITLE / LOGO PLACEHOLDER ---------- */}
-        {/* Same placeholder pattern as HomeScreen. Later swap for:
-            <Image source={require('../../assets/title.png')} style={styles.titleImage} resizeMode="contain" />
-        */}
-        <View style={styles.titlePlaceholder}>
-          <Text style={styles.titlePlaceholderText}>
-            TITLE / LOGO{"\n"}PLACEHOLDER
+        <Image
+          source={require("../assets/Final/WormderyaLogo.png")}
+          style={styles.titleImage}
+          resizeMode="contain"
+        />
+
+        {/* ---------- CHARACTER PLACEHOLDER ---------- */}
+        {/* Later swap this whole block for:
+                    <Image source={require('../../assets/character.png')} style={styles.characterImage} resizeMode="contain" />
+                */}
+        <View style={styles.characterPlaceholder}>
+          <Text style={styles.characterPlaceholderText}>
+            CHARACTER{"\n"}ART
           </Text>
         </View>
 
         {/* ---------- MENU BUTTONS ---------- */}
         <View style={styles.menu}>
           <AppButton
-            label="Story-Mode"
             onPress={onSelectStoryMode}
-            // Later: backgroundImage={require('../../assets/buttons/story-mode.png')}
+            backgroundImage={require("../assets/Final/buttons/buttonStorymode.png")}
           />
           <AppButton
-            label={"Rush Hour\nMode"}
             onPress={onSelectRushHour}
             style={styles.buttonSpacing}
-            multiline
-            // Later: backgroundImage={require('../../assets/buttons/rush-hour.png')}
+            backgroundImage={require("../assets/Final/buttons/buttonRushHourmode.png")}
           />
           <AppButton
-            label="Back"
             onPress={onBack}
             style={styles.buttonSpacing}
-            // Later: backgroundImage={require('../../assets/buttons/back.png')}
+            backgroundImage={require("../assets/Final/buttons/buttonBack.png")}
           />
         </View>
       </View>
@@ -85,29 +87,33 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "flex-start",
-    paddingTop: 60,
+    paddingTop: 40,
     paddingBottom: 30,
   },
-  titlePlaceholder: {
-    width: "70%",
-    height: 70,
-    borderRadius: 12,
+  titleImage: {
+    width: "80%",
+    height: 250,
+    alignSelf: "center",
+    marginBottom: 15,
+    marginTop: -50,
+  },
+  characterPlaceholder: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
     borderWidth: 2,
     borderColor: "#8a5a30",
     borderStyle: "dashed",
-    backgroundColor: "rgba(255,255,255,0.4)",
+    backgroundColor: "rgba(255,255,255,0.35)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 60,
+    marginBottom: 30,
+    marginTop: -20,
   },
-  titlePlaceholderText: {
-    textAlign: "center",
-    color: "#8a5a30",
-    fontWeight: "700",
-    fontSize: 14,
-  },
+
   menu: {
     alignItems: "center",
+    marginTop: 55,
   },
   buttonSpacing: {
     marginTop: 20,

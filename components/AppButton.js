@@ -72,7 +72,7 @@ export default function AppButton({
       >
         <ImageBackground
           source={backgroundImage}
-          resizeMode="stretch"
+          resizeMode="contain"
           style={styles.imageFill}
           imageStyle={styles.imageRadius}
         >

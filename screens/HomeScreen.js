@@ -1,23 +1,6 @@
 import React from "react";
-import { View, Text, StyleSheet, StatusBar, Alert } from "react-native";
+import { View, Text, StyleSheet, StatusBar, Alert, Image } from "react-native";
 import AppButton from "../components/AppButton";
-
-/**
- * HomeScreen
- * ----------------------------------------------------------------------
- * Recreates the title-screen mockup:
- *   [ background art ]
- *   [ title art / logo ]
- *   [ character / hero art ]
- *   [ START ]
- *   [ SETTING ]
- *   [ QUIT ]
- *
- * Everything marked PLACEHOLDER is meant to be swapped for real
- * artwork later — just drop the file into /assets and uncomment the
- * `require(...)` line noted in each comment block.
- * ----------------------------------------------------------------------
- */
 
 export default function HomeScreen({ onStart, onOpenSettings, onQuit }) {
   const handleStart = onStart ?? (() => Alert.alert("Start pressed"));
@@ -43,15 +26,11 @@ export default function HomeScreen({ onStart, onOpenSettings, onQuit }) {
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.container}>
-        {/* ---------- TITLE PLACEHOLDER ---------- */}
-        {/* Later swap this whole block for:
-            <Image source={require('../../assets/title.png')} style={styles.titleImage} resizeMode="contain" />
-        */}
-        <View style={styles.titlePlaceholder}>
-          <Text style={styles.titlePlaceholderText}>
-            TITLE / LOGO{"\n"}PLACEHOLDER
-          </Text>
-        </View>
+        <Image
+          source={require("../assets/Final/WormderyaLogo.png")}
+          style={styles.titleImage}
+          resizeMode="contain"
+        />
 
         {/* ---------- CHARACTER PLACEHOLDER ---------- */}
         {/* Later swap this whole block for:
@@ -66,21 +45,18 @@ export default function HomeScreen({ onStart, onOpenSettings, onQuit }) {
         {/* ---------- MENU BUTTONS ---------- */}
         <View style={styles.menu}>
           <AppButton
-            label="START"
             onPress={handleStart}
-            // Later: backgroundImage={require('../../assets/buttons/start.png')}
+            backgroundImage={require("../assets/Final/buttons/buttonStart1.png")}
           />
           <AppButton
-            label="SETTING"
             onPress={handleSettings}
             style={styles.buttonSpacing}
-            // Later: backgroundImage={require('../../assets/buttons/setting.png')}
+            backgroundImage={require("../assets/Final/buttons/buttonSettings.png")}
           />
           <AppButton
-            label="QUIT"
             onPress={handleQuit}
             style={styles.buttonSpacing}
-            // Later: backgroundImage={require('../../assets/buttons/quit.png')}
+            backgroundImage={require("../assets/Final/buttons/buttonQuit.png")}
           />
         </View>
       </View>
@@ -101,24 +77,14 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     paddingBottom: 30,
   },
-  titlePlaceholder: {
+  titleImage: {
     width: "80%",
-    height: 90,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#8a5a30",
-    borderStyle: "dashed",
-    backgroundColor: "rgba(255,255,255,0.4)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
+    height: 250,
+    alignSelf: "center",
+    marginBottom: 15,
+    marginTop: -50,
   },
-  titlePlaceholderText: {
-    textAlign: "center",
-    color: "#8a5a30",
-    fontWeight: "700",
-    fontSize: 14,
-  },
+
   characterPlaceholder: {
     width: 180,
     height: 180,
@@ -130,6 +96,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 30,
+    marginTop: -20,
   },
   characterPlaceholderText: {
     textAlign: "center",
@@ -138,8 +105,9 @@ const styles = StyleSheet.create({
   },
   menu: {
     alignItems: "center",
+    marginTop: 55,
   },
   buttonSpacing: {
-    marginTop: 14,
+    marginTop: 20,
   },
 });

@@ -17,26 +17,42 @@ import {
  *
  * Props:
  *   level            number|string - level number shown on the node
- *                                    (omit/empty to just show the art)
+ *                                    (omit/empty to just show the art —
+ *                                    useful if your art already has its
+ *                                    own number baked in, like a tag)
  *   onPress          function
- *   backgroundImage  ?any   - e.g. require('../../assets/levels/level-1.png')
- *   size             ?number - override the default node diameter
+ *   backgroundImage  ?any   - e.g. require('../assets/levels/level-1.png')
+ *   size             ?number - diameter of the PLACEHOLDER circle only
+ *                              (ignored once backgroundImage is set)
+ *   width            ?number - box width when backgroundImage is set
+ *   height           ?number - box height when backgroundImage is set
  *   locked           ?bool   - greys the node out and blocks presses
  *   style            ?object
+ *
+ * NOTE: only the placeholder (no art yet) is forced into a circle — once
+ * you provide `backgroundImage`, the node becomes a plain rectangular box
+ * sized by `width`/`height` and uses resizeMode="contain", so the full
+ * image shows with its own shape/transparency intact instead of being
+ * cropped into a circle.
  * ----------------------------------------------------------------------
  */
 
 const DEFAULT_SIZE = 90;
+const DEFAULT_IMAGE_WIDTH = 130;
+const DEFAULT_IMAGE_HEIGHT = 90;
 
 export default function LevelButton({
   level,
   onPress,
   backgroundImage,
   size = DEFAULT_SIZE,
+  width = DEFAULT_IMAGE_WIDTH,
+  height = DEFAULT_IMAGE_HEIGHT,
   locked = false,
   style,
 }) {
-  const dimensionStyle = { width: size, height: size, borderRadius: size / 2 };
+  const circleStyle = { width: size, height: size, borderRadius: size / 2 };
+  const imageBoxStyle = { width, height };
 
   const content =
     level !== undefined && level !== null && level !== "" ? (
@@ -51,13 +67,17 @@ export default function LevelButton({
         activeOpacity={0.75}
         onPress={onPress}
         disabled={locked}
-        style={[styles.nodeBase, dimensionStyle, style]}
+        style={[
+          styles.nodeBase,
+          imageBoxStyle,
+          locked && styles.imageLocked,
+          style,
+        ]}
       >
         <ImageBackground
           source={backgroundImage}
-          resizeMode="cover"
-          style={[styles.imageFill, dimensionStyle]}
-          imageStyle={dimensionStyle}
+          resizeMode="contain"
+          style={[styles.imageFill, imageBoxStyle]}
         >
           {content}
         </ImageBackground>
@@ -74,7 +94,7 @@ export default function LevelButton({
       disabled={locked}
       style={[
         styles.nodeBase,
-        dimensionStyle,
+        circleStyle,
         styles.placeholder,
         locked && styles.placeholderLocked,
         style,
@@ -91,23 +111,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
   },
-  placeholder: {
-    backgroundColor: "rgba(245, 236, 214, 0.9)",
-    borderWidth: 2,
-    borderColor: "#8a5a30",
-    borderStyle: "dashed",
-  },
   placeholderLocked: {
+    opacity: 0.4,
+  },
+  imageLocked: {
     opacity: 0.4,
   },
   imageFill: {
     alignItems: "center",
     justifyContent: "center",
-  },
-  levelText: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#5c3a21",
   },
   levelTextLocked: {
     color: "#a89a86",

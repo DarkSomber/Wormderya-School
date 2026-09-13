@@ -4,8 +4,6 @@
   "version": "1.0.0",
   "main": "index.js",
   "dependencies": {
-    "@expo/metro-runtime": "~57.0.15",
-    "@react-native-community/slider": "5.2.0",
     "expo": "~57.0.20",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",

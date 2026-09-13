@@ -1,34 +1,45 @@
 import React from "react";
-import { View, Text, StyleSheet, ScrollView, StatusBar } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  ImageBackground,
+} from "react-native";
 import LevelButton from "../components/LevelButton";
 import AppButton from "../components/AppButton";
-
-/**
- * LevelSelectScreen
- * ----------------------------------------------------------------------
- * Shown after the player picks "Story-Mode":
- *   [ header banner: "LEVEL SELECT" ]
- *   [ winding path of tappable level nodes, each a placeholder image ]
- *   [ < Back ]
- *
- * Each level node uses LevelButton (same pattern as AppButton — fixed
- * size, swappable art via `backgroundImage`, custom `onPress`).
- *
- * NOTE: the reference art shows a hand-drawn curvy path connecting the
- * levels. Drawing an actual curved line needs an SVG library
- * (e.g. react-native-svg), which isn't wired up here yet. For now the
- * levels just alternate left/right to suggest a winding path — swap in
- * an SVG path behind the nodes later if you want the exact look.
- * ----------------------------------------------------------------------
- */
 
 // Describe each level once; add/remove entries here to change the path.
 // `align` controls which side of the screen the node sits on.
 const LEVELS = [
-  { id: 1, align: "flex-start", size: 100 },
-  { id: 2, align: "flex-end", size: 90 },
-  { id: 3, align: "flex-start", size: 90 },
-  { id: 4, align: "center", size: 130 }, // e.g. a bigger "boss" node
+  {
+    id: 1,
+    align: "flex-start",
+    size: 100,
+    image: require("../assets/Final/levels/Level-1-Logo.png"),
+  },
+  {
+    id: 2,
+    align: "flex-end",
+    width: 165,
+    height: 105,
+    image: require("../assets/Final/levels/Level-2-Logo.png"),
+  },
+  {
+    id: 3,
+    align: "flex-start",
+    width: 135,
+    height: 95,
+    image: require("../assets/Final/levels/Level-3-Logo.png"),
+  },
+  {
+    id: 4,
+    align: "flex-end",
+    width: 190,
+    height: 150,
+    image: require("../assets/Final/levels/Level-4-Logo.png"),
+  }, // e.g. a bigger "boss" node
 ];
 
 export default function LevelSelectScreen({
@@ -37,7 +48,11 @@ export default function LevelSelectScreen({
   lockedLevels = [],
 }) {
   return (
-    <View style={styles.background}>
+    <ImageBackground
+      source={require("../assets/Final/BackgroundColor.png")}
+      style={styles.background}
+      resizeMode="cover"
+    >
       <StatusBar barStyle="dark-content" />
 
       {/* ---------- HEADER BANNER ---------- */}
@@ -55,11 +70,11 @@ export default function LevelSelectScreen({
             style={[styles.nodeRow, { justifyContent: lvl.align }]}
           >
             <LevelButton
-              level={lvl.id}
-              size={lvl.size}
+              width={lvl.width}
+              height={lvl.height}
               locked={lockedLevels.includes(lvl.id)}
               onPress={() => onSelectLevel && onSelectLevel(lvl.id)}
-              // Later: backgroundImage={require(`../../assets/levels/level-${lvl.id}.png`)}
+              backgroundImage={lvl.image}
             />
           </View>
         ))}
@@ -68,21 +83,20 @@ export default function LevelSelectScreen({
       {/* ---------- BACK BUTTON ---------- */}
       <View style={styles.footer}>
         <AppButton
-          label="< Back"
           onPress={onBack}
-          style={styles.backButton}
-          // Later: backgroundImage={require('../../assets/buttons/back.png')}
+          style={styles.buttonSpacing}
+          backgroundImage={require("../assets/Final/buttons/buttonBack.png")}
         />
       </View>
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   background: {
     flex: 1,
-    // BACKGROUND PLACEHOLDER COLOR — same as the other screens
-    backgroundColor: "#f3e6cf",
+    // Fallback color in case the image fails to load
+    backgroundColor: "#ffebbd",
   },
   header: {
     paddingTop: 24,
@@ -109,8 +123,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
-    alignItems: "flex-start",
+    paddingBottom: 32,
+    alignItems: "center",
   },
   backButton: {
     width: 140,

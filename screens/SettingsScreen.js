@@ -64,10 +64,9 @@ export default function SettingsScreen({ onBack }) {
         </View>
 
         <AppButton
-          label="Back"
           onPress={onBack}
-          style={styles.backButton}
-          // Later: backgroundImage={require('../assets/buttons/back.png')}
+          style={styles.buttonSpacing}
+          backgroundImage={require("../assets/Final/buttons/buttonBack.png")}
         />
       </View>
     </View>
@@ -121,7 +120,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   creditsButton: {
-    marginTop: 6,
+    marginTop: 145,
   },
   backButton: {
     width: "100%",
