@@ -1,9 +1,12 @@
-import React from 'react';
+import React, {useState} from 'react';
+import LevelResultModal from './LevelResultModal';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, Image, ImageBackground } from 'react-native';
 import { ConveyorBelt } from '../components/ConveyorBelt';
  
 export default function GameplayScreen({ onOpenStore }) {
+  const [levelResult, setLevelResult] = useState(null); // null | 'win' | 'lose' = StoreScreen
+  const playerScore = 1500; //Change to whatever number
   return (
     <View style={styles.screenWrapper}>
       <View style={styles.container}>
@@ -87,6 +90,21 @@ export default function GameplayScreen({ onOpenStore }) {
  
         <StatusBar style="light" />
       </View>
+
+      {/* LEVEL RESULT MODAL */}
+      <LevelResultModal
+        visible={levelResult !== null}
+        type={levelResult || 'win'}
+        score={playerScore}
+        onConfirm={() => {
+          const isLose = levelResult === 'lose';
+          setLevelResult(null); // Close the modal
+
+          if (isLose && onOpenStore) {
+            onOpenStore(); // Switches to StoreScreen on lose
+          }
+        }}
+      />
     </View>
   );
 }

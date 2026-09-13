@@ -1,7 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View, Image, ImageBackground, Text } from 'react-native';
 
+import MrRattyDiscount from './MrRattyDiscount.js';
+import MrRattyInflate from './MrRattyInflate';
+
 export default function StoreScreen({ onBack }) {
+  //change to true if you want to see the pop-up
+  const [showRattyModal, setShowRattyModal] = useState(false);
+  const [showThankYouModal, setShowThankYouModal] = useState(false);
   return (
     <View style={styles.screenWrapper}>
       <View style={styles.container}>
@@ -88,6 +94,17 @@ export default function StoreScreen({ onBack }) {
         />
 
       </View>
+      
+      <MrRattyDiscount
+        visible={showThankYouModal}
+        onDismiss={() => setShowThankYouModal(false)}
+      />
+
+      <MrRattyInflate
+        visible={showRattyModal}
+        onDismiss={() => setShowRattyModal(false)}
+      />
+      
     </View>
   );
 }
