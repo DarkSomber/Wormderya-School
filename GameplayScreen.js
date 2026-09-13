@@ -1,7 +1,8 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, Image, ImageBackground } from 'react-native';
-
+import { ConveyorBelt } from '../components/ConveyorBelt';
+ 
 export default function GameplayScreen({ onOpenStore }) {
   return (
     <View style={styles.screenWrapper}>
@@ -22,7 +23,7 @@ export default function GameplayScreen({ onOpenStore }) {
             style={styles.moneyIcon} 
           />
         </ImageBackground>
-
+ 
         {/* 2. TOP CHARACTER (Dog) */}
         <View style={styles.customerBox}>
           <Image 
@@ -34,7 +35,7 @@ export default function GameplayScreen({ onOpenStore }) {
           style={styles.patienceMeter} 
           />
         </View>
-
+ 
         {/* 3. Table where plates are */}
         <ImageBackground
         source={require('./assets/Placeholder/Table.png')}
@@ -46,7 +47,7 @@ export default function GameplayScreen({ onOpenStore }) {
           style={styles.plate} 
           />
         </ImageBackground>
-
+ 
         {/* 4. BOTTOM CHARACTER (Chef) */}
         <View style={styles.chefBar}>
           <Image 
@@ -59,30 +60,37 @@ export default function GameplayScreen({ onOpenStore }) {
             <Image source={require('./assets/Placeholder/BlankRectangle.png')} style={styles.sideItem} />
           </View>
         </View>
-
-        {/* 5. CONVEYOR BELT */}
+ 
+        {/* 5. CONVEYOR BELT — letters scroll here instead of static
+            plates. Each row is its own ConveyorBelt instance; the visual
+            Conveyor.png background stays as a plain wrapper (waiting for the animation sprites), and all the
+            movement/spawn/wrap-around logic lives inside ConveyorBelt
+            itself. Tapping a letter currently just logs it — that's the
+            hook the future Word Input System will use. */}
         {[0, 1, 2].map((row) => (
           <ImageBackground
             key={row}
             source={require('./assets/Placeholder/Conveyor.png')}
             style={styles.conveyor} 
+            resizeMode="stretch"
           >
-            {[0, 1, 2, 3, 4].map((i) => (
-              <Image 
-                key={i}
-                source={require('./assets/Placeholder/Plate.png')}
-                style={styles.beltPlate} 
-              />
-            ))}
+            <ConveyorBelt
+              style={styles.conveyorBelt}
+              config={{ maxLetters: 5, slotWidth: 60, slotHeight: 60 }}
+              onLetterPress={(letter) => {
+                // TODO: hand off to the future Word Input System.
+                console.log('Letter pressed:', letter.id, letter.character);
+              }}
+            />
           </ImageBackground>
         ))}
-
+ 
         <StatusBar style="light" />
       </View>
     </View>
   );
 }
-
+ 
 const styles = StyleSheet.create({
   /* 1 */
   screenWrapper: {
@@ -119,7 +127,7 @@ const styles = StyleSheet.create({
     height: 40,
     resizeMode: 'contain',
   },
-
+ 
   /* 2 */
   customerBox: {
     flexDirection: 'row',
@@ -139,7 +147,7 @@ const styles = StyleSheet.create({
     marginTop: -80,
     resizeMode: 'contain',
   },
-
+ 
   /* 3 */
   table: {
     width: '100%',
@@ -154,7 +162,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
   },
-
+ 
   /* 4 */
   chefBar: {
     flexDirection: 'row',
@@ -175,17 +183,16 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
   },
-
+ 
   /* 5 */
   conveyor: {
     width: '100%',
     height: 80,
     flexDirection: 'row',
-    justifyContent: 'space-evenly',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  beltPlate: {
-    width: 44,
-    height: 44,
+  conveyorBelt: {
+    alignSelf: 'center',
   },
 });
