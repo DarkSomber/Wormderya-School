@@ -11,7 +11,6 @@ import GameplayScreen from "./screens/GameplayScreen";
 import QuitModal from './QuitModal';
 import RushHourModal from './RushHourModal';
 import StoreScreen from './StoreScreen';
-import PlaceholderGameplay from './GameplayScreen';
 
 /**
  * Very small hand-rolled screen switcher so this demo doesn't require

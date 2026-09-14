@@ -1,0 +1,3661 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+assets/
+  Final/
+    BackstoryScreens/
+      Backstory-Panel-1.1.png
+      Backstory-Panel-1.2.png
+      Backstory-Panel-2.png
+      Backstory-Panel-3.png
+      Backstory-Panel-4.png
+    buttons/
+      buttonBack.png
+      buttonQuit.png
+      buttonRushHourmode.png
+      buttonSettings.png
+      buttonStart1.png
+      buttonStorymode.png
+    levels/
+      Level-1-Logo.png
+      Level-2-Logo.png
+      Level-3-Logo.png
+      Level-4-Logo.png
+    BackgroundColor.png
+    WormderyaLogo.png
+  Placeholder/
+    Fonts/
+      Daydream-DEMO.otf
+    BlankRectangle.png
+    Board.png
+    BuyButton.png
+    Clock.png
+    Conveyor.png
+    CustomerPatienceBar_1.png
+    DeclineButton.png
+    Floor.png
+    MrRatty.png
+    Multiplier.png
+    pixel_coins.png
+    Plate.png
+    QuitButton.png
+    SampleCustomer_1.png
+    SatisfactionBoost.png
+    Table.png
+    TopBoard.png
+    WormProtagonist_1.png
+  android-icon-background.png
+  android-icon-foreground.png
+  android-icon-monochrome.png
+  favicon.png
+  icon.png
+  splash-icon.png
+components/
+  gameplayReusables/
+    ConveyorBelt/
+      Animationsystem.js
+      Conveyorbelt.js
+      Conveyorconfig.js
+      index.js
+      Letter.js
+      Letterpool.js
+      Spriteloader.js
+    WordInput/
+      CurrentWordDisplay.js
+      index.js
+      LetterAnimations.js
+      LetterTile.js
+      LevelConfig.js
+      ScoreSystem.js
+      TagalogWordDatabase.js
+      UseWordInput.js
+      WordValidator.js
+    Font.js
+  AppButton.js
+  LevelButton.js
+  SlideshowSequence.js
+  VolumeSlider.js
+screens/
+  GameplayScreen.js
+  HomeScreen.js
+  LevelSelectScreen.js
+  ModeSelectScreen.js
+  SettingsScreen.js
+  StoryBackstoryScreen.js
+.gitignore
+App.js
+app.json
+CustomerMood.js
+GameplayScreen.js
+index.js
+LevelResultModal.js
+LevelTimer.js
+LICENSE
+MrRattyDiscount.js
+MrRattyInflate.js
+package.json
+PopupModal.js
+QuitModal.js
+RushHourModal.js
+StoreScreen.js
+useScoreSystem.js
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="CustomerMood.js">
+import React, { forwardRef, useState, useEffect, useRef, useImperativeHandle } from 'react';
+import { View, Text } from 'react-native';
+
+/**
+ * CustomerMood
+ *
+ * Exposes `applyWrongWordPenalty`, `restorePatience`, and `getPatience`
+ * via a ref, so the Gameplay Programmer's word-input system (or the
+ * GameplayScreen) can call these directly:
+ *
+ *   const customerRef = useRef(null);
+ *   <CustomerMood ref={customerRef} onCustomerLeft={handleCustomerLeft} />
+ *   ...
+ *   customerRef.current.applyWrongWordPenalty();
+ *   customerRef.current.restorePatience();
+ */
+const CustomerMood = forwardRef(({ maxPatience = 100, decayRateMs = 2000, onCustomerLeft }, ref) => {
+  const [patience, setPatience] = useState(maxPatience);
+  const hasLeftRef = useRef(false);
+
+  // Passive patience decay over time.
+  // NOTE: side effects (onCustomerLeft) are NOT called from inside the
+  // setState updater below — updaters can run more than once and should
+  // stay pure. The actual "customer left" trigger happens in the effect
+  // further down, which watches `patience`.
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setPatience((prev) => {
+        if (prev <= 0) {
+          clearInterval(intervalId); // already empty, stop ticking
+          return prev;
+        }
+        return Math.max(0, prev - 10);
+      });
+    }, decayRateMs);
+
+    return () => clearInterval(intervalId);
+  }, [decayRateMs]);
+
+  // Fires onCustomerLeft exactly once, the moment patience hits 0.
+  useEffect(() => {
+    if (patience <= 0 && !hasLeftRef.current) {
+      hasLeftRef.current = true;
+      onCustomerLeft?.();
+    }
+  }, [patience, onCustomerLeft]);
+
+  // Called when player submits an invalid word or wrong spelling
+  const applyWrongWordPenalty = (penaltyAmount = 15) => {
+    if (hasLeftRef.current) return; // ignore penalties after customer already left
+    setPatience((prev) => Math.max(0, prev - penaltyAmount));
+  };
+
+  // Called when player successfully serves an order
+  const restorePatience = (restoreAmount = 20) => {
+    if (hasLeftRef.current) return;
+    setPatience((prev) => Math.min(maxPatience, prev + restoreAmount));
+  };
+
+  const getPatience = () => patience;
+
+  useImperativeHandle(ref, () => ({
+    applyWrongWordPenalty,
+    restorePatience,
+    getPatience,
+  }));
+
+  // Map numerical patience to visual mood indicators
+  const getMoodLabel = () => {
+    if (patience > 70) return "Happy 😊";
+    if (patience > 30) return "Neutral 😐";
+    return "Impatient 😡";
+  };
+
+  return (
+    <View>
+      <Text style={{ fontSize: 18 }}>Customer Mood: {getMoodLabel()}</Text>
+      <Text>Patience Level: {patience} / {maxPatience}</Text>
+    </View>
+  );
+});
+
+export default CustomerMood;
+</file>
+
+<file path="LevelTimer.js">
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text } from 'react-native';
+
+/**
+ * LevelTimer
+ *
+ * @param {number} targetScore - score/serve quota needed to win the level
+ * @param {number} currentScore - live score from useScoreSystem
+ * @param {number} initialTimeInSeconds - countdown length
+ * @param {boolean} isPaused - freezes the countdown (e.g. while Mr. Ratty's
+ *   shop popup is open), defaults to false so existing behavior is unchanged
+ * @param {(won: boolean, finalScore: number) => void} onLevelEnd - called
+ *   exactly once when time runs out, so the parent screen can show the
+ *   Win Screen or Lose Screen from the storyboard.
+ */
+const LevelTimer = ({
+  targetScore,
+  currentScore,
+  initialTimeInSeconds = 60,
+  isPaused = false,
+  onLevelEnd,
+}) => {
+  const [timeLeft, setTimeLeft] = useState(initialTimeInSeconds);
+  const [isGameOver, setIsGameOver] = useState(false);
+
+  // Keep the latest score in a ref instead of a dependency, so the
+  // countdown interval doesn't get torn down and recreated every time
+  // the player earns points (that was the bug: [currentScore] as a
+  // dependency reset the interval on every score change, causing the
+  // countdown to drift/stutter instead of ticking evenly every second).
+  const scoreRef = useRef(currentScore);
+  useEffect(() => {
+    scoreRef.current = currentScore;
+  }, [currentScore]);
+
+  // Countdown interval — only restarts if paused state or game-over state changes.
+  useEffect(() => {
+    if (isPaused || isGameOver) return undefined;
+
+    const timerId = setInterval(() => {
+      setTimeLeft((prevTime) => {
+        if (prevTime <= 1) {
+          clearInterval(timerId);
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerId);
+  }, [isPaused, isGameOver]);
+
+  // Determine win/loss exactly once, the moment the clock actually hits 0.
+  useEffect(() => {
+    if (timeLeft === 0 && !isGameOver) {
+      setIsGameOver(true);
+      const finalScore = scoreRef.current;
+      const won = finalScore >= targetScore;
+      onLevelEnd?.(won, finalScore);
+    }
+  }, [timeLeft, isGameOver, targetScore, onLevelEnd]);
+
+  // Format seconds to MM:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  return (
+    <View>
+      <Text style={{ fontSize: 24, fontWeight: 'bold' }}>
+        Time: {formatTime(timeLeft)}
+      </Text>
+    </View>
+  );
+};
+
+export default LevelTimer;
+</file>
+
+<file path="useScoreSystem.js">
+import { useState, useCallback } from 'react';
+
+export const useScoreSystem = (initialCurrency = 0) => {
+  const [score, setScore] = useState(0);
+  const [playerCurrency, setPlayerCurrency] = useState(initialCurrency);
+
+  /**
+   * Called whenever the word input system validates a correct word
+   * @param {string} word - The valid formed word submitted by the player
+   * @param {number} timeBonus - Multiplier or bonus based on speed
+   * @param {number} activeMultiplier - Upgrade/Power-up modifier multiplier
+   * @returns {number} points earned (0 if the word was invalid/too short)
+   */
+  const addScoreFromWord = useCallback((word, timeBonus = 1, activeMultiplier = 1) => {
+    // Guard: per the game rules, anything shorter than 3 letters is invalid
+    // and shouldn't award points, and a missing word shouldn't crash scoring.
+    if (!word || word.length < 3) return 0;
+
+    const basePoints = word.length * 10; // e.g., 5-letter word = 50 pts
+    const earnedPoints = Math.round(basePoints * timeBonus * activeMultiplier);
+
+    setScore((prevScore) => prevScore + earnedPoints);
+    setPlayerCurrency((prevCurrency) => prevCurrency + earnedPoints); // Currency used for Ratty shop
+
+    return earnedPoints;
+  }, []);
+
+  const deductScore = useCallback((amount) => {
+    setScore((prev) => Math.max(0, prev - amount));
+  }, []);
+
+  /**
+   * Resets the in-level score (e.g. when the player hits "Retry level"
+   * on the Lose Screen) WITHOUT touching playerCurrency, since currency
+   * is meant to persist between attempts/levels.
+   */
+  const resetLevelScore = useCallback(() => {
+    setScore(0);
+  }, []);
+
+  return {
+    score,
+    playerCurrency,
+    addScoreFromWord,
+    deductScore,
+    resetLevelScore,
+    setScore,
+    setPlayerCurrency, // exposed so the Ratty/store screen can spend currency
+  };
+};
+</file>
+
+<file path="components/gameplayReusables/ConveyorBelt/Animationsystem.js">
+import { useEffect, useRef } from 'react';
+import { Animated } from 'react-native';
+
+export const LETTER_ANIM_STATES = {
+  SPAWNING: 'spawning',
+  IDLE: 'idle',
+  MOVING: 'moving',
+  SELECTED: 'selected',
+  DISAPPEARING: 'disappearing',
+};
+
+/**
+ * Small, reusable animation primitive shared by the conveyor and its
+ * letters. Deliberately minimal for this stage — it only drives a single
+ * scale value in and out — but every future animation state
+ * (idle / moving / selected / disappearing) already has a named slot to
+ * hook into as the game grows, instead of bolting more states on later.
+ */
+export function useSpawnAnimation(animState) {
+  const scale = useRef(
+    new Animated.Value(animState === LETTER_ANIM_STATES.SPAWNING ? 0 : 1)
+  ).current;
+
+  useEffect(() => {
+    if (animState === LETTER_ANIM_STATES.SPAWNING) {
+      scale.setValue(0);
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 2, //2 shows best animation
+        useNativeDriver: true,
+      }).start();
+    } else if (animState === LETTER_ANIM_STATES.DISAPPEARING) {
+      Animated.timing(scale, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [animState, scale]);
+
+  return scale;
+}
+
+/**
+ * One-off helper for a fire-and-forget fade/scale animation outside the
+ * hook above (e.g. a future score popup or selected-letter pulse).
+ */
+export function playTimingAnimation(animatedValue, toValue, duration = 200) {
+  return new Promise((resolve) => {
+    Animated.timing(animatedValue, {
+      toValue,
+      duration,
+      useNativeDriver: true,
+    }).start(() => resolve());
+  });
+}
+</file>
+
+<file path="components/gameplayReusables/ConveyorBelt/Conveyorbelt.js">
+import React, {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  forwardRef,
+} from 'react';
+import { Animated, View, StyleSheet } from 'react-native';
+import Letter from './Letter';
+import { DEFAULT_CONVEYOR_CONFIG } from './Conveyorconfig';
+import { pickRandomLetter } from './Letterpool';
+import { LETTER_ANIM_STATES } from './Animationsystem';
+
+let nextLetterId = 1;
+function makeLetter(pool) {
+  return {
+    id: `letter-${nextLetterId++}`,
+    character: pickRandomLetter(pool),
+    active: true,
+    animState: LETTER_ANIM_STATES.IDLE,
+  };
+}
+
+/**
+ * ConveyorBelt
+ * ------------
+ * Owns everything about moving letters along a belt: position, spawning,
+ * speed, and wrap-around. It deliberately knows nothing about words,
+ * scoring, or input — future systems are meant to reach in through:
+ *
+ *   ref.removeLetterById(id)    mark a letter inactive (blank slot, belt
+ *                               keeps moving normally)
+ *   ref.getLetters()            currently visible letters, left to right
+ *   props.onLetterPress(letter) tap hook for the future Word Input System
+ *
+ * Movement model:
+ * `maxLetters` letters are visible at once, plus one extra buffer letter
+ * waiting just off the right edge. A single Animated value translates the
+ * whole row left by exactly one slot's width over `slotDurationMs`. When
+ * that finishes, the buffer letter has scrolled fully into view. We then
+ * rotate the data (drop the letter that just scrolled off the left, spawn
+ * a fresh buffer letter) and snap translateX back to 0 — since the
+ * rotated layout is pixel-identical to where the tween ended, the snap is
+ * invisible and the belt reads as one continuous, wrapping motion.
+ */
+const ConveyorBelt = forwardRef(function ConveyorBelt(
+  { config: configOverride, style, onLetterPress },
+  ref
+) {
+  const config = { ...DEFAULT_CONVEYOR_CONFIG, ...configOverride };
+  const { slotDurationMs, slotWidth, slotHeight, maxLetters, letterPool, direction } = config;
+  const totalSlots = maxLetters + 1; // +1 off-screen buffer letter
+
+  const [letters, setLetters] = useState(() =>
+    Array.from({ length: totalSlots }, () => makeLetter(letterPool))
+  );
+
+  const translateX = useRef(new Animated.Value(0)).current;
+  const runningRef = useRef(true);
+
+  const rotateLetters = useCallback(() => {
+    setLetters((prev) => {
+      const [, ...rest] = prev;
+      return [...rest, makeLetter(letterPool)];
+    });
+  }, [letterPool]);
+
+  useEffect(() => {
+    runningRef.current = true;
+
+    const tick = () => {
+      if (!runningRef.current) return;
+      translateX.setValue(0);
+      Animated.timing(translateX, {
+        toValue: direction === 'rtl' ? slotWidth : -slotWidth,
+        duration: slotDurationMs,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (!finished || !runningRef.current) return;
+        rotateLetters();
+        tick();
+      });
+    };
+
+    tick();
+
+    return () => {
+      runningRef.current = false;
+      translateX.stopAnimation();
+    };
+  }, [translateX, slotWidth, slotDurationMs, direction, rotateLetters]);
+
+  const removeLetterById = useCallback((id) => {
+    setLetters((prev) =>
+      prev.map((l) =>
+        l.id === id
+          ? { ...l, active: false, animState: LETTER_ANIM_STATES.DISAPPEARING }
+          : l
+      )
+    );
+  }, []);
+
+  useImperativeHandle(ref, () => ({
+    removeLetterById,
+    getLetters: () => letters.slice(0, maxLetters),
+  }));
+
+  const viewportWidth = slotWidth * maxLetters;
+
+  return (
+    <View style={[styles.viewport, { width: viewportWidth, height: slotHeight }, style]}>
+      <Animated.View
+        style={[
+          styles.track,
+          { width: slotWidth * totalSlots, height: slotHeight, transform: [{ translateX }] },
+        ]}
+      >
+        {letters.map((letter, i) => (
+          <Letter
+            key={letter.id}
+            letter={letter}
+            left={i * slotWidth}
+            width={slotWidth}
+            height={slotHeight}
+            onPress={onLetterPress}
+          />
+        ))}
+      </Animated.View>
+    </View>
+  );
+});
+
+export default ConveyorBelt;
+
+const styles = StyleSheet.create({
+  viewport: {
+    bottom: 10, // Can be adjusted please adjust this mans
+    overflow: 'hidden',
+    alignSelf: 'center',
+  },
+  track: {
+    position: 'relative',
+  },
+});
+</file>
+
+<file path="components/gameplayReusables/ConveyorBelt/Conveyorconfig.js">
+import { DEFAULT_LETTER_POOL } from './Letterpool';
+
+/**
+ * Central tuning knobs for a ConveyorBelt instance. Override any subset
+ * via the `config` prop:
+ *
+ *   <ConveyorBelt config={{ slotDurationMs: 900, maxLetters: 7 }} />
+ *
+ * Later this can grow into a per-level LevelConfig (wordDatabase,
+ * scoreMultiplier, levelRules, ...) without ConveyorBelt itself changing.
+ */
+export const DEFAULT_CONVEYOR_CONFIG = {
+  // Time (ms) for the belt to travel exactly one slot's width.
+  // Lower = faster belt.
+  slotDurationMs: 1400,
+
+  // Visual scroll direction, No way to access yet, Note to self/next programmer: find a way to access it.
+  direction: 'ltr', // 'ltr' | 'rtl'
+
+  // Characters the belt can spawn. Swap for the Tagalog word-database
+  // pool later — nothing else here needs to change.
+  letterPool: DEFAULT_LETTER_POOL,
+
+  // Reserved width/height (px) per letter tile.
+  slotWidth: 70,
+  slotHeight: 50,
+
+  // How many letter slots are visible on the belt at once. (Internally
+  // ConveyorBelt tracks one extra buffer letter off-screen for a smooth
+  // wrap-around — that's an implementation detail, not configured here.)
+  maxLetters: 6,
+};
+</file>
+
+<file path="components/gameplayReusables/ConveyorBelt/index.js">
+export { default as ConveyorBelt } from './Conveyorbelt';
+export { default as Letter } from './Letter';
+export { DEFAULT_CONVEYOR_CONFIG } from './Conveyorconfig';
+export { DEFAULT_LETTER_POOL, pickRandomLetter } from './Letterpool';
+export { LETTER_ANIM_STATES, useSpawnAnimation, playTimingAnimation } from './Animationsystem';
+export {
+  registerLetterSprite,
+  registerLetterSprites,
+  getLetterSprite,
+  registerLetterFrames,
+  getLetterFrames,
+} from './Spriteloader';
+</file>
+
+<file path="components/gameplayReusables/ConveyorBelt/Letter.js">
+import React from 'react';
+import { Animated, Text, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { getLetterSprite } from './Spriteloader';
+import { useSpawnAnimation } from './Animationsystem';
+
+/**
+ * Renders a single letter tile on the conveyor belt.
+ *
+ * A `letter` is a small, self-contained data object:
+ *   { id, character, active, animState }
+ *
+ * The belt-wide horizontal scroll is handled entirely by ConveyorBelt's
+ * Animated transform — a Letter only knows its fixed slot position
+ * (`left`) inside that moving row, so it never needs to know how fast,
+ * or whether, the belt is currently moving.
+ */
+export default function Letter({ letter, left, width, height, onPress }) {
+  const scale = useSpawnAnimation(letter.animState);
+
+  if (!letter.active) {
+    // Reserve the slot (keeps spacing stable) without rendering a tile —
+    // this is the "removed" state the future Word Input System will use,
+    // e.g. [A] [B] [ ] [D] [E] after the player selects "C".
+    return <View style={[styles.slot, { left, width, height }]} />;
+  }
+
+  const sprite = getLetterSprite(letter.character);
+
+  return (
+    <Animated.View style={[styles.slot, { left, width, height, transform: [{ scale }] }]}>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => onPress && onPress(letter)}
+        style={styles.tileTouchable}
+      >
+        {sprite ? (
+          <Image source={sprite} style={styles.tileImage} resizeMode="contain" />
+        ) : (
+          <View style={styles.tileFallback}>
+            <Text style={styles.tileText}>{letter.character}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  slot: {
+    position: 'absolute',
+    top: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileTouchable: {
+    width: '86%',
+    height: '86%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileImage: {
+    width: '100%',
+    height: '100%',
+  },
+  tileFallback: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
+    backgroundColor: '#f4d9a0',
+    borderWidth: 2,
+    borderColor: '#8a5a2b',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#4a2e0f',
+  },
+});
+</file>
+
+<file path="components/gameplayReusables/ConveyorBelt/Letterpool.js">
+/**
+ * Test letter pool for the conveyor prototype. Swap this out for the
+ * formal Tagalog letter set (or generate it from the word database) once
+ * the Word Input System and dictionary are in place — nothing else in
+ * the conveyor needs to change to support that swap, since ConveyorBelt
+ * only ever pulls from `config.letterPool`.
+ */
+export const DEFAULT_LETTER_POOL = [
+  'A', 'B', 'K', 'D', 'E', 'G', 'H', 'I', 'L',
+  'M', 'N', 'O', 'P', 'R', 'S', 'T', 'U', 'W', 'Y',
+];
+ 
+export function pickRandomLetter(pool = DEFAULT_LETTER_POOL) {
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+</file>
+
+<file path="components/gameplayReusables/ConveyorBelt/Spriteloader.js">
+/**
+ * Minimal sprite registry so letters can eventually be drawn with real
+ * artwork/animation frames instead of the text-in-a-box fallback.
+ *
+ * Once real letter sprites exist:
+ *   import { registerLetterSprite } from './spriteLoader';
+ *   registerLetterSprite('A', require('../../assets/Letters/A.png'));
+ *
+ * Letter.js already checks this registry first and only falls back to
+ * plain text when nothing is registered for that character.
+ */
+const spriteRegistry = {};
+
+export function registerLetterSprite(character, source) {
+  spriteRegistry[character.toUpperCase()] = source;
+}
+
+export function registerLetterSprites(map) {
+  Object.entries(map).forEach(([character, source]) =>
+    registerLetterSprite(character, source)
+  );
+}
+
+export function getLetterSprite(character) {
+  return spriteRegistry[character?.toUpperCase()] || null;
+}
+
+/**
+ * Placeholder for a future multi-frame sprite/animation system, e.g.
+ *   registerLetterFrames('A', [frame1, frame2, frame3, frame1]);
+ * Not used yet — kept here so the AnimationSystem/Letter have an obvious
+ * place to plug into when frame-based animation is actually needed.
+ */
+const spriteFrameRegistry = {};
+
+export function registerLetterFrames(character, frames) {
+  spriteFrameRegistry[character.toUpperCase()] = frames;
+}
+
+export function getLetterFrames(character) {
+  return spriteFrameRegistry[character?.toUpperCase()] || null;
+}
+</file>
+
+<file path="components/gameplayReusables/WordInput/CurrentWordDisplay.js">
+import React, { useEffect, useRef } from 'react';
+import { Animated, Text, View, Image, StyleSheet } from 'react-native';
+import LetterTile, { TILE_SIZE, BLANK_RECTANGLE } from './LetterTile';
+import { useResultFeedbackAnimation } from './LetterAnimations';
+import { FONT_WARNING } from '../Font';
+import { DEFAULT_MAX_LETTERS } from './UseWordInput';
+
+const VALID_COLOR = '#2e7d32';
+const INVALID_COLOR = '#c62828';
+
+// How long the "WORD — not a word" / "WORD — +score" line stays fully
+// visible before it fades out. Edit here for a global change, or pass a
+// different value as the resultFadeDelayMs prop to override per screen.
+export const DEFAULT_RESULT_FADE_DELAY_MS = 2000;
+const RESULT_FADE_DURATION_MS = 300;
+
+/**
+ * Purely presentational — renders `maxLetters` fixed slots (Wordle-style):
+ * filled ones show an animated LetterTile per letter in `currentWord`
+ * (each pops in on mount, so a new tile appearing *is* the "box appears
+ * when a letter is tapped/typed" behavior), the rest show an empty
+ * BlankRectangle placeholder with no text. Reacts to `lastResult` with a
+ * shake + red flash on an invalid word, or a ripple + green flash on a
+ * valid one, across the whole row, and fades the result line out after
+ * resultFadeDelayMs. useWordInput() doesn't know or care that this
+ * exists; swap it for your own UI any time.
+ */
+export default function CurrentWordDisplay({
+  currentWord,
+  lastResult,
+  maxLetters = DEFAULT_MAX_LETTERS,
+  resultFadeDelayMs = DEFAULT_RESULT_FADE_DELAY_MS,
+}) {
+  const {
+    shakeX,
+    flashOpacity,
+    flashColor,
+    rippleScale,
+    rippleOpacity,
+    playValid,
+    playInvalid,
+  } = useResultFeedbackAnimation();
+
+  const resultOpacity = useRef(new Animated.Value(0)).current;
+  const fadeTimeoutRef = useRef(null);
+
+  // Track the specific result object we've already animated for, so we
+  // only fire once per submit rather than on every re-render.
+  const animatedResultRef = useRef(null);
+
+  useEffect(() => {
+    if (!lastResult || lastResult === animatedResultRef.current) return;
+    animatedResultRef.current = lastResult;
+    if (lastResult.valid) {
+      playValid();
+    } else {
+      playInvalid();
+    }
+
+    // Show the result line fully, then fade it out after the configured
+    // delay so it doesn't just sit there forever.
+    if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
+    resultOpacity.setValue(1);
+    fadeTimeoutRef.current = setTimeout(() => {
+      Animated.timing(resultOpacity, {
+        toValue: 0,
+        duration: RESULT_FADE_DURATION_MS,
+        useNativeDriver: true,
+      }).start();
+    }, resultFadeDelayMs);
+  }, [lastResult, playValid, playInvalid, resultOpacity, resultFadeDelayMs]);
+
+  // Clear any pending fade if the component unmounts mid-timeout.
+  useEffect(() => () => {
+    if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
+  }, []);
+
+  const flashBackgroundColor = flashColor.interpolate({
+    inputRange: [0, 1],
+    outputRange: [INVALID_COLOR, VALID_COLOR],
+  });
+  const rippleBackgroundColor = lastResult && lastResult.valid ? VALID_COLOR : INVALID_COLOR;
+
+  // Fixed-length slot list: real letters first, then empty placeholders
+  // for the rest of maxLetters. This is what lets a shorter word (e.g.
+  // "AKO") still read clearly as submittable any time via the plate —
+  // the remaining slots are visibly empty/open, not implying you must
+  // fill all of them first.
+  const slots = Array.from({ length: maxLetters }, (_, i) => currentWord[i] || null);
+
+  return (
+    <View style={styles.wrapper}>
+      <Animated.View style={[styles.row, { transform: [{ translateX: shakeX }] }]}>
+        {slots.map((letter, i) =>
+          letter ? (
+            <LetterTile key={letter.id} character={letter.character} />
+          ) : (
+            <Image
+              key={`empty-${i}`}
+              source={BLANK_RECTANGLE}
+              style={styles.emptySlot}
+              resizeMode="stretch"
+            />
+          )
+        )}
+
+        {/* Flash — a color wash over the whole row, red or green. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.overlay, { backgroundColor: flashBackgroundColor, opacity: flashOpacity }]}
+        />
+
+        {/* Ripple — only relevant/visible on a valid word; clipped by
+            the row's overflow:hidden so it reads as a contained ripple
+            rather than an expanding blob. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.ripple,
+            {
+              backgroundColor: rippleBackgroundColor,
+              opacity: rippleOpacity,
+              transform: [{ scale: rippleScale }],
+            },
+          ]}
+        />
+      </Animated.View>
+
+      {lastResult ? (
+        <Animated.Text
+          style={[
+            styles.resultText,
+            lastResult.valid ? styles.validText : styles.invalidText,
+            { opacity: resultOpacity },
+          ]}
+        >
+          {lastResult.valid
+            ? `${lastResult.word} — +${lastResult.score}`
+            : `${lastResult.word || '(empty)'} — not a word`}
+        </Animated.Text>
+      ) : null}
+    </View>
+  );
+}
+
+const ROW_MIN_HEIGHT = 46;
+
+const styles = StyleSheet.create({
+  wrapper: {
+    alignItems: 'center',
+    paddingVertical: 4,
+    width: '100%',
+    zIndex: 3, // table (GameplayScreen) sits at zIndex: 2 and overlaps this via negative marginTop
+    elevation: 3, // Android needs elevation in addition to zIndex for stacking order
+  },
+  row: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: ROW_MIN_HEIGHT,
+    minWidth: ROW_MIN_HEIGHT, // guarantees a visible frame even before any tiles mount
+    maxWidth: '90%',
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    alignSelf: 'center',
+    overflow: 'hidden', // keeps tiles, the flash, and the ripple all clipped to the row
+    position: 'relative',
+  },
+  emptySlot: {
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+    marginHorizontal: 3,
+    opacity: 0.5,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  ripple: {
+    position: 'absolute',
+    width: ROW_MIN_HEIGHT,
+    height: ROW_MIN_HEIGHT,
+    borderRadius: ROW_MIN_HEIGHT / 2,
+    top: 0,
+    left: 0,
+  },
+  resultText: {
+    fontFamily: FONT_WARNING,
+    fontSize: 14,
+    marginTop: 2,
+  },
+  validText: {
+    color: VALID_COLOR,
+  },
+  invalidText: {
+    color: INVALID_COLOR,
+  },
+});
+</file>
+
+<file path="components/gameplayReusables/WordInput/index.js">
+export { useWordInput } from './UseWordInput';
+export { default as CurrentWordDisplay } from './CurrentWordDisplay';
+export { isValidWord } from './WordValidator';
+export { calculateScore, baseScoreForWord } from './ScoreSystem';
+export { DEFAULT_LEVEL_CONFIG } from './LevelConfig';
+export { TAGALOG_WORD_LIST, TAGALOG_WORD_DATABASE } from './TagalogWordDatabase';
+</file>
+
+<file path="components/gameplayReusables/WordInput/LetterAnimations.js">
+import { useRef } from 'react';
+import { Animated } from 'react-native';
+
+/**
+ * Reusable animation primitives for the word-input UI.
+ *
+ * Deliberately NOT in WordValidator.js: that file's whole job is a pure
+ * word -> boolean check with zero UI knowledge, so a different/larger
+ * database can be swapped in per level without dragging Animated along
+ * for the ride. This file is also deliberately NOT inline inside
+ * CurrentWordDisplay.js anymore — pulling it out here is what actually
+ * makes that component "cleaner", and lets LetterTile reuse the same
+ * entrance animation without duplicating it.
+ *
+ * If you already have an AnimationSystem module (referenced in
+ * UseWordInput.js's comments for the conveyor's letter-removal
+ * animation), these hooks probably belong there instead — merge this
+ * file into it rather than keeping two animation modules around.
+ */
+
+// Pop-in for a single letter tile: scale + fade from 0 -> 1 on mount.
+export function useTileEntranceAnimation() {
+  const scale = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  const play = () => {
+    scale.setValue(0);
+    opacity.setValue(0);
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 5,
+        tension: 140,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  return { scale, opacity, play };
+}
+
+// Shake + color flash + ripple used when a submitted word is judged
+// valid/invalid. Same values/timings as the original CurrentWordDisplay,
+// just moved here so the component only has to call playValid/playInvalid.
+export function useResultFeedbackAnimation() {
+  const shakeX = useRef(new Animated.Value(0)).current;
+  const flashOpacity = useRef(new Animated.Value(0)).current;
+  const flashColor = useRef(new Animated.Value(0)).current; // 0 = invalid, 1 = valid
+  const rippleScale = useRef(new Animated.Value(0)).current;
+  const rippleOpacity = useRef(new Animated.Value(0)).current;
+
+  const playValid = () => {
+    flashColor.setValue(1);
+    flashOpacity.setValue(0.55);
+    rippleScale.setValue(0);
+    rippleOpacity.setValue(0.5);
+
+    Animated.parallel([
+      Animated.timing(flashOpacity, {
+        toValue: 0,
+        duration: 450,
+        useNativeDriver: false, // stays alongside the interpolated color below
+      }),
+      Animated.timing(rippleScale, {
+        toValue: 2.2,
+        duration: 450,
+        useNativeDriver: true,
+      }),
+      Animated.timing(rippleOpacity, {
+        toValue: 0,
+        duration: 450,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const playInvalid = () => {
+    flashColor.setValue(0);
+    flashOpacity.setValue(0.55);
+    shakeX.setValue(0);
+
+    Animated.timing(flashOpacity, {
+      toValue: 0,
+      duration: 400,
+      useNativeDriver: false,
+    }).start();
+
+    Animated.sequence([
+      Animated.timing(shakeX, { toValue: -8, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 8, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: -6, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 6, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 0, duration: 45, useNativeDriver: true }),
+    ]).start();
+  };
+
+  return {
+    shakeX,
+    flashOpacity,
+    flashColor,
+    rippleScale,
+    rippleOpacity,
+    playValid,
+    playInvalid,
+  };
+}
+</file>
+
+<file path="components/gameplayReusables/WordInput/LetterTile.js">
+import React, { useEffect, useRef } from 'react';
+import { Animated, Text, ImageBackground, StyleSheet } from 'react-native';
+import { useTileEntranceAnimation } from './LetterAnimations';
+
+export const TILE_SIZE = 40;
+
+// WordInput/ -> gameplayReusables/ -> components/ -> project root -> assets/...
+export const BLANK_RECTANGLE = require('../../../assets/Placeholder/BlankRectangle.png');
+
+/**
+ * A single letter's box. CurrentWordDisplay renders one of these per
+ * entry in `currentWord`, keyed by `letter.id` — React mounting a brand
+ * new LetterTile *is* the "a box appears when you tap/type a letter"
+ * behavior; this component just has to animate itself in on mount,
+ * nothing external needs to trigger it. Uses the same BlankRectangle
+ * placeholder art as the chef's side items, so it matches the rest of
+ * the screen's placeholder visuals instead of a flat color box.
+ */
+export default function LetterTile({ character }) {
+  const { scale, opacity, play } = useTileEntranceAnimation();
+  const hasPlayed = useRef(false);
+
+  useEffect(() => {
+    if (hasPlayed.current) return;
+    hasPlayed.current = true;
+    play();
+  }, [play]);
+
+  return (
+    <Animated.View style={[styles.tileWrapper, { opacity, transform: [{ scale }] }]}>
+      <ImageBackground source={BLANK_RECTANGLE} style={styles.tile} resizeMode="stretch">
+        <Text style={styles.letter}>{character}</Text>
+      </ImageBackground>
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  tileWrapper: {
+    marginHorizontal: 3,
+  },
+  tile: {
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  letter: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#4a2e0f',
+  },
+});
+</file>
+
+<file path="components/gameplayReusables/WordInput/LevelConfig.js">
+/**
+ * Per-level configuration for the Word Input / Score systems. Pass a
+ * partial override into useWordInput(conveyorRefs, { scoreMultiplier: 2 })
+ * — anything you don't override falls back to these defaults.
+ *
+ * conveyorSpeed / letterPool are listed here for completeness (per the
+ * original spec's LevelConfig shape) but aren't consumed by this module —
+ * they'd be forwarded to each ConveyorBelt's own `config` prop by
+ * whatever screen wires a level together.
+ */
+export const DEFAULT_LEVEL_CONFIG = {
+  conveyorSpeed: null,
+  letterPool: null,
+  scoreMultiplier: 1,
+  wordRules: {
+    minLength: 2,
+  },
+};
+</file>
+
+<file path="components/gameplayReusables/WordInput/ScoreSystem.js">
+/**
+ * ScoreSystem
+ * -----------
+ * Turns a validated word into a number. Deliberately dumb for this
+ * stage (10 points per letter) — the important part is that the
+ * multiplier is never hard-coded here; it's always passed in from a
+ * LevelConfig, so a level designer can change difficulty/reward without
+ * touching this file.
+ */
+export function baseScoreForWord(word) {
+  return word.length * 10;
+}
+
+export function calculateScore(word, multiplier = 1) {
+  return baseScoreForWord(word) * multiplier;
+}
+</file>
+
+<file path="components/gameplayReusables/WordInput/TagalogWordDatabase.js">
+/**
+ * Test word list of formal Tagalog/Filipino vocabulary — no slang, no
+ * texting shorthand, no informal spellings. This is intentionally small
+ * for the prototype; swap or extend it freely, WordValidator only needs
+ * something that exposes `has(word)`.
+ *
+ * Every word here only uses letters currently in the test conveyor pool
+ * (A,B,K,D,E,G,H,I,L,M,N,O,P,R,S,T,U,W,Y) so they're actually buildable
+ * on the belt as it's configured today.
+ */
+export const TAGALOG_WORD_LIST = [
+  'AKO',     // I
+  'IKAW',    // you
+  'TAYO',    // we (inclusive)
+  'KAMI',    // we (exclusive)
+  'BAHAY',   // house
+  'TUBIG',   // water
+  'ARAW',    // sun / day
+  'GABI',    // night
+  'BATA',    // child
+  'TAO',     // person
+  'MATA',    // eye
+  'PUSO',    // heart
+  'ISDA',    // fish
+  'BATO',    // rock / stone
+  'DAGAT',   // sea
+  'BUNDOK',  // mountain
+  'KAIN',    // eat
+  'LAKAD',   // walk
+  'BUHAY',   // life / alive
+  'LUPA',    // earth / land
+  'HANGIN',  // wind
+  'APOY',    // fire
+];
+
+export const TAGALOG_WORD_DATABASE = new Set(
+  TAGALOG_WORD_LIST.map((w) => w.toUpperCase())
+);
+</file>
+
+<file path="components/gameplayReusables/WordInput/UseWordInput.js">
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
+import { isValidWord } from './WordValidator';
+import { calculateScore } from './ScoreSystem';
+import { DEFAULT_LEVEL_CONFIG } from './LevelConfig';
+
+// How many letters can be selected into the current word before further
+// taps/keypresses are ignored (the player has to submit or resetWord()
+// first). Edit this to change the default everywhere, or pass a
+// different value as useWordInput's third argument to override it for
+// one screen/level without touching this file.
+export const DEFAULT_MAX_LETTERS = 5;
+
+/**
+ * useWordInput(conveyorRefs, levelConfig?, maxLetters?)
+ * -----------------------------------------
+ * The Word Input System. It sits *on top of* one or more ConveyorBelt
+ * instances — passed in as an array of refs, one per belt/row — and only
+ * ever touches them through the two things ConveyorBelt already exposes:
+ *
+ *   belt.getLetters()          read what's currently available
+ *   belt.removeLetterById(id)  deactivate one specific letter
+ *
+ * It never reaches into the belt's movement, spawning, or wrap-around —
+ * the belt keeps scrolling exactly as before, this hook just reacts to
+ * what the player selects.
+ *
+ * Returned API:
+ *   currentWord   [{ id, character }]  in selection order
+ *   lastResult    { word, valid, score } | null   result of the last submit
+ *   selectLetter(letter, beltIndex)    call from a belt's onLetterPress
+ *   handleKeyPress(char)               call from a keyboard listener
+ *   submitWord()                       validate + score + reset
+ *   resetWord()                        clear the current word without submitting
+ */
+export function useWordInput(
+  conveyorRefs,
+  levelConfig = DEFAULT_LEVEL_CONFIG,
+  maxLetters = DEFAULT_MAX_LETTERS
+) {
+  const [currentWord, setCurrentWord] = useState([]); // [{ id, character }]
+  const [lastResult, setLastResult] = useState(null); // { word, valid, score }
+
+  // Belt-and-braces guard against double-selecting the same letter id if
+  // two taps land before state has re-rendered. The belt itself already
+  // stops this in the normal case — an inactive Letter doesn't render a
+  // TouchableOpacity at all — this just covers the keyboard-input path.
+  const selectedIdsRef = useRef(new Set());
+
+  const selectLetter = useCallback(
+    (letter, beltIndex) => {
+      if (!letter || !letter.active) return;
+      if (selectedIdsRef.current.has(letter.id)) return;
+      if (currentWord.length >= maxLetters) return; // at the cap — ignore further taps/keys until submit/reset
+
+      selectedIdsRef.current.add(letter.id);
+      setCurrentWord((prev) => [...prev, { id: letter.id, character: letter.character }]);
+
+      if (__DEV__) {
+        console.log(`[WordInput] letter selected: "${letter.character}" (belt ${beltIndex}, id ${letter.id})`);
+      }
+
+      // Ask the conveyor to drop this one letter. It marks the letter
+      // inactive and plays its existing "disappearing" animation via
+      // AnimationSystem — the conveyor's movement is untouched.
+      const belt = conveyorRefs[beltIndex]?.current;
+      belt?.removeLetterById(letter.id);
+    },
+    [conveyorRefs, currentWord.length, maxLetters]
+  );
+
+  const handleKeyPress = useCallback(
+    (rawChar) => {
+      const char = (rawChar || '').toUpperCase();
+      if (!/^[A-Z]$/.test(char)) return false; // not a single letter key
+      if (currentWord.length >= maxLetters) return false; // at the cap
+
+      // Selection rule: first matching, available letter, scanning belts
+      // in the order they were passed in. Easy to change later (e.g. to
+      // "closest to center") without touching anything else here.
+      for (let i = 0; i < conveyorRefs.length; i++) {
+        const belt = conveyorRefs[i]?.current;
+        if (!belt) continue;
+        const match = belt
+          .getLetters()
+          .find((l) => l.active && l.character === char && !selectedIdsRef.current.has(l.id));
+        if (match) {
+          selectLetter(match, i);
+          return true;
+        }
+      }
+      return false; // requested letter isn't available right now
+    },
+    [conveyorRefs, selectLetter, currentWord.length, maxLetters]
+  );
+
+  // Keyboard input where the platform supports it (web/desktop browsers).
+  // React Native itself has no cross-platform physical-keyboard event,
+  // so this is intentionally scoped to Platform.OS === 'web'.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const onKeyDown = (e) => {
+      if (e.key && e.key.length === 1) handleKeyPress(e.key);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleKeyPress]);
+
+  const resetWord = useCallback(() => {
+    setCurrentWord([]);
+    selectedIdsRef.current.clear();
+    // Note: this only clears the input system's own state. Letters
+    // already removed from the conveyor stay removed — whether an
+    // abandoned/invalid word should put its letters back on the belt is
+    // a gameplay-design decision for later, not something assumed here.
+  }, []);
+
+  const submitWord = useCallback(() => {
+    const word = currentWord.map((l) => l.character).join('');
+    const valid = isValidWord(word);
+    const score = valid ? calculateScore(word, levelConfig.scoreMultiplier) : 0;
+    const result = { word, valid, score };
+
+    if (__DEV__) {
+      console.log(`[WordInput] submit: "${word}" -> ${valid ? `VALID (+${score})` : 'INVALID'}`);
+    }
+
+    setLastResult(result);
+    resetWord();
+    return result;
+  }, [currentWord, levelConfig, resetWord]);
+
+  // Auto-submit the moment the player fills every slot. This reuses
+  // submitWord as-is, so a full word that isn't in the database gets the
+  // exact same invalid shake/flash (and reset via resetWord) as a
+  // manually-submitted wrong word — no separate "wrong animation" path
+  // to keep in sync — and a full word that *is* valid gets scored the
+  // same way a manual submit would.
+  useEffect(() => {
+    if (maxLetters > 0 && currentWord.length >= maxLetters) {
+      submitWord();
+    }
+  }, [currentWord.length, maxLetters, submitWord]);
+
+  return {
+    currentWord,
+    lastResult,
+    selectLetter,
+    handleKeyPress,
+    submitWord,
+    resetWord,
+    maxLetters,
+  };
+}
+</file>
+
+<file path="components/gameplayReusables/WordInput/WordValidator.js">
+import { TAGALOG_WORD_DATABASE } from './TagalogWordDatabase';
+
+/**
+ * WordValidator
+ * -------------
+ * Its only job is: does this word exist in the configured database?
+ * It knows nothing about the conveyor, input, or scoring — WordInputSystem
+ * calls this, gets a plain boolean back, and decides what to do with it.
+ *
+ * A different/larger database can be swapped in per level later:
+ *   isValidWord('BAHAY', someOtherDatabase)
+ */
+export function isValidWord(word, database = TAGALOG_WORD_DATABASE) {
+  if (!word) return false;
+  return database.has(word.toUpperCase());
+}
+</file>
+
+<file path="components/gameplayReusables/Font.js">
+/**
+ * Central place for custom font family names used in the word-input UI.
+ * "We want to use that a lot" per the request — add new exports here as
+ * more UI adopts it, instead of hardcoding the family-name string in
+ * every style that wants it.
+ *
+ * IMPORTANT: this only *names* the font — React Native still needs it
+ * registered/loaded before any style using it will actually render with
+ * it (otherwise it silently falls back to the platform default, no error).
+ * The .otf lives at ../assets/Placeholder/Fonts/Daydream-DEMO.otf (project root ->
+ * assets). If it isn't loaded yet, add it wherever your app currently
+ * loads fonts — typically with expo-font's useFonts/loadAsync near the
+ * app root — using this same key:
+ *
+ *   useFonts({ [FONT_WARNING]: require('../assets/Placeholder/Fonts/Daydream-DEMO.otf') })
+ */
+export const FONT_WARNING = 'Daydream-DEMO';
+</file>
+
+<file path="components/SlideshowSequence.js">
+import React, { useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
+
+/**
+ * SlideshowSequence
+ * ----------------------------------------------------------------------
+ * Generic "show one slide, tap Next, show the next slide" component.
+ * Used for the Story-Mode backstory intro, and reusable as-is for the
+ * game's ending sequence later — just pass a different `slides` array.
+ *
+ * Props:
+ *   slides       array   - e.g. [{ id: '1', image: require(...) }, ...]
+ *                           each slide can optionally carry a real
+ *                           `image` (require(...) or { uri }) — until
+ *                           then it renders as a numbered placeholder.
+ *   onComplete   function - called when "Next" is pressed on the last slide
+ *   nextLabel        ?string - label for the button on every slide except
+ *                              the last (default: "Next ->")
+ *   lastLabel        ?string - label for the button on the last slide
+ *                              (default: "Continue ->")
+ *
+ * Each slide placeholder is numbered (1 of 5, 2 of 5, ...) so it's easy
+ * to tell them apart before the real art is dropped in.
+ * ----------------------------------------------------------------------
+ */
+
+export default function SlideshowSequence({
+  slides,
+  onComplete,
+  nextLabel = "Next  ->",
+  lastLabel = "Continue  ->",
+}) {
+  const [index, setIndex] = useState(0);
+  const isLastSlide = index === slides.length - 1;
+  const slide = slides[index];
+
+  const handleNext = () => {
+    if (isLastSlide) {
+      onComplete && onComplete();
+    } else {
+      setIndex((i) => i + 1);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* ---------- SLIDE PLACEHOLDER ---------- */}
+      {/* Later, once you have art per slide, swap this block for:
+          <Image source={slide.image} style={styles.slideImage} resizeMode="cover" />
+      */}
+      <View style={styles.slideCard}>
+        {slide.image ? (
+          <Image
+            source={slide.image}
+            style={styles.slideImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <Text style={styles.slidePlaceholderText}>
+            SLIDE {index + 1} OF {slides.length}
+            {"\n"}PLACEHOLDER IMAGE
+          </Text>
+        )}
+      </View>
+
+      <View style={styles.footer}>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={handleNext}
+          style={styles.nextButton}
+        >
+          <Text style={styles.nextButtonText}>
+            {isLastSlide ? lastLabel : nextLabel}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    // BACKGROUND PLACEHOLDER COLOR — same as the other screens
+    backgroundColor: "#f3e6cf",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 30,
+  },
+  slideCard: {
+    width: "100%",
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#8a5a30",
+    borderStyle: "dashed",
+    backgroundColor: "rgba(255,255,255,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+    overflow: "hidden",
+  },
+  slideImage: {
+    width: "100%",
+    height: "100%",
+  },
+  slidePlaceholderText: {
+    textAlign: "center",
+    color: "#8a5a30",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  footer: {
+    width: "100%",
+    alignItems: "flex-end",
+  },
+  nextButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 22,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: "#8a5a30",
+    backgroundColor: "rgba(245, 236, 214, 0.9)",
+  },
+  nextButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#5c3a21",
+  },
+});
+</file>
+
+<file path="components/VolumeSlider.js">
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import Slider from "@react-native-community/slider";
+
+/**
+ * VolumeSlider
+ * ----------------------------------------------------------------------
+ * A single labeled row: "Label" above a slider. Used for Master Volume,
+ * Music Volume, and Sound Effects (SFX) in SettingsScreen, but generic
+ * enough to reuse for any other 0–1 value slider later on.
+ *
+ * Requires: @react-native-community/slider
+ *   npx expo install @react-native-community/slider
+ * ----------------------------------------------------------------------
+ */
+
+export default function VolumeSlider({ label, value, onValueChange, style }) {
+  return (
+    <View style={[styles.row, style]}>
+      <Text style={styles.label}>{label}</Text>
+      <Slider
+        style={styles.slider}
+        minimumValue={0}
+        maximumValue={1}
+        value={value}
+        onValueChange={onValueChange}
+        minimumTrackTintColor="#4caf50"
+        maximumTrackTintColor="#f0e6d2"
+        thumbTintColor="#ffffff"
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  row: {
+    width: "100%",
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#5c3a21",
+    marginBottom: 6,
+  },
+  slider: {
+    width: "100%",
+    height: 36,
+  },
+});
+</file>
+
+<file path=".gitignore">
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+</file>
+
+<file path="app.json">
+{
+  "expo": {
+    "name": "wormderya-beta",
+    "slug": "wormderya-beta",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
+</file>
+
+<file path="index.js">
+import { registerRootComponent } from 'expo';
+
+import App from './App';
+
+// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
+// It also ensures that whether you load the app in Expo Go or in a native build,
+// the environment is set up appropriately
+registerRootComponent(App);
+</file>
+
+<file path="LevelResultModal.js">
+import React from 'react';
+import PopupModal from './PopupModal';
+
+export default function LevelResultModal({ visible, type = 'win', score, onConfirm }) {
+  const isWin = type === 'win';
+
+  return (
+    <PopupModal
+      visible={visible}
+      title={isWin ? "You WON!!!" : "GAME OVER"}
+      message={isWin ? "Tomorrow is another day" : "Don't give up!"}
+      score={score}
+      buttonText={isWin ? "Yeah!" : "Try Again"}
+      buttonColor={isWin ? "#FFE194" : "#FFB3B3"}
+      onPress={onConfirm}
+    />
+  );
+}
+</file>
+
+<file path="LICENSE">
+The MIT License (MIT)
+
+Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</file>
+
+<file path="MrRattyDiscount.js">
+import React from 'react';
+import PopupModal from './PopupModal';
+
+export default function MrRattyDiscount({ visible, onDismiss }) {
+  return (
+      <PopupModal
+      visible={visible}
+      title={`Thank you for\nyour patronage!`}
+      message="The next time Mr. Ratty will appear, prices will have a chance to get a discount."
+      buttonText="Thank you!"
+      buttonColor="#FFE194" // Yellow
+      onPress={onDismiss}
+      />
+    );
+}
+</file>
+
+<file path="MrRattyInflate.js">
+import React from 'react';
+import PopupModal from './PopupModal';
+
+export default function MrRattyInflate({ visible, onDismiss }) {
+  return (
+      <PopupModal
+      visible={visible}
+      title={`Mr. Ratty will\nremember you`}
+      message="The next time Mr. Ratty will appear, prices will have a chance to inflate."
+      buttonText="uh..."
+      buttonColor="#FFE194" // Yellow
+      onPress={onDismiss}
+      />
+    );
+}
+</file>
+
+<file path="PopupModal.js">
+import React from 'react';
+import { StyleSheet, View, Text, Modal, TouchableOpacity } from 'react-native';
+
+export default function PopupModal({ 
+  visible, 
+  title, 
+  message, 
+  extraMessage,
+  score,
+  buttonText, 
+  buttonColor = '#FFE194', // Default color
+  onPress 
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      onRequestClose={onPress}
+    >
+      <View style={styles.overlay}>
+        <View style={styles.card}>
+          
+          {/* Header Title */}
+          <Text style={styles.title}>{title}</Text>
+
+          {/* Divider Line */}
+          <View style={styles.divider} />
+
+          {/* Body Content */}
+          <View style={styles.body}>
+            {message && <Text style={styles.messageText}>{message}</Text>}
+          </View>
+          <View style={styles.body}>
+            {extraMessage && <Text style={styles.extraMessageText}>{extraMessage}</Text>}
+          </View>
+
+
+            {/* Styled Score Display */}
+          {score !== undefined && (
+              <View style={styles.scoreBox}>
+                <Text style={styles.scoreText}>SCORE: {score}</Text>
+               </View>
+            )}
+
+          {/* Action Button */}
+          <TouchableOpacity 
+            style={[styles.button, { backgroundColor: buttonColor }]} 
+            onPress={onPress}
+          >
+            <Text style={styles.buttonText}>{buttonText}</Text>
+          </TouchableOpacity>
+
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  card: {
+    width: '85%',
+    maxWidth: 320,
+    backgroundColor: '#FFF8E7',
+    borderWidth: 3,
+    borderColor: '#000',
+    borderRadius: 8,
+    padding: 20,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000',
+    textAlign: 'center',
+    lineHeight: 26,
+  },
+  divider: {
+    width: '100%',
+    height: 1.5,
+    backgroundColor: '#333',
+    marginVertical: 14,
+  },
+  body: {
+    alignItems: 'center',
+    marginBottom: 16,
+    width: '100%',
+  },
+  messageText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#000',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginTop: 10,
+  },
+  // Dedicated styling for the score display
+  scoreBox: {
+    marginTop: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  scoreText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#000',
+    letterSpacing: 1,
+  },
+  extraMessageText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#000',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  button: {
+    borderWidth: 2,
+    borderColor: '#000',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 24,
+    minWidth: 100,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+});
+</file>
+
+<file path="QuitModal.js">
+import React from 'react';
+import PopupModal from './PopupModal';
+
+export default function QuitModal({ visible, onQuit }) {
+  return (
+    <PopupModal
+      visible={visible}
+      title={`Are you sure you\nwant to quit?`}
+      message="All your current progress will disappear and will not be saved!"
+      buttonText="Quit :("
+      buttonColor="#FFB3B3"
+      onPress={onQuit}
+    />
+  );
+}
+</file>
+
+<file path="RushHourModal.js">
+import React from 'react';
+import PopupModal from './PopupModal';
+
+export default function RushHourModal({ visible, onDismiss }) {
+  return (
+    <PopupModal
+      visible={visible}
+      title="RUSH HOUR!"
+      message="Time's against you!"
+      extraMessage="The customers are hungry! Spell out words as fast as you can, remember the longer the better!"
+      buttonText="Yeah!"
+      buttonColor="#FFE194"
+      onPress={onDismiss}
+    />
+  );
+}
+</file>
+
+<file path="components/AppButton.js">
+import React from "react";
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ImageBackground,
+} from "react-native";
+
+/**
+ * AppButton
+ * ----------------------------------------------------------------------
+ * A single, reusable button component used across the app (Start,
+ * Settings, Quit, and any future menu buttons).
+ *
+ * Props:
+ *   label            string   - text shown on the button (e.g. "START")
+ *   onPress          function - what happens when the button is tapped
+ *   backgroundImage  ?any     - optional custom art for the button bg
+ *                               e.g. require('../../assets/buttons/start.png')
+ *   style            ?object  - override the outer button container style
+ *   textStyle        ?object  - override the label text style
+ *   disabled         ?bool    - disable the button
+ *   multiline        ?bool    - use the taller size for 2-line labels
+ *                               (e.g. "Rush Hour\nMode")
+ *
+ * - FIXED SIZE: width/height are locked by default so every button in
+ *   the menu lines up perfectly, just like the reference mockup. Pass
+ *   `multiline` for the rare button whose label needs two lines — it
+ *   just switches to a taller fixed height, still shared by any other
+ *   button that also sets `multiline`.
+ * - CUSTOM LOOK: pass `backgroundImage` to swap in your own art asset
+ *   later (currently a placeholder box), or override `style`/`textStyle`
+ *   for one-off tweaks.
+ * - CUSTOM PURPOSE: pass `onPress` to decide what the button does
+ *   (navigate, open a modal, quit the app, etc).
+ * ----------------------------------------------------------------------
+ */
+
+// Fixed dimensions shared by every button so the menu stays aligned.
+const BUTTON_WIDTH = 220;
+const BUTTON_HEIGHT = 56;
+const BUTTON_HEIGHT_MULTILINE = 70;
+
+export default function AppButton({
+  label,
+  onPress,
+  backgroundImage,
+  style,
+  textStyle,
+  disabled = false,
+  multiline = false,
+}) {
+  const sizeStyle = multiline ? styles.buttonMultiline : null;
+
+  const content = (
+    <Text
+      style={[styles.label, disabled && styles.labelDisabled, textStyle]}
+      numberOfLines={multiline ? 2 : 1}
+    >
+      {label}
+    </Text>
+  );
+
+  // If a background image has been supplied, render it via ImageBackground.
+  if (backgroundImage) {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={onPress}
+        disabled={disabled}
+        style={[styles.buttonBase, sizeStyle, style]}
+      >
+        <ImageBackground
+          source={backgroundImage}
+          resizeMode="contain"
+          style={styles.imageFill}
+          imageStyle={styles.imageRadius}
+        >
+          {content}
+        </ImageBackground>
+      </TouchableOpacity>
+    );
+  }
+
+  // Otherwise fall back to the placeholder look (dashed border box)
+  // so it's obvious this is meant to be replaced with real art later.
+  return (
+    <TouchableOpacity
+      activeOpacity={0.75}
+      onPress={onPress}
+      disabled={disabled}
+      style={[
+        styles.buttonBase,
+        sizeStyle,
+        styles.placeholder,
+        disabled && styles.placeholderDisabled,
+        style,
+      ]}
+    >
+      {content}
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  buttonBase: {
+    width: BUTTON_WIDTH,
+    height: BUTTON_HEIGHT,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  buttonMultiline: {
+    height: BUTTON_HEIGHT_MULTILINE,
+  },
+  // --- Placeholder styling (swap out once you have button art) ---
+  placeholder: {
+    backgroundColor: "rgba(245, 236, 214, 0.9)",
+    borderWidth: 2,
+    borderColor: "#8a5a30",
+    borderStyle: "dashed",
+  },
+  placeholderDisabled: {
+    opacity: 0.4,
+  },
+  imageFill: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageRadius: {
+    borderRadius: 16,
+  },
+  label: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#5c3a21",
+    letterSpacing: 1,
+    textAlign: "center",
+  },
+  labelDisabled: {
+    color: "#a89a86",
+  },
+});
+
+export { BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_HEIGHT_MULTILINE };
+</file>
+
+<file path="components/LevelButton.js">
+import React from "react";
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ImageBackground,
+} from "react-native";
+
+/**
+ * LevelButton
+ * ----------------------------------------------------------------------
+ * A single tappable level node shown on LevelSelectScreen. Separate from
+ * AppButton because the shape/size is different (round "stone" nodes
+ * instead of pill menu buttons), but follows the exact same pattern:
+ * fixed size, swappable art via `backgroundImage`, custom purpose via
+ * `onPress`.
+ *
+ * Props:
+ *   level            number|string - level number shown on the node
+ *                                    (omit/empty to just show the art —
+ *                                    useful if your art already has its
+ *                                    own number baked in, like a tag)
+ *   onPress          function
+ *   backgroundImage  ?any   - e.g. require('../assets/levels/level-1.png')
+ *   size             ?number - diameter of the PLACEHOLDER circle only
+ *                              (ignored once backgroundImage is set)
+ *   width            ?number - box width when backgroundImage is set
+ *   height           ?number - box height when backgroundImage is set
+ *   locked           ?bool   - greys the node out and blocks presses
+ *   style            ?object
+ *
+ * NOTE: only the placeholder (no art yet) is forced into a circle — once
+ * you provide `backgroundImage`, the node becomes a plain rectangular box
+ * sized by `width`/`height` and uses resizeMode="contain", so the full
+ * image shows with its own shape/transparency intact instead of being
+ * cropped into a circle.
+ * ----------------------------------------------------------------------
+ */
+
+const DEFAULT_SIZE = 90;
+const DEFAULT_IMAGE_WIDTH = 130;
+const DEFAULT_IMAGE_HEIGHT = 90;
+
+export default function LevelButton({
+  level,
+  onPress,
+  backgroundImage,
+  size = DEFAULT_SIZE,
+  width = DEFAULT_IMAGE_WIDTH,
+  height = DEFAULT_IMAGE_HEIGHT,
+  locked = false,
+  style,
+}) {
+  const circleStyle = { width: size, height: size, borderRadius: size / 2 };
+  const imageBoxStyle = { width, height };
+
+  const content =
+    level !== undefined && level !== null && level !== "" ? (
+      <Text style={[styles.levelText, locked && styles.levelTextLocked]}>
+        {level}
+      </Text>
+    ) : null;
+
+  if (backgroundImage) {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={onPress}
+        disabled={locked}
+        style={[
+          styles.nodeBase,
+          imageBoxStyle,
+          locked && styles.imageLocked,
+          style,
+        ]}
+      >
+        <ImageBackground
+          source={backgroundImage}
+          resizeMode="contain"
+          style={[styles.imageFill, imageBoxStyle]}
+        >
+          {content}
+        </ImageBackground>
+        {locked && <Text style={styles.lockOverlay}>🔒</Text>}
+      </TouchableOpacity>
+    );
+  }
+
+  // Placeholder look — dashed circle so it's obvious this needs real art.
+  return (
+    <TouchableOpacity
+      activeOpacity={0.75}
+      onPress={onPress}
+      disabled={locked}
+      style={[
+        styles.nodeBase,
+        circleStyle,
+        styles.placeholder,
+        locked && styles.placeholderLocked,
+        style,
+      ]}
+    >
+      {content}
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  nodeBase: {
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  placeholderLocked: {
+    opacity: 0.4,
+  },
+  imageLocked: {
+    opacity: 0.4,
+  },
+  imageFill: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  levelTextLocked: {
+    color: "#a89a86",
+  },
+  lockOverlay: {
+    position: "absolute",
+    fontSize: 18,
+  },
+});
+
+export { DEFAULT_SIZE as LEVEL_BUTTON_DEFAULT_SIZE };
+</file>
+
+<file path="screens/GameplayScreen.js">
+import React, { useRef } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import { StyleSheet, View, Image, ImageBackground, TouchableOpacity } from 'react-native';
+import { ConveyorBelt } from '../components/gameplayReusables/ConveyorBelt';
+import { useWordInput, CurrentWordDisplay } from '../components/gameplayReusables/WordInput';
+
+const BELT_ROWS = [0, 1, 2];// how many belt rows
+
+export default function GameplayScreen({ onOpenStore }) {
+  // One ref per conveyor row. useWordInput only ever calls the ref's
+  // existing getLetters()/removeLetterById() — it should never touch the CONVEYOR system
+  const beltRef0 = useRef(null);
+  const beltRef1 = useRef(null);
+  const beltRef2 = useRef(null);
+  const conveyorRefs = useRef([beltRef0, beltRef1, beltRef2]).current;
+
+  const wordInput = useWordInput(conveyorRefs);
+
+  const handleServePlate = () => {
+    // Thematically: putting the built word "on the plate" and serving it
+    // to the customer submits it for validation + scoring. Swap this for
+    // a dedicated submit button any time without touching useWordInput. Please I hate myself for this
+    wordInput.submitWord();
+  };
+
+  return (
+    <View style={styles.screenWrapper}>
+      <View style={styles.container}>
+        
+        {/* 1. HEADER BANNER (Quit button on left, coins on right) */}
+        <ImageBackground 
+          source={require('../assets/Placeholder/TopBoard.png')}
+          style={styles.headerBackground}
+          resizeMode="stretch"
+        >
+          <Image 
+            source={require('../assets/Placeholder/QuitButton.png')}
+            style={styles.quitButton} 
+          />
+          <Image 
+            source={require('../assets/Placeholder/pixel_coins.png')}
+            style={styles.moneyIcon} 
+          />
+        </ImageBackground>
+
+        {/* 2. TOP CHARACTER (Dog) */}
+        <View style={styles.customerBox}>
+          <Image 
+          source={require('../assets/Placeholder/SampleCustomer_1.png')}
+          style={styles.characterDog} 
+          />
+          <Image 
+          source={require('../assets/Placeholder/CustomerPatienceBar_1.png')}
+          style={styles.patienceMeter} 
+          />
+        </View>
+
+        {/* Current word being built — purely presentational, reads
+            straight off useWordInput's state. maxLetters is passed
+            through so the row always shows the right number of slots
+            (filled + blank placeholders), not just however many letters
+            happen to be picked so far. */}
+        <CurrentWordDisplay
+          currentWord={wordInput.currentWord}
+          lastResult={wordInput.lastResult}
+          maxLetters={wordInput.maxLetters}
+        />
+
+        {/* 3. Table where plates are — tapping the plate serves/submits
+            the current word for validation + scoring. */}
+        <ImageBackground
+        source={require('../assets/Placeholder/Table.png')}
+        style={styles.table} 
+        resizeMode='stretch'
+        >
+          <TouchableOpacity onPress={handleServePlate} activeOpacity={0.7}>
+            <Image 
+            source={require('../assets/Placeholder/Plate.png')}
+            style={styles.plate} 
+            />
+          </TouchableOpacity>
+        </ImageBackground>
+
+        {/* 4. BOTTOM CHARACTER (Chef) */}
+        <View style={styles.chefBar}>
+          <Image 
+            source={require('../assets/Placeholder/WormProtagonist_1.png')}
+            style={styles.characterChef} 
+          />
+        </View>
+
+        {/* 5. CONVEYOR BELT — each row is its own ConveyorBelt instance
+            (movement/spawn/wrap-around owned entirely by that component).
+            onLetterPress here does nothing but hand the tapped letter off
+            to the Word Input System via wordInput.selectLetter — the
+            belt itself doesn't know a Word Input System exists. */}
+        {BELT_ROWS.map((row) => (
+          <ImageBackground
+            key={row}
+            source={require('../assets/Placeholder/Conveyor.png')}
+            style={styles.conveyor} 
+            resizeMode="stretch"
+          >
+            <ConveyorBelt
+              ref={conveyorRefs[row]}
+              style={styles.conveyorBelt}
+              config={{ maxLetters: 6, slotWidth: 70, slotHeight: 60 }} // Perfect size 6, 70, 60
+              onLetterPress={(letter) => wordInput.selectLetter(letter, row)}
+            />
+          </ImageBackground>
+        ))}
+
+        <StatusBar style="light" />
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  /* 1 */
+  screenWrapper: {
+    flex: 1,
+    backgroundColor: '#222',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  container: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#b87b4e',
+    alignItems: 'center',
+    justifyContent: 'space-between', 
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+  },
+  headerBackground: {
+    width: '100%',
+    height: 130,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+  },
+  quitButton: {
+    width: 90,
+    height: 55,
+    resizeMode: 'contain',
+  },
+  moneyIcon: {
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
+  },
+
+  /* 2 */
+  customerBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 15,
+    paddingHorizontal: 15,
+  },
+  characterDog: {
+    width: 160, 
+    height: 160,
+    resizeMode: 'contain',
+  },
+  patienceMeter: {
+    width: 94,
+    height: 130,
+    marginTop: -80,
+    resizeMode: 'contain',
+  },
+
+  /* 3 */
+  table: {
+    width: '100%',
+    height: 150,
+    marginTop: -60,   // pulls the table up over the bottom of the dog image
+    zIndex: 2,    
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  plate: {
+    width: 60,
+    height: 60,
+  },
+
+  /* 4 */
+  chefBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20,
+    paddingHorizontal: 15,
+  },
+  characterChef: {
+    width: 115, // 
+    height: 115,
+    resizeMode: 'contain',
+  },
+  sideColumn: {
+    gap: 8,
+  },
+  sideItem: {
+    width: 36,
+    height: 36,
+  },
+
+  /* 5 */
+  conveyor: {
+    width: '100%',
+    height: 80,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  conveyorBelt: {
+    alignSelf: 'center',
+  },
+});
+</file>
+
+<file path="screens/HomeScreen.js">
+import React from "react";
+import { View, Text, StyleSheet, StatusBar, Alert, Image } from "react-native";
+import AppButton from "../components/AppButton";
+
+export default function HomeScreen({ onStart, onOpenSettings, onQuit }) {
+  const handleStart = onStart ?? (() => Alert.alert("Start pressed"));
+  const handleSettings =
+    onOpenSettings ?? (() => Alert.alert("Settings pressed"));
+  const handleQuit = onQuit ?? (() => Alert.alert("Quit pressed"));
+
+  // ---------- BACKGROUND PLACEHOLDER ----------
+  // Right now the background is just a flat color (see styles.background).
+  // Once you have the art, swap the outer <View> below for:
+  //
+  //   import { ImageBackground } from 'react-native';
+  //   <ImageBackground
+  //     source={require('../../assets/background.png')}
+  //     style={styles.background}
+  //     resizeMode="cover"
+  //   >
+  //     ...same children...
+  //   </ImageBackground>
+
+  return (
+    <View style={styles.background}>
+      <StatusBar barStyle="dark-content" />
+
+      <View style={styles.container}>
+        <Image
+          source={require("../assets/Final/WormderyaLogo.png")}
+          style={styles.titleImage}
+          resizeMode="contain"
+        />
+
+        {/* ---------- CHARACTER PLACEHOLDER ---------- */}
+        {/* Later swap this whole block for:
+            <Image source={require('../../assets/character.png')} style={styles.characterImage} resizeMode="contain" />
+        */}
+        <View style={styles.characterPlaceholder}>
+          <Text style={styles.characterPlaceholderText}>
+            CHARACTER{"\n"}ART
+          </Text>
+        </View>
+
+        {/* ---------- MENU BUTTONS ---------- */}
+        <View style={styles.menu}>
+          <AppButton
+            onPress={handleStart}
+            backgroundImage={require("../assets/Final/buttons/buttonStart1.png")}
+          />
+          <AppButton
+            onPress={handleSettings}
+            style={styles.buttonSpacing}
+            backgroundImage={require("../assets/Final/buttons/buttonSettings.png")}
+          />
+          <AppButton
+            onPress={handleQuit}
+            style={styles.buttonSpacing}
+            backgroundImage={require("../assets/Final/buttons/buttonQuit.png")}
+          />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    // BACKGROUND PLACEHOLDER COLOR — replace with ImageBackground once art is ready
+    backgroundColor: "#f3e6cf",
+  },
+  container: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingTop: 40,
+    paddingBottom: 30,
+  },
+  titleImage: {
+    width: "80%",
+    height: 250,
+    alignSelf: "center",
+    marginBottom: 15,
+    marginTop: -50,
+  },
+
+  characterPlaceholder: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 2,
+    borderColor: "#8a5a30",
+    borderStyle: "dashed",
+    backgroundColor: "rgba(255,255,255,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 30,
+    marginTop: -20,
+  },
+  characterPlaceholderText: {
+    textAlign: "center",
+    color: "#8a5a30",
+    fontWeight: "700",
+  },
+  menu: {
+    alignItems: "center",
+    marginTop: 55,
+  },
+  buttonSpacing: {
+    marginTop: 20,
+  },
+});
+</file>
+
+<file path="screens/LevelSelectScreen.js">
+import React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  ImageBackground,
+} from "react-native";
+import LevelButton from "../components/LevelButton";
+import AppButton from "../components/AppButton";
+
+// Describe each level once; add/remove entries here to change the path.
+// `align` controls which side of the screen the node sits on.
+const LEVELS = [
+  {
+    id: 1,
+    align: "flex-start",
+    size: 100,
+    image: require("../assets/Final/levels/Level-1-Logo.png"),
+  },
+  {
+    id: 2,
+    align: "flex-end",
+    width: 165,
+    height: 105,
+    image: require("../assets/Final/levels/Level-2-Logo.png"),
+  },
+  {
+    id: 3,
+    align: "flex-start",
+    width: 135,
+    height: 95,
+    image: require("../assets/Final/levels/Level-3-Logo.png"),
+  },
+  {
+    id: 4,
+    align: "flex-end",
+    width: 190,
+    height: 150,
+    image: require("../assets/Final/levels/Level-4-Logo.png"),
+  }, // e.g. a bigger "boss" node
+];
+
+export default function LevelSelectScreen({
+  onSelectLevel,
+  onBack,
+  lockedLevels = [],
+}) {
+  return (
+    <ImageBackground
+      source={require("../assets/Final/BackgroundColor.png")}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <StatusBar barStyle="dark-content" />
+
+      {/* ---------- HEADER BANNER ---------- */}
+      <View style={styles.header}>
+        <Text style={styles.headerText}>LEVEL SELECT</Text>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {LEVELS.map((lvl) => (
+          <View
+            key={lvl.id}
+            style={[styles.nodeRow, { justifyContent: lvl.align }]}
+          >
+            <LevelButton
+              width={lvl.width}
+              height={lvl.height}
+              locked={lockedLevels.includes(lvl.id)}
+              onPress={() => onSelectLevel && onSelectLevel(lvl.id)}
+              backgroundImage={lvl.image}
+            />
+          </View>
+        ))}
+      </ScrollView>
+
+      {/* ---------- BACK BUTTON ---------- */}
+      <View style={styles.footer}>
+        <AppButton
+          onPress={onBack}
+          style={styles.buttonSpacing}
+          backgroundImage={require("../assets/Final/buttons/buttonBack.png")}
+        />
+      </View>
+    </ImageBackground>
+  );
+}
+
+const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    // Fallback color in case the image fails to load
+    backgroundColor: "#ffebbd",
+  },
+  header: {
+    paddingTop: 24,
+    paddingBottom: 16,
+    alignItems: "center",
+    // HEADER PLACEHOLDER COLOR — swap for a banner image later if wanted
+    backgroundColor: "#f2b988",
+    borderBottomWidth: 2,
+    borderBottomColor: "#2a2a2a",
+  },
+  headerText: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#2a2a2a",
+    letterSpacing: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingVertical: 30,
+  },
+  nodeRow: {
+    flexDirection: "row",
+    marginBottom: 40,
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+    alignItems: "center",
+  },
+  backButton: {
+    width: 140,
+    height: 44,
+  },
+});
+</file>
+
+<file path="screens/ModeSelectScreen.js">
+import React from "react";
+import { View, Text, StyleSheet, StatusBar, Image } from "react-native";
+import AppButton from "../components/AppButton";
+
+/**
+ * ModeSelectScreen
+ * ----------------------------------------------------------------------
+ * Shown after the player taps "START" on the title screen:
+ *   [ background art ]        <- same placeholder pattern as HomeScreen
+ *   [ title / logo ]          <- same placeholder pattern as HomeScreen
+ *   [ Story-Mode ]
+ *   [ Rush Hour Mode ]
+ *   [ Back ]
+ *
+ * Reuses the exact same AppButton component as the title screen, so any
+ * future button art/styling changes only need to happen in one place.
+ * ----------------------------------------------------------------------
+ */
+
+export default function ModeSelectScreen({
+  onSelectStoryMode,
+  onSelectRushHour,
+  onBack,
+}) {
+  // ---------- BACKGROUND PLACEHOLDER ----------
+  // Same approach as HomeScreen: flat color for now, swap the outer
+  // <View> for an <ImageBackground> once you have the art:
+  //
+  //   <ImageBackground
+  //     source={require('../../assets/background.png')}
+  //     style={styles.background}
+  //     resizeMode="cover"
+  //   >
+  //     ...same children...
+  //   </ImageBackground>
+
+  return (
+    <View style={styles.background}>
+      <StatusBar barStyle="dark-content" />
+
+      <View style={styles.container}>
+        <Image
+          source={require("../assets/Final/WormderyaLogo.png")}
+          style={styles.titleImage}
+          resizeMode="contain"
+        />
+
+        {/* ---------- CHARACTER PLACEHOLDER ---------- */}
+        {/* Later swap this whole block for:
+                    <Image source={require('../../assets/character.png')} style={styles.characterImage} resizeMode="contain" />
+                */}
+        <View style={styles.characterPlaceholder}>
+          <Text style={styles.characterPlaceholderText}>
+            CHARACTER{"\n"}ART
+          </Text>
+        </View>
+
+        {/* ---------- MENU BUTTONS ---------- */}
+        <View style={styles.menu}>
+          <AppButton
+            onPress={onSelectStoryMode}
+            backgroundImage={require("../assets/Final/buttons/buttonStorymode.png")}
+          />
+          <AppButton
+            onPress={onSelectRushHour}
+            style={styles.buttonSpacing}
+            backgroundImage={require("../assets/Final/buttons/buttonRushHourmode.png")}
+          />
+          <AppButton
+            onPress={onBack}
+            style={styles.buttonSpacing}
+            backgroundImage={require("../assets/Final/buttons/buttonBack.png")}
+          />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    // BACKGROUND PLACEHOLDER COLOR — same as HomeScreen, replace together
+    backgroundColor: "#f3e6cf",
+  },
+  container: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingTop: 40,
+    paddingBottom: 30,
+  },
+  titleImage: {
+    width: "80%",
+    height: 250,
+    alignSelf: "center",
+    marginBottom: 15,
+    marginTop: -50,
+  },
+  characterPlaceholder: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 2,
+    borderColor: "#8a5a30",
+    borderStyle: "dashed",
+    backgroundColor: "rgba(255,255,255,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 30,
+    marginTop: -20,
+  },
+
+  menu: {
+    alignItems: "center",
+    marginTop: 55,
+  },
+  buttonSpacing: {
+    marginTop: 20,
+  },
+});
+</file>
+
+<file path="screens/SettingsScreen.js">
+import React, { useState } from "react";
+import { View, Text, StyleSheet, StatusBar } from "react-native";
+import AppButton from "../components/AppButton";
+import VolumeSlider from "../components/VolumeSlider";
+
+/**
+ * SettingsScreen
+ * ----------------------------------------------------------------------
+ * Shown when the player taps "SETTING" on the title screen:
+ *   [ background art ]        <- same placeholder pattern as other screens
+ *   "Settings" heading
+ *   [ Music panel: Master Volume / Music Volume / SFX sliders ]
+ *   [ Credits ]                <- reuses AppButton, temporarily disabled
+ *   [ Back ]                   <- reuses AppButton, returns to previous screen
+ * ----------------------------------------------------------------------
+ */
+
+export default function SettingsScreen({ onBack }) {
+  // Local slider state just for this demo. Wire these up to your real
+  // audio/settings store whenever that exists.
+  const [masterVolume, setMasterVolume] = useState(0.8);
+  const [musicVolume, setMusicVolume] = useState(0.8);
+  const [sfxVolume, setSfxVolume] = useState(0.8);
+
+  return (
+    <View style={styles.background}>
+      <StatusBar barStyle="dark-content" />
+
+      <View style={styles.container}>
+        <Text style={styles.heading}>Settings</Text>
+
+        <View style={styles.panel}>
+          <Text style={styles.panelTitle}>Music</Text>
+          <View style={styles.panelDivider} />
+
+          <VolumeSlider
+            label="Master Volume"
+            value={masterVolume}
+            onValueChange={setMasterVolume}
+            style={styles.sliderSpacing}
+          />
+          <VolumeSlider
+            label="Music Volume"
+            value={musicVolume}
+            onValueChange={setMusicVolume}
+            style={styles.sliderSpacing}
+          />
+          <VolumeSlider
+            label="Sound Effects (SFX)"
+            value={sfxVolume}
+            onValueChange={setSfxVolume}
+            style={styles.sliderSpacing}
+          />
+
+          {/* Credits is a real AppButton — just disabled for now.
+              Flip `disabled` to false once the credits screen exists. */}
+          <AppButton
+            label="Credits"
+            onPress={() => {}}
+            disabled
+            style={styles.creditsButton}
+            // Later: backgroundImage={require('../assets/buttons/credits.png')}
+          />
+        </View>
+
+        <AppButton
+          onPress={onBack}
+          style={styles.buttonSpacing}
+          backgroundImage={require("../assets/Final/buttons/buttonBack.png")}
+        />
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    // BACKGROUND PLACEHOLDER COLOR — same as the other screens
+    backgroundColor: "#f3e6cf",
+  },
+  container: {
+    flex: 1,
+    alignItems: "center",
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
+  },
+  heading: {
+    fontSize: 30,
+    fontWeight: "800",
+    color: "#2a2a2a",
+    marginBottom: 20,
+  },
+  panel: {
+    width: "100%",
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "#8a5a30",
+    backgroundColor: "rgba(245, 200, 120, 0.35)",
+    paddingVertical: 20,
+    paddingHorizontal: 18,
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  panelTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#5c3a21",
+    marginBottom: 8,
+  },
+  panelDivider: {
+    width: "100%",
+    height: 1,
+    backgroundColor: "#8a5a30",
+    opacity: 0.5,
+    marginBottom: 16,
+  },
+  sliderSpacing: {
+    marginBottom: 14,
+  },
+  creditsButton: {
+    marginTop: 145,
+  },
+  backButton: {
+    width: "100%",
+    marginTop: "auto",
+  },
+});
+</file>
+
+<file path="screens/StoryBackstoryScreen.js">
+import React from "react";
+import SlideshowSequence from "../components/SlideshowSequence";
+
+/**
+ * StoryBackstoryScreen
+ * ----------------------------------------------------------------------
+ * Shown when the player selects Level 1 from LevelSelectScreen. Five
+ * placeholder slides the player pages through with "Next", ending on
+ * `onFinish` (which App.js sends into the gameplay screen).
+ *
+ * This reuses the same SlideshowSequence component that will later
+ * power the game's ending cutscene — just swap in a different `slides`
+ * array over there.
+ * ----------------------------------------------------------------------
+ */
+
+// One entry per slide. Add the real art later like:
+//   { id: '1', image: require('../../assets/story/backstory-1.png') }
+const BACKSTORY_SLIDES = [
+  {
+    id: "1",
+    image: require("../assets/Final/BackstoryScreens/Backstory-Panel-1.1.png"),
+  },
+  {
+    id: "2",
+    image: require("../assets/Final/BackstoryScreens/Backstory-Panel-1.2.png"),
+  },
+  {
+    id: "3",
+    image: require("../assets/Final/BackstoryScreens/Backstory-Panel-2.png"),
+  },
+  {
+    id: "4",
+    image: require("../assets/Final/BackstoryScreens/Backstory-Panel-3.png"),
+  },
+  {
+    id: "5",
+    image: require("../assets/Final/BackstoryScreens/Backstory-Panel-4.png"),
+  },
+];
+
+export default function StoryBackstoryScreen({ onFinish }) {
+  return <SlideshowSequence slides={BACKSTORY_SLIDES} onComplete={onFinish} />;
+}
+</file>
+
+<file path="StoreScreen.js">
+import React, { useState } from 'react';
+import { StyleSheet, View, Image, ImageBackground, Text } from 'react-native';
+
+import MrRattyDiscount from './MrRattyDiscount.js';
+import MrRattyInflate from './MrRattyInflate';
+
+export default function StoreScreen({ onBack }) {
+  //change to true if you want to see the pop-up
+  const [showRattyModal, setShowRattyModal] = useState(false);
+  const [showThankYouModal, setShowThankYouModal] = useState(false);
+  return (
+    <View style={styles.screenWrapper}>
+      <View style={styles.container}>
+        
+        {/* 1. TOP SIGN */}
+        <Image 
+          source={require('./assets/Placeholder/TopBoard.png')} 
+          style={styles.shopSign} 
+        />
+
+        {/* 2. MR. RATTY */}
+        <Image 
+          source={require('./assets/Placeholder/MrRatty.png')} 
+          style={styles.ratMerchant} 
+        />
+
+        {/* 3. MAIN BOARD */}
+        <ImageBackground 
+          source={require('./assets/Placeholder/Board.png')} 
+          style={styles.shopPanel}
+          resizeMode="stretch"
+        >
+          {/* Coin Balance Header */}
+          <View style={styles.coinHeader}>
+            <Image source={require('./assets/Placeholder/pixel_coins.png')} style={styles.coinIcon} />
+            <Text style={styles.coinText}>999</Text>
+          </View>
+
+          {/* 3 Shop Items Row */}
+          <View style={styles.itemRow}>
+            {/* Item 1 */}
+            <View style={styles.itemSlotContainer}>
+              <Image 
+                source={require('./assets/Placeholder/SatisfactionBoost.png')} 
+                style={[styles.itemBoxImage, styles.itemSelected]} 
+              />
+              <View style={styles.priceContainer}>
+                <Image source={require('./assets/Placeholder/pixel_coins.png')} style={styles.smallCoinIcon} />
+                <Text style={styles.priceText}>10</Text>
+              </View>
+            </View>
+
+            {/* Item 2 */}
+            <View style={styles.itemSlotContainer}>
+              <Image 
+                source={require('./assets/Placeholder/Clock.png')} 
+                style={styles.itemBoxImage} 
+              />
+              <View style={styles.priceContainer}>
+                <Image source={require('./assets/Placeholder/pixel_coins.png')} style={styles.smallCoinIcon} />
+                <Text style={styles.priceText}>20</Text>
+              </View>
+            </View>
+
+            {/* Item 3 */}
+            <View style={styles.itemSlotContainer}>
+              <Image 
+                source={require('./assets/Placeholder/Multiplier.png')} 
+                style={styles.itemBoxImage} 
+              />
+              <View style={styles.priceContainer}>
+                <Image source={require('./assets/Placeholder/pixel_coins.png')} style={styles.smallCoinIcon} />
+                <Text style={styles.priceText}>50</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Description Text */}
+          <Text style={styles.descriptionText}>
+            Customers have more patience
+          </Text>
+
+          {/* Buy Button PNG */}
+          <Image 
+            source={require('./assets/Placeholder/BuyButton.png')} 
+            style={styles.buyButtonImage} 
+          />
+        </ImageBackground>
+
+        {/* 4. BOTTOM "NO THANK YOU!" BUTTON PNG */}
+        <Image 
+          source={require('./assets/Placeholder/DeclineButton.png')} 
+          style={styles.backButtonImage} 
+        />
+
+      </View>
+      
+      <MrRattyDiscount
+        visible={showThankYouModal}
+        onDismiss={() => setShowThankYouModal(false)}
+      />
+
+      <MrRattyInflate
+        visible={showRattyModal}
+        onDismiss={() => setShowRattyModal(false)}
+      />
+      
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screenWrapper: {
+    flex: 1,
+    backgroundColor: '#222',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  container: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#4A3B32',
+    alignItems: 'center',
+    justifyContent: 'flex-start', 
+  },
+
+  // 1. SIGN AT THE TOP
+  shopSign: {
+    width: '100%',
+    height: 150,
+    resizeMode: 'stretch',
+  },
+
+  // 2. MR. RATTY
+  ratMerchant: {
+    width: 380,
+    height: 400,
+    resizeMode: 'stretch',
+    // Tucks Mr. Ratty slightly under the top ceiling board
+    marginTop: -150, 
+  },
+
+  // 3. MAIN SHOP PANEL
+  shopPanel: {
+    width: '100%',
+    height: 430,
+    marginRight: 15,
+    paddingVertical: 25,         // Adds comfortable top & bottom padding inside board
+    paddingHorizontal: 15,
+    alignItems: 'center',
+    borderRadius: 8,
+    justifyContent: 'space-between',
+    // FIX 2: Negative margin pulls the board UP to overlap Mr. Ratty's lower body
+    marginTop: -67, 
+  },
+  coinHeader: {
+    flexDirection: 'row',
+    marginTop: 20,
+    alignItems: 'center',
+    gap: 9,
+  },
+  coinIcon: {
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
+  },
+  coinText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  divider: {
+    width: '90%',
+    height: 2,
+    backgroundColor: '#7A5230',
+    marginVertical: 10,
+  },
+
+  // ITEMS
+  itemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '90%',
+    marginVertical: 10,
+    marginLeft: 15,
+  },
+  itemSlotContainer: {
+    alignItems: 'center',
+  },
+  itemBoxImage: {
+    width: 90,
+    height: 90,
+    resizeMode: 'contain',
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  smallCoinIcon: {
+    width: 28,
+    height: 28,
+    resizeMode: 'contain',
+  },
+  priceText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+
+  // DESCRIPTION & BUY BUTTON
+  descriptionText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: '#000',
+    marginVertical: 10,
+    marginLeft: 15,
+    marginTop: -10,
+  },
+  buyButtonImage: {
+    width: 170,
+    height: 55,
+    marginLeft: 15,
+    marginBottom: 15,
+    resizeMode: 'stretch',
+  },
+
+  // 4. BACK BUTTON
+  backButtonImage: {
+    width: '100%',
+    height: 80,
+    resizeMode: 'contain',
+    marginTop: 12,
+  },
+});
+</file>
+
+<file path="GameplayScreen.js">
+import React, {useState} from 'react';
+import LevelResultModal from './LevelResultModal';
+import { StatusBar } from 'expo-status-bar';
+import { StyleSheet, View, Image, ImageBackground } from 'react-native';
+import { ConveyorBelt } from './components/gameplayReusables/ConveyorBelt';
+ 
+export default function GameplayScreen({ onOpenStore }) {
+  const [levelResult, setLevelResult] = useState(null); // null | 'win' | 'lose' = StoreScreen
+  const playerScore = 1500; //Change to whatever number
+  return (
+    <View style={styles.screenWrapper}>
+      <View style={styles.container}>
+        
+        {/* 1. HEADER BANNER (Quit button on left, coins on right) */}
+        <ImageBackground 
+          source={require('./assets/Placeholder/TopBoard.png')}
+          style={styles.headerBackground}
+          resizeMode="stretch"
+        >
+          <Image 
+            source={require('./assets/Placeholder/QuitButton.png')}
+            style={styles.quitButton} 
+          />
+          <Image 
+            source={require('./assets/Placeholder/pixel_coins.png')}
+            style={styles.moneyIcon} 
+          />
+        </ImageBackground>
+ 
+        {/* 2. TOP CHARACTER (Dog) */}
+        <View style={styles.customerBox}>
+          <Image 
+          source={require('./assets/Placeholder/SampleCustomer_1.png')}
+          style={styles.characterDog} 
+          />
+          <Image 
+          source={require('./assets/Placeholder/CustomerPatienceBar_1.png')}
+          style={styles.patienceMeter} 
+          />
+        </View>
+ 
+        {/* 3. Table where plates are */}
+        <ImageBackground
+        source={require('./assets/Placeholder/Table.png')}
+        style={styles.table} 
+        resizeMode='stretch'
+        >
+          <Image 
+          source={require('./assets/Placeholder/Plate.png')}
+          style={styles.plate} 
+          />
+        </ImageBackground>
+ 
+        {/* 4. BOTTOM CHARACTER (Chef) */}
+        <View style={styles.chefBar}>
+          <Image 
+            source={require('./assets/Placeholder/WormProtagonist_1.png')}
+            style={styles.characterChef} 
+          />
+          <View style={styles.sideColumn}>
+            <Image source={require('./assets/Placeholder/BlankRectangle.png')} style={styles.sideItem} />
+            <Image source={require('./assets/Placeholder/BlankRectangle.png')} style={styles.sideItem} />
+            <Image source={require('./assets/Placeholder/BlankRectangle.png')} style={styles.sideItem} />
+          </View>
+        </View>
+ 
+        {/* 5. CONVEYOR BELT — letters scroll here instead of static
+            plates. Each row is its own ConveyorBelt instance; the visual
+            Conveyor.png background stays as a plain wrapper (waiting for the animation sprites), and all the
+            movement/spawn/wrap-around logic lives inside ConveyorBelt
+            itself. Tapping a letter currently just logs it — that's the
+            hook the future Word Input System will use. */}
+        {[0, 1, 2].map((row) => (
+          <ImageBackground
+            key={row}
+            source={require('./assets/Placeholder/Conveyor.png')}
+            style={styles.conveyor} 
+            resizeMode="stretch"
+          >
+            <ConveyorBelt
+              style={styles.conveyorBelt}
+              config={{ maxLetters: 5, slotWidth: 60, slotHeight: 60 }}
+              onLetterPress={(letter) => {
+                // TODO: hand off to the future Word Input System.
+                console.log('Letter pressed:', letter.id, letter.character);
+              }}
+            />
+          </ImageBackground>
+        ))}
+ 
+        <StatusBar style="light" />
+      </View>
+
+      {/* LEVEL RESULT MODAL */}
+      <LevelResultModal
+        visible={levelResult !== null}
+        type={levelResult || 'win'}
+        score={playerScore}
+        onConfirm={() => {
+          const isLose = levelResult === 'lose';
+          setLevelResult(null); // Close the modal
+
+          if (isLose && onOpenStore) {
+            onOpenStore(); // Switches to StoreScreen on lose
+          }
+        }}
+      />
+    </View>
+  );
+}
+ 
+const styles = StyleSheet.create({
+  /* 1 */
+  screenWrapper: {
+    flex: 1,
+    backgroundColor: '#222',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  container: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#b87b4e',
+    alignItems: 'center',
+    justifyContent: 'space-between', 
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+  },
+  headerBackground: {
+    width: '100%',
+    height: 130,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+  },
+  quitButton: {
+    width: 90,
+    height: 55,
+    resizeMode: 'contain',
+  },
+  moneyIcon: {
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
+  },
+ 
+  /* 2 */
+  customerBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 15,
+    paddingHorizontal: 15,
+  },
+  characterDog: {
+    width: 160, 
+    height: 160,
+    resizeMode: 'contain',
+  },
+  patienceMeter: {
+    width: 94,
+    height: 130,
+    marginTop: -80,
+    resizeMode: 'contain',
+  },
+ 
+  /* 3 */
+  table: {
+    width: '100%',
+    height: 150,
+    marginTop: -60,   // pulls the table up over the bottom of the dog image
+    zIndex: 2,    
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  plate: {
+    width: 60,
+    height: 60,
+  },
+ 
+  /* 4 */
+  chefBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20,
+    paddingHorizontal: 15,
+  },
+  characterChef: {
+    width: 115, // 
+    height: 115,
+    resizeMode: 'contain',
+  },
+  sideColumn: {
+    gap: 8,
+  },
+  sideItem: {
+    width: 36,
+    height: 36,
+  },
+ 
+  /* 5 */
+  conveyor: {
+    width: '100%',
+    height: 80,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  conveyorBelt: {
+    alignSelf: 'center',
+  },
+});
+</file>
+
+<file path="package.json">
+{
+  "name": "wormderya-beta",
+  "license": "0BSD",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "@expo/metro-runtime": "~57.0.15",
+    "@expo/ngrok": "^4.1.0",
+    "@react-native-community/slider": "5.2.0",
+    "expo": "~57.0.20",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-web": "^0.21.2"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "private": true
+}
+</file>
+
+<file path="App.js">
+import React, { useState } from "react";
+import { View, StyleSheet } from "react-native";
+import HomeScreen from "./screens/HomeScreen";
+import ModeSelectScreen from "./screens/ModeSelectScreen";
+import SettingsScreen from "./screens/SettingsScreen";
+import LevelSelectScreen from "./screens/LevelSelectScreen";
+import StoryBackstoryScreen from "./screens/StoryBackstoryScreen";
+import GameplayScreen from "./screens/GameplayScreen";
+
+/* Placeholder components */
+import QuitModal from './QuitModal';
+import RushHourModal from './RushHourModal';
+import StoreScreen from './StoreScreen';
+import PlaceholderGameplay from './GameplayScreen';
+
+/**
+ * Very small hand-rolled screen switcher so this demo doesn't require
+ * pulling in React Navigation. Swap this for a real navigator
+ * (e.g. @react-navigation/native-stack) whenever you're ready — each
+ * screen's props map directly onto navigation actions.
+ */
+const SCREENS = {
+  HOME: "HOME",
+  MODE_SELECT: "MODE_SELECT",
+  SETTINGS: "SETTINGS",
+  LEVEL_SELECT: "LEVEL_SELECT",
+  STORY_BACKSTORY: "STORY_BACKSTORY",
+  GAMEPLAY: "GAMEPLAY",
+  PLACEHOLDER_GAMEPLAY: "PLACEHOLDER_GAMEPLAY",
+  STORE: "STORE",
+};
+
+export default function App() {
+  // Change SCREENS.MOVE to SCREEN.PLACEHOLDER_GAMEPLAY to switch to the placeholder screen
+  const [screen, setScreen] = useState(SCREENS.MOVE);
+  const [showRushHour, setShowRushHour] = useState(false);
+  const [showQuit, setShowQuit] = useState(false);
+
+  const renderCurrentScreen = () => {
+  switch (screen) {
+    case SCREENS.MODE_SELECT:
+      return (
+        <ModeSelectScreen
+          onSelectStoryMode={() => setScreen(SCREENS.LEVEL_SELECT)}
+          onSelectRushHour={() => {
+            // TODO: navigate into Rush Hour Mode gameplay
+            setShowRushHour(true)
+            console.log("Rush Hour Mode selected");
+          }}
+          onBack={() => setScreen(SCREENS.HOME)}
+        />
+      );
+
+    case SCREENS.SETTINGS:
+      return <SettingsScreen onBack={() => setScreen(SCREENS.HOME)} />;
+
+    case SCREENS.LEVEL_SELECT:
+      return (
+        <LevelSelectScreen
+          onSelectLevel={(levelId) => {
+            if (levelId === 1) {
+              // Level 1 plays its backstory intro first.
+              setScreen(SCREENS.STORY_BACKSTORY);
+            } else {
+              // TODO: other levels currently just log — send them
+              // straight into gameplay (or their own intro) once ready.
+              console.log(`Level ${levelId} selected`);
+            }
+          }}
+          onBack={() => setScreen(SCREENS.MODE_SELECT)}
+        />
+      );
+
+    case SCREENS.STORY_BACKSTORY:
+      return (
+        <StoryBackstoryScreen onFinish={() => setScreen(SCREENS.GAMEPLAY)}
+        onOpenStore={() => setScreen(SCREENS.STORE)} />
+      );
+
+      case SCREENS.GAMEPLAY:
+        return (
+          <GameplayScreen 
+            onBack={() => setScreen(SCREENS.LEVEL_SELECT)} 
+          />
+        );
+
+      /* 2. DUMMY PLACEHOLDER: Render the component pointing to ./GameplayScreen */
+      case SCREENS.PLACEHOLDER_GAMEPLAY:
+        return (
+          <PlaceholderGameplay
+            onBack={() => setScreen(SCREENS.LEVEL_SELECT)}
+            onOpenStore={() => setScreen(SCREENS.STORE)}
+          />
+        );
+
+    /* Placeholder for Storescreen */
+    case SCREENS.STORE:
+      return (
+        <StoreScreen 
+          onBack={() => setScreen(SCREENS.GAMEPLAY)} 
+        />
+      );
+
+    case SCREENS.HOME:
+    default:
+      return (
+        <HomeScreen
+          onStart={() => setScreen(SCREENS.MODE_SELECT)}
+          onOpenSettings={() => setScreen(SCREENS.SETTINGS)}
+          onQuit={() => {
+            // TODO: handle quit (e.g. close app, or show confirmation)
+            setShowQuit(true)
+            console.log("Quit pressed");
+          }}
+        />
+      );
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* 1. Renders active screen */}
+      {renderCurrentScreen()}
+
+      {/* 2. Global Modals rendered on top */}
+      <RushHourModal
+        visible={showRushHour}
+        onDismiss={() => setShowRushHour(false)}
+      />
+
+      <QuitModal
+        visible={showQuit}
+        onQuit={() => setShowQuit(false)}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
+</file>
+
+</files>
