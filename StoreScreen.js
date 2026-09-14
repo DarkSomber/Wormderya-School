@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
 import ShopOutcomeModal from './ShopOutcomeModal';
 import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Text } from 'react-native';
+import { StyleSheet, View, Image, ImageBackground, Text } from 'react-native';
+
+import MrRattyDiscount from './MrRattyDiscount.js';
+import MrRattyInflate from './MrRattyInflate';
 
 export default function StoreScreen({ onBack }) {
 // null = hidden | 'inflate' = price rise | 'discount' = price drop
   const [rattyOutcome, setRattyOutcome] = useState('null');
+  //change to true if you want to see the pop-up
+  const [showRattyModal, setShowRattyModal] = useState(false);
+  const [showThankYouModal, setShowThankYouModal] = useState(false);
   return (
     <View style={styles.screenWrapper}>
       <View style={styles.container}>
@@ -102,6 +109,17 @@ export default function StoreScreen({ onBack }) {
         onDismiss={() => setRattyOutcome(null)}
         
       />
+      
+      <MrRattyDiscount
+        visible={showThankYouModal}
+        onDismiss={() => setShowThankYouModal(false)}
+      />
+
+      <MrRattyInflate
+        visible={showRattyModal}
+        onDismiss={() => setShowRattyModal(false)}
+      />
+      
     </View>
   );
 }
