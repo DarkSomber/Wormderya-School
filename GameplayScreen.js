@@ -1,3 +1,14 @@
+import React, { useState } from 'react';
+import { View, StyleSheet, ImageBackground, Image,StatusBar } from 'react-native';
+import RushHourModal from './RushHourModal';
+import QuitModal from './QuitModal';
+import LevelResultModal from './LevelResultModal';
+
+export default function GameplayScreen({ onOpenStore }) {
+// Modal visibility states
+  const [showRushHour, setShowRushHour] = useState(false);
+  const [showQuit, setShowQuit] = useState(false);
+  const [levelResult, setLevelResult] = useState(null); // null | 'win' | 'lose'
 import React, {useState} from 'react';
 import LevelResultModal from './LevelResultModal';
 import { StatusBar } from 'expo-status-bar';
@@ -91,11 +102,32 @@ export default function GameplayScreen({ onOpenStore }) {
         <StatusBar style="light" />
       </View>
 
+      <View>
+
+      {/* --- MODAL COMPONENTS --- */}
+
+      {/* 1. Rush Hour Modal */}
+      <RushHourModal
+        visible={showRushHour}
+        onDismiss={() => setShowRushHour(false)}
+      />
+
+      {/* 2. Quit Modal */}
+      <QuitModal
+        visible={showQuit}
+        onQuit={() => setShowQuit(false)}
+      />
+
+      {/* 3. Level Result (Win / Game Over) Modal */}
       {/* LEVEL RESULT MODAL */}
       <LevelResultModal
         visible={levelResult !== null}
         type={levelResult || 'win'}
         score={playerScore}
+        onConfirm={() => setLevelResult(null)}
+      />
+
+      </View>
         onConfirm={() => {
           const isLose = levelResult === 'lose';
           setLevelResult(null); // Close the modal
