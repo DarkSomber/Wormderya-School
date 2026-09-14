@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, StyleSheet } from "react-native";
+import SplashScreen from "./screens/SplashScreen";
 import HomeScreen from "./screens/HomeScreen";
 import ModeSelectScreen from "./screens/ModeSelectScreen";
 import SettingsScreen from "./screens/SettingsScreen";
@@ -20,6 +20,7 @@ import PlaceholderGameplay from './GameplayScreen';
  * screen's props map directly onto navigation actions.
  */
 const SCREENS = {
+  SPLASH: "SPLASH",
   HOME: "HOME",
   MODE_SELECT: "MODE_SELECT",
   SETTINGS: "SETTINGS",
@@ -31,6 +32,7 @@ const SCREENS = {
 };
 
 export default function App() {
+  const [screen, setScreen] = useState(SCREENS.SPLASH);
   // Switch between 'gameplay' and 'store'
   const [currentScreen, setCurrentScreen] = useState('gameplay');
   // Change SCREENS.MOVE to SCREEN.PLACEHOLDER_GAMEPLAY to switch to the placeholder screen
@@ -40,6 +42,9 @@ export default function App() {
 
   const renderCurrentScreen = () => {
   switch (screen) {
+    case SCREENS.SPLASH:
+      return <SplashScreen onFinish={() => setScreen(SCREENS.HOME)} />;
+
     case SCREENS.MODE_SELECT:
       return (
         <ModeSelectScreen
