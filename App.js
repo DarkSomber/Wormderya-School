@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import SplashScreen from "./screens/SplashScreen";
 import HomeScreen from "./screens/HomeScreen";
 import ModeSelectScreen from "./screens/ModeSelectScreen";
 import SettingsScreen from "./screens/SettingsScreen";
@@ -13,6 +14,7 @@ import GameplayScreen from "./screens/GameplayScreen";
  * screen's props map directly onto navigation actions.
  */
 const SCREENS = {
+  SPLASH: "SPLASH",
   HOME: "HOME",
   MODE_SELECT: "MODE_SELECT",
   SETTINGS: "SETTINGS",
@@ -22,9 +24,12 @@ const SCREENS = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState(SCREENS.HOME);
+  const [screen, setScreen] = useState(SCREENS.SPLASH);
 
   switch (screen) {
+    case SCREENS.SPLASH:
+      return <SplashScreen onFinish={() => setScreen(SCREENS.HOME)} />;
+
     case SCREENS.MODE_SELECT:
       return (
         <ModeSelectScreen
