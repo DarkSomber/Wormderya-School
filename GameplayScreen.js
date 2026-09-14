@@ -1,20 +1,9 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ImageBackground, Image,StatusBar } from 'react-native';
-import RushHourModal from './RushHourModal';
-import QuitModal from './QuitModal';
-import LevelResultModal from './LevelResultModal';
-
-export default function GameplayScreen({ onOpenStore }) {
-// Modal visibility states
-  const [showRushHour, setShowRushHour] = useState(false);
-  const [showQuit, setShowQuit] = useState(false);
-  const [levelResult, setLevelResult] = useState(null); // null | 'win' | 'lose'
 import React, {useState} from 'react';
 import LevelResultModal from './LevelResultModal';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, Image, ImageBackground } from 'react-native';
-import { ConveyorBelt } from '../components/ConveyorBelt';
- 
+import { ConveyorBelt } from './components/gameplayReusables/ConveyorBelt';
+
 export default function GameplayScreen({ onOpenStore }) {
   const [levelResult, setLevelResult] = useState(null); // null | 'win' | 'lose' = StoreScreen
   const playerScore = 1500; //Change to whatever number
@@ -136,7 +125,6 @@ export default function GameplayScreen({ onOpenStore }) {
             onOpenStore(); // Switches to StoreScreen on lose
           }
         }}
-      />
     </View>
   );
 }
@@ -245,4 +233,4 @@ const styles = StyleSheet.create({
   conveyorBelt: {
     alignSelf: 'center',
   },
-});
+}) 

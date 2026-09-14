@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import ShopOutcomeModal from './ShopOutcomeModal';
 import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Text } from 'react-native';
-import { StyleSheet, View, Image, ImageBackground, Text } from 'react-native';
 
 import MrRattyDiscount from './MrRattyDiscount.js';
 import MrRattyInflate from './MrRattyInflate';
