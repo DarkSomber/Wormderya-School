@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, Image, ImageBackground, TouchableOpacity } from 'react-native';
 import { ConveyorBelt } from '../components/gameplayReusables/ConveyorBelt';
@@ -6,198 +6,258 @@ import { useWordInput, CurrentWordDisplay } from '../components/gameplayReusable
 import CustomerMood from '../CustomerMood';
 import LevelTimer from '../LevelTimer';
 import { useScoreSystem } from '../useScoreSystem';
-import LevelResultModal from '../LevelResultModal';
+import MrRattyDiscount from '../MrRattyDiscount';
+
+import { LEVEL_1_CONFIG } from '../levels/levelPresets';
+import { useLevelMaker } from '../levels/useLevelMaker';
+import { LevelIntroSequence, LevelEndSequence } from '../levels/IntroEndSequence';
 
 const BELT_ROWS = [0, 1, 2]; // how many belt rows
-const TARGET_SCORE = 300;    // points needed to win the level — tune per level later
-const LEVEL_TIME_SECONDS = 60;
 
-export default function GameplayScreen({ onOpenStore, onBack }) {
-  // One ref per conveyor row. useWordInput only ever calls the ref's
-  // existing getLetters()/removeLetterById() — it should never touch the CONVEYOR system
+/**
+ * GameplayScreen
+ * ----------------
+ * Thin outer shell. Its only job is owning `sessionId` — bumping it on
+ * retry forces React to fully unmount + remount <LevelSession>, which
+ * throws away EVERY hook inside it (useWordInput, useScoreSystem,
+ * useLevelMaker, phase state, all of it) and starts each fresh.
+ *
+ * This replaces the old approach of manually calling resetLevelScore()
+ * + bumping a levelKey prop threaded into individual components: that
+ * approach silently missed useWordInput's `lastResult` and all of
+ * useLevelMaker's internal state, which is exactly what caused stale
+ * "error from last round" state to reappear after Retry. A full
+ * component remount can't miss a hook the way manual resets can.
+ */
+export default function GameplayScreen({ onOpenStore, onBack, levelConfig = LEVEL_1_CONFIG }) {
+  const [sessionId, setSessionId] = useState(0);
+
+  const handleRetry = useCallback(() => {
+    setSessionId((id) => id + 1);
+  }, []);
+
+  return (
+    <LevelSession
+      key={sessionId}
+      levelConfig={levelConfig}
+      onOpenStore={onOpenStore}
+      onBack={onBack}
+      onRetry={handleRetry}
+    />
+  );
+}
+
+/**
+ * LevelSession
+ * -------------
+ * Everything that plays out over the course of ONE attempt at a level.
+ * Every hook here starts clean whenever GameplayScreen remounts it with
+ * a new `key` — no manual per-hook reset calls needed.
+ *
+ * Data flow:
+ *   LevelConfig (levels/levelPresets.js)
+ *        |
+ *        v
+ *   useLevelMaker(levelConfig)  --------- customer cycling, Ratty timer, isLevelComplete
+ *        |
+ *        v
+ *   LevelSession (this component) ------- reads levelMaker + score, decides what's on screen
+ *        |                 \
+ *        v                  v
+ *   useScoreSystem      CustomerMood / LevelTimer (imperative + prop-driven)
+ *        |
+ *        v
+ *   LevelEndSequence (levels/IntroEndSequence.js) --------- shows final score/stars,
+ *                                                            calls onRetry() or onOpenStore()
+ */
+function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
+  const [phase, setPhase] = useState('intro'); // 'intro' | 'playing' | 'end'
+
+  // One ref per conveyor row.
   const beltRef0 = useRef(null);
   const beltRef1 = useRef(null);
   const beltRef2 = useRef(null);
   const conveyorRefs = useRef([beltRef0, beltRef1, beltRef2]).current;
 
-  const wordInput = useWordInput(conveyorRefs);
-
-  // Ref so CustomerMood's applyWrongWordPenalty/restorePatience can be
-  // called imperatively from handleServePlate, per its own doc comment.
   const customerRef = useRef(null);
 
-  const {
-    score,
-    addScoreFromWord,
-    deductScore,
-    resetLevelScore,
-  } = useScoreSystem();
+  const { score, addScoreFromWord, deductScore } = useScoreSystem();
 
-  // null | 'win' | 'lose' — drives LevelResultModal. Also used to freeze
-  // LevelTimer (isPaused) the instant the level ends, so the countdown
-  // can't keep ticking (or firing onLevelEnd again) underneath the modal.
-  const [levelResult, setLevelResult] = useState(null);
+  const levelMaker = useLevelMaker(levelConfig);
 
-  // Bumped on retry to force LevelTimer/CustomerMood to remount with
-  // fresh internal state (they don't expose an imperative reset for
-  // patience/time, so remounting via `key` is the simplest reset).
-  const [levelKey, setLevelKey] = useState(0);
-
-  const handleLevelEnd = useCallback((won, finalScore) => {
-    setLevelResult(won ? 'win' : 'lose');
-  }, []);
-
-  // Customer patience hitting 0 is its own loss condition, independent
-  // of the clock — same handler, just always "lost".
-  const handleCustomerLeft = useCallback(() => {
-    if (levelResult) return; // already ended via the timer, ignore
-    handleLevelEnd(false, score);
-  }, [handleLevelEnd, levelResult, score]);
-
-  const handleServePlate = () => {
-    // Thematically: putting the built word "on the plate" and serving it
-    // to the customer submits it for validation + scoring. Swap this for
-    // a dedicated submit button any time without touching useWordInput. Please I hate myself for this
-    const result = wordInput.submitWord();
-
+  // Fires once per submitted word — whether it was auto-submitted (belt
+  // filled to maxLetters) or manually served via the Plate button.
+  const handleWordSubmit = useCallback((result) => {
     if (result.valid) {
-      addScoreFromWord(result.word);
-      customerRef.current?.restorePatience();
+      addScoreFromWord(result.word, 1, levelConfig.scoreMultiplier);
+      customerRef.current?.restorePatience(100);
+      levelMaker.registerServedWord();
     } else if (result.word.length > 0) {
-      // Only penalize an actual wrong attempt, not an empty submit.
       deductScore(10);
       customerRef.current?.applyWrongWordPenalty();
     }
+  }, [addScoreFromWord, deductScore, levelConfig.scoreMultiplier, levelMaker]);
+
+  // Map the wide LevelConfig down to the narrow shape useWordInput/
+  // ConveyorBelt already expect.
+  const wordInput = useWordInput(
+    conveyorRefs,
+    {
+      scoreMultiplier: levelConfig.scoreMultiplier,
+      wordRules: { minLength: levelConfig.wordDifficulty.minLength },
+    },
+    levelConfig.maxLettersOnBelt,
+    handleWordSubmit
+  );
+
+  // null | 'win' | 'lose'
+  const [levelResult, setLevelResult] = useState(null);
+
+  const handleLevelEnd = useCallback((won) => {
+    setLevelResult((prev) => prev ?? (won ? 'win' : 'lose')); // ignore if already ended
+  }, []);
+
+  // Win path #1: clock hits 0 with enough score (LevelTimer calls this).
+  // Win path #2: all customers served before time runs out (useLevelMaker).
+  useEffect(() => {
+    if (levelMaker.isLevelComplete) {
+      handleLevelEnd(true);
+    }
+  }, [levelMaker.isLevelComplete, handleLevelEnd]);
+
+  const handleCustomerLeft = useCallback(() => {
+    handleLevelEnd(false); // patience hit 0 -> always a loss, independent of the clock
+  }, [handleLevelEnd]);
+
+  const handleServePlate = () => {
+    wordInput.submitWord(); // scoring/patience handled by handleWordSubmit via onSubmit
   };
 
-  const handleRetry = () => {
-    setLevelResult(null);
-    resetLevelScore();
-    setLevelKey((k) => k + 1);
-  };
+  const handleIntroComplete = () => setPhase('playing');
 
-  const handleConfirmResult = () => {
-    const wasLose = levelResult === 'lose';
-    handleRetry();
-    if (wasLose && onOpenStore) {
-      onOpenStore(); // Switches to StoreScreen on lose, same as before
+  const handleEndComplete = () => {
+    if (levelResult === 'lose') {
+      onRetry(); // remounts the whole LevelSession — no manual state resets needed
+    } else {
+      onOpenStore?.(); // or swap for level-select / next-level navigation later
     }
   };
+
+  // Once the level actually ends, flip to the 'end' phase so
+  // LevelEndSequence takes over rendering.
+  useEffect(() => {
+    if (levelResult) setPhase('end');
+  }, [levelResult]);
+
+  if (phase === 'intro') {
+    return <LevelIntroSequence levelConfig={levelConfig} onComplete={handleIntroComplete} />;
+  }
+
+  if (phase === 'end') {
+    return (
+      <LevelEndSequence
+        levelConfig={levelConfig}
+        won={levelResult === 'win'}
+        finalScore={score}
+        onComplete={handleEndComplete}
+      />
+    );
+  }
 
   return (
     <View style={styles.screenWrapper}>
       <View style={styles.container}>
 
-        {/* 1. HEADER BANNER (Quit button on left, coins on right) */}
+        {/* 1. HEADER BANNER */}
         <ImageBackground
           source={require('../assets/Placeholder/TopBoard.png')}
           style={styles.headerBackground}
           resizeMode="stretch"
         >
-          <Image
-            source={require('../assets/Placeholder/QuitButton.png')}
-            style={styles.quitButton}
-          />
-          <Image
-            source={require('../assets/Placeholder/pixel_coins.png')}
-            style={styles.moneyIcon}
-          />
+          <Image source={require('../assets/Placeholder/QuitButton.png')} style={styles.quitButton} />
+          <Image source={require('../assets/Placeholder/pixel_coins.png')} style={styles.moneyIcon} />
         </ImageBackground>
 
-        {/* Timer — lives right under the header so it's always visible.
-            Paused the moment the level ends so it can't tick past 0 or
-            re-fire onLevelEnd while the result modal is up. */}
+        {/* Timer — paused while Mr. Ratty's popup is up, or once the
+            level has already ended, so it can't double-fire. */}
         <LevelTimer
-          key={`timer-${levelKey}`}
-          targetScore={TARGET_SCORE}
+          targetScore={levelConfig.targetScore}
           currentScore={score}
-          initialTimeInSeconds={LEVEL_TIME_SECONDS}
-          isPaused={levelResult !== null}
+          initialTimeInSeconds={levelConfig.timeLimitSeconds}
+          isPaused={levelResult !== null || levelMaker.showRattyEvent}
           onLevelEnd={handleLevelEnd}
         />
 
-        {/* 2. TOP CHARACTER (Dog) + Customer Mood/patience */}
+        {/* 2. Customer + patience meter. Remounted (fresh patience) every
+            time useLevelMaker advances to the next customer — keyed on
+            customerIndex so mid-level customer changes reset it too,
+            not just full-session retries. */}
         <View style={styles.customerBox}>
           <Image
             source={require('../assets/Placeholder/SampleCustomer_1.png')}
             style={styles.characterDog}
           />
-          <Image
-            source={require('../assets/Placeholder/CustomerPatienceBar_1.png')}
+          <CustomerMood
+            key={`customer-${levelMaker.customerIndex}`}
+            ref={customerRef}
+            onCustomerLeft={handleCustomerLeft}
             style={styles.patienceMeter}
           />
         </View>
-        <CustomerMood
-          key={`customer-${levelKey}`}
-          ref={customerRef}
-          onCustomerLeft={handleCustomerLeft}
-        />
 
-        {/* Current word being built — purely presentational, reads
-            straight off useWordInput's state. maxLetters is passed
-            through so the row always shows the right number of slots
-            (filled + blank placeholders), not just however many letters
-            happen to be picked so far. */}
         <CurrentWordDisplay
           currentWord={wordInput.currentWord}
           lastResult={wordInput.lastResult}
           maxLetters={wordInput.maxLetters}
         />
 
-        {/* 3. Table where plates are — tapping the plate serves/submits
-            the current word for validation + scoring. */}
+        {/* 3. Table / plate — serves the current word */}
         <ImageBackground
           source={require('../assets/Placeholder/Table.png')}
           style={styles.table}
           resizeMode='stretch'
         >
           <TouchableOpacity onPress={handleServePlate} activeOpacity={0.7}>
-            <Image
-              source={require('../assets/Placeholder/Plate.png')}
-              style={styles.plate}
-            />
+            <Image source={require('../assets/Placeholder/Plate.png')} style={styles.plate} />
           </TouchableOpacity>
         </ImageBackground>
 
-        {/* 4. BOTTOM CHARACTER (Chef) */}
+        {/* 4. Chef */}
         <View style={styles.chefBar}>
-          <Image
-            source={require('../assets/Placeholder/WormProtagonist_1.png')}
-            style={styles.characterChef}
-          />
+          <Image source={require('../assets/Placeholder/WormProtagonist_1.png')} style={styles.characterChef} />
         </View>
 
-        {/* 5. CONVEYOR BELT — each row is its own ConveyorBelt instance
-            (movement/spawn/wrap-around owned entirely by that component).
-            onLetterPress here does nothing but hand the tapped letter off
-            to the Word Input System via wordInput.selectLetter — the
-            belt itself doesn't know a Word Input System exists. */}
-        {BELT_ROWS.map((row) => (
-          <ImageBackground
-            key={row}
-            source={require('../assets/Placeholder/Conveyor.png')}
-            style={styles.conveyor}
-            resizeMode="stretch"
-          >
-            <ConveyorBelt
-              ref={conveyorRefs[row]}
-              style={styles.conveyorBelt}
-              config={{ maxLetters: 6, slotWidth: 70, slotHeight: 60 }} // Perfect size 6, 70, 60
-              onLetterPress={(letter) => wordInput.selectLetter(letter, row)}
-            />
-          </ImageBackground>
-        ))}
+        {/* 5. Conveyor belts — conveyorSpeed comes straight from LevelConfig */}
+        <View style={styles.conveyorGroup}>
+          {BELT_ROWS.map((row) => (
+            <ImageBackground
+              key={row}
+              source={require('../assets/Placeholder/Conveyor.png')}
+              style={styles.conveyor}
+              resizeMode="stretch"
+            >
+              <ConveyorBelt
+                ref={conveyorRefs[row]}
+                style={styles.conveyorBelt}
+                config={{
+                  maxLetters: levelConfig.maxLettersOnBelt,
+                  slotDurationMs: levelConfig.conveyorSpeed,
+                  slotWidth: 70,
+                  slotHeight: 60,
+                }}
+                onLetterPress={(letter) => wordInput.selectLetter(letter, row)}
+              />
+            </ImageBackground>
+          ))}
+        </View>
 
         <StatusBar style="light" />
       </View>
 
-      {/* LEVEL RESULT MODAL — shown once either LevelTimer or CustomerMood
-          reports the level is over. */}
-      <LevelResultModal
-        visible={levelResult !== null}
-        type={levelResult || 'win'}
-        score={score}
-        onConfirm={handleConfirmResult}
+      {/* Mr. Ratty — pops up whenever useLevelMaker's timer rolls it. */}
+      <MrRattyDiscount
+        visible={levelMaker.showRattyEvent}
+        onDismiss={levelMaker.dismissRattyEvent}
       />
     </View>
   );
@@ -205,106 +265,35 @@ export default function GameplayScreen({ onOpenStore, onBack }) {
 
 const styles = StyleSheet.create({
   /* 1 */
-  screenWrapper: {
-    flex: 1,
-    backgroundColor: '#222',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  screenWrapper: { flex: 1, backgroundColor: '#222', alignItems: 'center', justifyContent: 'center' },
   container: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#b87b4e',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 0,
-    paddingHorizontal: 0,
+    flex: 1, width: '100%', maxWidth: 420, backgroundColor: '#b87b4e',
+    alignItems: 'center', paddingVertical: 0, paddingHorizontal: 0,
   },
   headerBackground: {
-    width: '100%',
-    height: 130,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 15,
+    width: '100%', flex: 130, flexDirection: 'row',
+    justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15,
   },
-  quitButton: {
-    width: 90,
-    height: 55,
-    resizeMode: 'contain',
-  },
-  moneyIcon: {
-    width: 40,
-    height: 40,
-    resizeMode: 'contain',
-  },
+  quitButton: { width: 90, height: 55, resizeMode: 'contain' },
+  moneyIcon: { width: 40, height: 40, resizeMode: 'contain' },
 
   /* 2 */
-  customerBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 15,
-    paddingHorizontal: 15,
-  },
-  characterDog: {
-    width: 160,
-    height: 160,
-    resizeMode: 'contain',
-  },
-  patienceMeter: {
-    width: 94,
-    height: 130,
-    marginTop: -80,
-    resizeMode: 'contain',
-  },
+  customerBox: { flex: 150, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 15, paddingHorizontal: 15 },
+  characterDog: { width: 160, height: 160, resizeMode: 'contain' },
+  patienceMeter: { width: 94, height: 130, marginTop: -80, resizeMode: 'contain' },
 
   /* 3 */
   table: {
-    width: '100%',
-    height: 150,
-    marginTop: -60,   // pulls the table up over the bottom of the dog image
-    zIndex: 2,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: '100%', flex: 150, marginTop: -60, zIndex: 2,
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
   },
-  plate: {
-    width: 60,
-    height: 60,
-  },
+  plate: { width: 60, height: 60 },
 
   /* 4 */
-  chefBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 20,
-    paddingHorizontal: 15,
-  },
-  characterChef: {
-    width: 115,
-    height: 115,
-    resizeMode: 'contain',
-  },
-  sideColumn: {
-    gap: 8,
-  },
-  sideItem: {
-    width: 36,
-    height: 36,
-  },
+  chefBar: { flex: 130, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 15 },
+  characterChef: { width: 115, height: 115, resizeMode: 'contain' },
 
   /* 5 */
-  conveyor: {
-    width: '100%',
-    height: 80,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  conveyorBelt: {
-    alignSelf: 'center',
-  },
+  conveyorGroup: { width: '100%', flex: 240, flexDirection: 'column' },
+  conveyor: { width: '100%', flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
 });

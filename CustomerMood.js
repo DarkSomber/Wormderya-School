@@ -1,28 +1,21 @@
 import React, { forwardRef, useState, useEffect, useRef, useImperativeHandle } from 'react';
-import { View, Text } from 'react-native';
+import { Image, StyleSheet } from 'react-native';
 
-/**
- * CustomerMood
- *
- * Exposes `applyWrongWordPenalty`, `restorePatience`, and `getPatience`
- * via a ref, so the Gameplay Programmer's word-input system (or the
- * GameplayScreen) can call these directly:
- *
- *   const customerRef = useRef(null);
- *   <CustomerMood ref={customerRef} onCustomerLeft={handleCustomerLeft} />
- *   ...
- *   customerRef.current.applyWrongWordPenalty();
- *   customerRef.current.restorePatience();
- */
-const CustomerMood = forwardRef(({ maxPatience = 100, decayRateMs = 2000, onCustomerLeft }, ref) => {
+const MOOD_HAPPY = require('./assets/Placeholder/CustomerPatienceBar_Happy.png');
+const MOOD_IMPATIENT = require('./assets/Placeholder/CustomerPatienceBar_Impatient.png');
+const MOOD_ANGRY = require('./assets/Placeholder/CustomerPatienceBar_Angry.png');
+
+function getMoodImageSource(patience) {
+  if (patience > 70) return MOOD_HAPPY;
+  if (patience > 30) return MOOD_IMPATIENT;
+  return MOOD_ANGRY;
+}
+
+const CustomerMood = forwardRef(({ maxPatience = 100, decayRateMs = 4000, onCustomerLeft, onPatienceChange, style }, ref) => {
   const [patience, setPatience] = useState(maxPatience);
   const hasLeftRef = useRef(false);
 
   // Passive patience decay over time.
-  // NOTE: side effects (onCustomerLeft) are NOT called from inside the
-  // setState updater below — updaters can run more than once and should
-  // stay pure. The actual "customer left" trigger happens in the effect
-  // further down, which watches `patience`.
   useEffect(() => {
     const intervalId = setInterval(() => {
       setPatience((prev) => {
@@ -45,6 +38,12 @@ const CustomerMood = forwardRef(({ maxPatience = 100, decayRateMs = 2000, onCust
     }
   }, [patience, onCustomerLeft]);
 
+  // Optional: lets a parent react to patience changes too (e.g. for a
+  // numeric readout elsewhere on screen) without owning the image logic.
+  useEffect(() => {
+    onPatienceChange?.(patience);
+  }, [patience, onPatienceChange]);
+
   // Called when player submits an invalid word or wrong spelling
   const applyWrongWordPenalty = (penaltyAmount = 15) => {
     if (hasLeftRef.current) return; // ignore penalties after customer already left
@@ -65,19 +64,21 @@ const CustomerMood = forwardRef(({ maxPatience = 100, decayRateMs = 2000, onCust
     getPatience,
   }));
 
-  // Map numerical patience to visual mood indicators
-  const getMoodLabel = () => {
-    if (patience > 70) return "Happy 😊";
-    if (patience > 30) return "Neutral 😐";
-    return "Impatient 😡";
-  };
-
   return (
-    <View>
-      <Text style={{ fontSize: 18 }}>Customer Mood: {getMoodLabel()}</Text>
-      <Text>Patience Level: {patience} / {maxPatience}</Text>
-    </View>
+    <Image
+      source={getMoodImageSource(patience)}
+      style={[styles.patienceMeter, style]}
+      resizeMode="contain"
+    />
   );
 });
 
 export default CustomerMood;
+
+const styles = StyleSheet.create({
+  patienceMeter: {
+    width: 94,
+    height: 130,
+    marginTop: -80,
+  },
+});

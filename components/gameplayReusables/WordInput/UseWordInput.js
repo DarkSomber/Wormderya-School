@@ -36,7 +36,8 @@ export const DEFAULT_MAX_LETTERS = 5;
 export function useWordInput(
   conveyorRefs,
   levelConfig = DEFAULT_LEVEL_CONFIG,
-  maxLetters = DEFAULT_MAX_LETTERS
+  maxLetters = DEFAULT_MAX_LETTERS,
+  onSubmit
 ) {
   const [currentWord, setCurrentWord] = useState([]); // [{ id, character }]
   const [lastResult, setLastResult] = useState(null); // { word, valid, score }
@@ -46,6 +47,11 @@ export function useWordInput(
   // stops this in the normal case — an inactive Letter doesn't render a
   // TouchableOpacity at all — this just covers the keyboard-input path.
   const selectedIdsRef = useRef(new Set());
+
+  const onSubmitRef = useRef(onSubmit);
+  useEffect(() => {
+    onSubmitRef.current = onSubmit;
+  }, [onSubmit]);
 
   const selectLetter = useCallback(
     (letter, beltIndex) => {
@@ -127,6 +133,7 @@ export function useWordInput(
 
     setLastResult(result);
     resetWord();
+    onSubmitRef.current?.(result); // fires for BOTH manual submit and auto-fill submit
     return result;
   }, [currentWord, levelConfig, resetWord]);
 

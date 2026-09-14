@@ -63,7 +63,7 @@ const LevelTimer = ({
   // Format seconds to MM:SS
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = seconds % 60; //Timer
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
