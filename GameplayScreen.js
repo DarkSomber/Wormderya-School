@@ -5,7 +5,7 @@ import { ConveyorBelt } from './components/gameplayReusables/ConveyorBelt';
 import { useWordInput, CurrentWordDisplay } from './components/gameplayReusables/WordInput';
 import CustomerMood from './CustomerMood';
 import LevelTimer from './LevelTimer';
-import { useScoreSystem } from './useScoreSystem';
+import { useScoreSystem } from './UseScoreSystem';
 import MrRattyDiscount from './MrRattyDiscount';
 
 import { LEVEL_1_CONFIG } from './levels/levelPresets';

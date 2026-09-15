@@ -31,6 +31,16 @@ export const TAGALOG_WORD_LIST = [
   'LUPA',    // earth / land
   'HANGIN',  // wind
   'APOY',    // fire
+  'AKALA',   // belief / assumption
+  'BAGAY',   // thing / object
+  'BALIK',   // return
+  'BAWAT',   // each / every
+  'GABAY',   // guide
+  'GANDA',   // beauty
+  'KAMAY',   // hand
+  'PILIT',   // forced / insistence
+  'SULAT',   // letter / writing
+  'TAWAG',   // call
 ];
 
 export const TAGALOG_WORD_DATABASE = new Set(
