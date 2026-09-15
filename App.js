@@ -32,7 +32,6 @@ const SCREENS = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState(SCREENS.SPLASH);
   // Switch between 'gameplay' and 'store'
   const [currentScreen, setCurrentScreen] = useState('gameplay');
   // Change SCREENS.MOVE to SCREEN.PLACEHOLDER_GAMEPLAY to switch to the placeholder screen
