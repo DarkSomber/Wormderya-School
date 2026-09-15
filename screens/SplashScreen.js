@@ -1,20 +1,6 @@
 import React, { useEffect } from "react";
 import { ImageBackground, StyleSheet, StatusBar } from "react-native";
 
-/**
- * SplashScreen
- * ----------------------------------------------------------------------
- * Shown once when the app first launches, before the title screen.
- * The artwork here is a full illustrated screen (already shaped close
- * to a phone's aspect ratio), so it just fills the screen and waits a
- * moment, then calls `onFinish` to move on to HomeScreen.
- *
- * Props:
- *   onFinish   function - called automatically after `duration` ms
- *   duration   ?number  - how long to show the splash, in ms (default 2500)
- * ----------------------------------------------------------------------
- */
-
 const DEFAULT_DURATION_MS = 2500;
 
 export default function SplashScreen({
@@ -45,7 +31,8 @@ export default function SplashScreen({
 const styles = StyleSheet.create({
   background: {
     flex: 1,
-    // Fallback color in case the image fails to load.
+    height: "100%",
+    width: "100%",
     backgroundColor: "#f3e6cf",
   },
 });

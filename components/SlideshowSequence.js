@@ -61,7 +61,6 @@ export default function SlideshowSequence({
         ) : (
           <Text style={styles.slidePlaceholderText}>
             SLIDE {index + 1} OF {slides.length}
-            {"\n"}PLACEHOLDER IMAGE
           </Text>
         )}
       </View>
@@ -96,7 +95,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 2,
     borderColor: "#8a5a30",
-    borderStyle: "dashed",
     backgroundColor: "rgba(255,255,255,0.4)",
     alignItems: "center",
     justifyContent: "center",

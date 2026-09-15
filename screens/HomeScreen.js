@@ -1,7 +1,6 @@
 import React from "react";
 import {
   View,
-  Text,
   StyleSheet,
   StatusBar,
   Alert,
@@ -23,7 +22,7 @@ export default function HomeScreen({ onStart, onOpenSettings, onQuit }) {
     <ImageBackground
       source={require("../assets/Final/MainBackground.png")}
       style={styles.background}
-      resizeMode="contain"
+      resizeMode="cover"
     >
       <View style={styles.container}>
         <Image
@@ -66,6 +65,9 @@ export default function HomeScreen({ onStart, onOpenSettings, onQuit }) {
 const styles = StyleSheet.create({
   background: {
     flex: 1,
+    height: "100%",
+    width: "100%",
+    // BACKGROUND PLACEHOLDER COLOR — same as the other screens
     backgroundColor: "#f3e6cf",
   },
   container: {
