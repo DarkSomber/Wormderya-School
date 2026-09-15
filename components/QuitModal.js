@@ -1,7 +1,7 @@
 import React from 'react';
 import PopupModal from './PopupModal';
 
-export default function QuitModal({ visible, onQuit }) {
+export default function QuitModal({ visible, onQuit, onCancel }) {
   return (
     <PopupModal
       visible={visible}
@@ -10,6 +10,8 @@ export default function QuitModal({ visible, onQuit }) {
       buttonText="Quit :("
       buttonColor="#FFB3B3"
       onPress={onQuit}
+      cancelText="Never mind"
+      onCancel={onCancel}
     />
   );
 }

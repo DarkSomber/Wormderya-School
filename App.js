@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, StyleSheet, Platform } from "react-native";
+import { View, StyleSheet, Modal } from "react-native";
 import SplashScreen from "./screens/SplashScreen";
 import HomeScreen from "./screens/HomeScreen";
 import ModeSelectScreen from "./screens/ModeSelectScreen";
@@ -7,12 +7,12 @@ import SettingsScreen from "./screens/SettingsScreen";
 import LevelSelectScreen from "./screens/LevelSelectScreen";
 import StoryBackstoryScreen from "./screens/StoryBackstoryScreen";
 import GameplayScreen from "./screens/GameplayScreen";
+import { useWallet } from "./components/gameplayReusables/UseWallet";
 
 /* Placeholder components */
-import QuitModal from "./QuitModal";
-import RushHourModal from "./RushHourModal";
-import StoreScreen from "./StoreScreen";
-import PlaceholderGameplay from "./GameplayScreen";
+import QuitModal from './components/QuitModal';
+import RushHourModal from './screens/RushHourModal';
+import StoreScreen from './screens/StoreScreen';
 
 /**
  * Very small hand-rolled screen switcher so this demo doesn't require
@@ -28,23 +28,50 @@ const SCREENS = {
   LEVEL_SELECT: "LEVEL_SELECT",
   STORY_BACKSTORY: "STORY_BACKSTORY",
   GAMEPLAY: "GAMEPLAY",
-  PLACEHOLDER_GAMEPLAY: "PLACEHOLDER_GAMEPLAY",
-  STORE: "STORE",
 };
 
 //ScreenSwitcher() holds the logic for switching between screens.
 function ScreenSwitcher() {
   const [screen, setScreen] = useState(SCREENS.SPLASH);
+
+  // The Store is now an OVERLAY, not a separate `screen` value. It used
+  // to be `SCREENS.STORE`, which fully unmounted GameplayScreen behind
+  // it — that's what was wiping the round (timer/score/belts/phase all
+  // reset) every time the player opened the Store and came back.
+  // Rendering it on top instead means whatever's underneath (usually
+  // GameplayScreen) never unmounts, so nothing resets.
+  const [showStore, setShowStore] = useState(false);
+  const openStore = () => { console.log('[App] openStore called'); setShowStore(true); };
+  const closeStore = () => setShowStore(false);
+
   // Switch between 'gameplay' and 'store'
   const [currentScreen, setCurrentScreen] = useState("gameplay");
   // Change SCREENS.MOVE to SCREEN.PLACEHOLDER_GAMEPLAY to switch to the placeholder screen
   const [showRushHour, setShowRushHour] = useState(false);
   const [showQuit, setShowQuit] = useState(false);
 
+  // Lives here (not inside GameplayScreen/StoreScreen) so currency and
+  // Mr. Ratty's discount/inflate marks survive retries, new levels, and
+  // trips to the Store — exactly what "next time Ratty visits" needs.
+  const wallet = useWallet(0);
+
   const renderCurrentScreen = () => {
-    switch (screen) {
-      case SCREENS.SPLASH:
-        return <SplashScreen onFinish={() => setScreen(SCREENS.HOME)} />;
+  switch (screen) {
+    case SCREENS.SPLASH:
+      return <SplashScreen onFinish={() => setScreen(SCREENS.HOME)} />;
+
+    case SCREENS.MODE_SELECT:
+      return (
+        <ModeSelectScreen
+          onSelectStoryMode={() => setScreen(SCREENS.LEVEL_SELECT)}
+          onSelectRushHour={() => {
+            // TODO: navigate into Rush Hour Mode gameplay
+            setShowRushHour(true)
+            console.log("Rush Hour Mode selected");
+          }}
+          onBack={() => setScreen(SCREENS.HOME)}
+        />
+      );
 
       case SCREENS.MODE_SELECT:
         return (
@@ -83,27 +110,19 @@ function ScreenSwitcher() {
         return (
           <StoryBackstoryScreen
             onFinish={() => setScreen(SCREENS.GAMEPLAY)}
-            onOpenStore={() => setScreen(SCREENS.STORE)}
+            onOpenStore={openStore}
           />
         );
 
       case SCREENS.GAMEPLAY:
         return (
-          <GameplayScreen onBack={() => setScreen(SCREENS.LEVEL_SELECT)} />
-        );
-
-      /* 2. DUMMY PLACEHOLDER: Render the component pointing to ./GameplayScreen */
-      case SCREENS.PLACEHOLDER_GAMEPLAY:
-        return (
-          <PlaceholderGameplay
+          <GameplayScreen
             onBack={() => setScreen(SCREENS.LEVEL_SELECT)}
-            onOpenStore={() => setScreen(SCREENS.STORE)}
+            onOpenStore={openStore}
+            isStoreOpen={showStore}
+            wallet={wallet}
           />
         );
-
-      /* Placeholder for Storescreen */
-      case SCREENS.STORE:
-        return <StoreScreen onBack={() => setScreen(SCREENS.GAMEPLAY)} />;
 
       case SCREENS.HOME:
       default:
@@ -123,10 +142,23 @@ function ScreenSwitcher() {
 
   return (
     <View style={styles.container}>
-      {/* 1. Renders active screen */}
+      {/* 1. Renders active screen — never unmounted by opening the Store */}
       {renderCurrentScreen()}
 
-      {/* 2. Global Modals rendered on top */}
+      {/* 2. Store, as a full-screen overlay on top of whatever's active.
+          Only mounted while open, so it doesn't run its own timers/effects
+          in the background when closed — but the screen underneath (e.g.
+          GameplayScreen) stays mounted throughout. */}
+
+        {showStore && (
+          <Modal>
+            <View style={styles.overlay}>
+              <StoreScreen onBack={closeStore} wallet={wallet} />
+            </View>
+          </Modal>
+        )}
+
+      {/* 3. Global Modals rendered on top of everything */}
       <RushHourModal
         visible={showRushHour}
         onDismiss={() => setShowRushHour(false)}
@@ -157,19 +189,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  webBackdrop: {
-    flex: 1,
-    minHeight: "100vh",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#1a1a1a",
-  },
-  webPhoneFrame: {
-    width: 400,
-    height: 860,
-    maxHeight: "95vh",
-    overflow: "hidden",
-    borderRadius: 24,
-    boxShadow: "0 0 40px rgba(0,0,0,0.5)",
-  },
+  overlay: {
+  ...StyleSheet.absoluteFillObject,
+  backgroundColor: 'red', // Temporary debug color
+},
 });

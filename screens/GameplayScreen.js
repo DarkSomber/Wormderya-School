@@ -1,28 +1,16 @@
-import React, { useRef, useState, useCallback, useEffect } from "react";
-import { StatusBar } from "expo-status-bar";
-import {
-  StyleSheet,
-  View,
-  Image,
-  ImageBackground,
-  TouchableOpacity,
-} from "react-native";
-import { ConveyorBelt } from "../components/gameplayReusables/ConveyorBelt";
-import {
-  useWordInput,
-  CurrentWordDisplay,
-} from "../components/gameplayReusables/WordInput";
-import CustomerMood from "../CustomerMood";
-import LevelTimer from "../LevelTimer";
-import { useScoreSystem } from "../UseScoreSystem";
-import MrRattyDiscount from "../MrRattyDiscount";
+import React, { useRef, useState, useCallback, useEffect } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Text } from 'react-native';
+import { ConveyorBelt } from '../components/gameplayReusables/ConveyorBelt';
+import { useWordInput, CurrentWordDisplay } from '../components/gameplayReusables/WordInput';
+import CustomerMood from '../CustomerMood';
+import LevelTimer from '../LevelTimer';
+import { useScoreSystem } from '../UseScoreSystem';
+import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount';
 
-import { LEVEL_1_CONFIG } from "../levels/levelPresets";
-import { useLevelMaker } from "../levels/useLevelMaker";
-import {
-  LevelIntroSequence,
-  LevelEndSequence,
-} from "../levels/IntroEndSequence";
+import { LEVEL_1_CONFIG } from '../levels/levelPresets';
+import { useLevelMaker } from '../levels/useLevelMaker';
+import { LevelIntroSequence, LevelEndSequence } from '../levels/IntroEndSequence';
 
 const BELT_ROWS = [0, 1, 2]; // how many belt rows
 
@@ -343,7 +331,6 @@ const styles = StyleSheet.create({
     resizeMode: "contain",
   },
 
-  /* 3 */
   table: {
     width: "100%",
     flex: 150,

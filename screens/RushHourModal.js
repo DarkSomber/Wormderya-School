@@ -1,5 +1,5 @@
 import React from 'react';
-import PopupModal from './PopupModal';
+import PopupModal from '../components/PopupModal';
 
 export default function RushHourModal({ visible, onDismiss }) {
   return (
