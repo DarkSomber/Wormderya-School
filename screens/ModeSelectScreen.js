@@ -9,43 +9,16 @@ import {
 } from "react-native";
 import AppButton from "../components/AppButton";
 
-/**
- * ModeSelectScreen
- * ----------------------------------------------------------------------
- * Shown after the player taps "START" on the title screen:
- *   [ background art ]        <- same placeholder pattern as HomeScreen
- *   [ title / logo ]          <- same placeholder pattern as HomeScreen
- *   [ Story-Mode ]
- *   [ Rush Hour Mode ]
- *   [ Back ]
- *
- * Reuses the exact same AppButton component as the title screen, so any
- * future button art/styling changes only need to happen in one place.
- * ----------------------------------------------------------------------
- */
-
 export default function ModeSelectScreen({
   onSelectStoryMode,
   onSelectRushHour,
   onBack,
 }) {
-  // ---------- BACKGROUND PLACEHOLDER ----------
-  // Same approach as HomeScreen: flat color for now, swap the outer
-  // <View> for an <ImageBackground> once you have the art:
-  //
-  //   <ImageBackground
-  //     source={require('../../assets/background.png')}
-  //     style={styles.background}
-  //     resizeMode="cover"
-  //   >
-  //     ...same children...
-  //   </ImageBackground>
-
   return (
     <ImageBackground
       source={require("../assets/Final/MainBackground.png")}
       style={styles.background}
-      resizeMode="contain"
+      resizeMode="cover"
     >
       <View style={styles.container}>
         <Image
@@ -88,7 +61,8 @@ export default function ModeSelectScreen({
 const styles = StyleSheet.create({
   background: {
     flex: 1,
-    // BACKGROUND PLACEHOLDER COLOR — same as HomeScreen, replace together
+    height: "100%",
+    width: "100%",
     backgroundColor: "#f3e6cf",
   },
   container: {
