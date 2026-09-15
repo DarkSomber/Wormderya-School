@@ -33,7 +33,11 @@ const CONVEYOR_ROW_GAP = 10; // vertical space between conveyor rows
  * "error from last round" state to reappear after Retry. A full
  * component remount can't miss a hook the way manual resets can.
  */
-export default function GameplayScreen({ onOpenStore, onBack, isStoreOpen, levelConfig = LEVEL_1_CONFIG }) {
+export default function GameplayScreen({
+  onOpenStore,
+  onBack,
+  levelConfig = LEVEL_1_CONFIG,
+}) {
   const [sessionId, setSessionId] = useState(0);
 
   const handleRetry = useCallback(() => {
@@ -75,8 +79,8 @@ export default function GameplayScreen({ onOpenStore, onBack, isStoreOpen, level
  *   LevelEndSequence (levels/IntroEndSequence.js) --------- shows final score/stars,
  *                                                            calls onRetry() or onOpenStore()
  */
-function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }) {
-  const [phase, setPhase] = useState('intro'); // 'intro' | 'playing' | 'end'
+function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
+  const [phase, setPhase] = useState("intro"); // 'intro' | 'playing' | 'end'
 
   // One ref per conveyor row.
   const beltRef0 = useRef(null);
@@ -92,16 +96,19 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
 
   // Fires once per submitted word — whether it was auto-submitted (belt
   // filled to maxLetters) or manually served via the Plate button.
-  const handleWordSubmit = useCallback((result) => {
-    if (result.valid) {
-      addScoreFromWord(result.word, 1, levelConfig.scoreMultiplier);
-      customerRef.current?.restorePatience(100);
-      levelMaker.registerServedWord();
-    } else if (result.word.length > 0) {
-      deductScore(10);
-      customerRef.current?.applyWrongWordPenalty();
-    }
-  }, [addScoreFromWord, deductScore, levelConfig.scoreMultiplier, levelMaker]);
+  const handleWordSubmit = useCallback(
+    (result) => {
+      if (result.valid) {
+        addScoreFromWord(result.word, 1, levelConfig.scoreMultiplier);
+        customerRef.current?.restorePatience(100);
+        levelMaker.registerServedWord();
+      } else if (result.word.length > 0) {
+        deductScore(10);
+        customerRef.current?.applyWrongWordPenalty();
+      }
+    },
+    [addScoreFromWord, deductScore, levelConfig.scoreMultiplier, levelMaker],
+  );
 
   // Map the wide LevelConfig down to the narrow shape useWordInput/
   // ConveyorBelt already expect.
@@ -112,14 +119,14 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
       wordRules: { minLength: levelConfig.wordDifficulty.minLength },
     },
     levelConfig.maxLettersOnBelt,
-    handleWordSubmit
+    handleWordSubmit,
   );
 
   // null | 'win' | 'lose'
   const [levelResult, setLevelResult] = useState(null);
 
   const handleLevelEnd = useCallback((won) => {
-    setLevelResult((prev) => prev ?? (won ? 'win' : 'lose')); // ignore if already ended
+    setLevelResult((prev) => prev ?? (won ? "win" : "lose")); // ignore if already ended
   }, []);
 
   // Win path #1: clock hits 0 with enough score (LevelTimer calls this).
@@ -146,10 +153,10 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
     wordInput.submitWord(); // scoring/patience handled by handleWordSubmit via onSubmit
   };
 
-  const handleIntroComplete = () => setPhase('playing');
+  const handleIntroComplete = () => setPhase("playing");
 
   const handleEndComplete = () => {
-    if (levelResult === 'lose') {
+    if (levelResult === "lose") {
       onRetry(); // remounts the whole LevelSession — no manual state resets needed
     } else {
       //onOpenStore?.(); // or swap for level-select / next-level navigation later (!Remember to remove this.)
@@ -163,18 +170,23 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
   // Once the level actually ends, flip to the 'end' phase so
   // LevelEndSequence takes over rendering.
   useEffect(() => {
-    if (levelResult) setPhase('end');
+    if (levelResult) setPhase("end");
   }, [levelResult]);
 
-  if (phase === 'intro') {
-    return <LevelIntroSequence levelConfig={levelConfig} onComplete={handleIntroComplete} />;
+  if (phase === "intro") {
+    return (
+      <LevelIntroSequence
+        levelConfig={levelConfig}
+        onComplete={handleIntroComplete}
+      />
+    );
   }
 
-  if (phase === 'end') {
+  if (phase === "end") {
     return (
       <LevelEndSequence
         levelConfig={levelConfig}
-        won={levelResult === 'win'}
+        won={levelResult === "win"}
         finalScore={score}
         onComplete={handleEndComplete}
       />
@@ -184,23 +196,20 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
   return (
     <View style={styles.screenWrapper}>
       <View style={styles.container}>
-
         {/* 1. HEADER BANNER */}
         <ImageBackground
-          source={require('../assets/Placeholder/TopBoard.png')}
+          source={require("../assets/Placeholder/TopBoard.png")}
           style={styles.headerBackground}
           resizeMode="stretch"
         >
-          {/*<Image source={require('../assets/Placeholder/QuitButton.png')} style={styles.quitButton} />*/
-          /*This is a temporary fix for the text inside the exit, fix the template first hand*/}
-          <TouchableOpacity onPress={onBack} activeOpacity={0.7}>
-            <Image source={require('../assets/Placeholder/QuitButton.png')} style={styles.quitButton}/>
-              <Text style={{ position: 'absolute', top: 12, left: 35, color: 'red', fontSize: 20 }}> 
-                Return
-              </Text>
-          </TouchableOpacity>
-
-          {/*<Image source={require('../assets/Placeholder/pixel_coins.png')} style={styles.moneyIcon} /> removed for further fixings */}
+          <Image
+            source={require("../assets/Placeholder/QuitButton.png")}
+            style={styles.quitButton}
+          />
+          <Image
+            source={require("../assets/Placeholder/pixel_coins.png")}
+            style={styles.moneyIcon}
+          />
         </ImageBackground>
 
         {/* Timer — paused while Mr. Ratty's popup is up, or once the
@@ -219,7 +228,7 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
             not just full-session retries. */}
         <View style={styles.customerBox}>
           <Image
-            source={require('../assets/Placeholder/SampleCustomer_1.png')}
+            source={require("../assets/Placeholder/SampleCustomer_1.png")}
             style={styles.characterDog}
           />
           <CustomerMood
@@ -238,18 +247,24 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
 
         {/* 3. Table / plate — serves the current word */}
         <ImageBackground
-          source={require('../assets/Placeholder/Table.png')}
+          source={require("../assets/Placeholder/Table.png")}
           style={styles.table}
-          resizeMode='stretch'
+          resizeMode="stretch"
         >
           <TouchableOpacity onPress={handleServePlate} activeOpacity={0.7}>
-            <Image source={require('../assets/Placeholder/Plate.png')} style={styles.plate} />
+            <Image
+              source={require("../assets/Placeholder/Plate.png")}
+              style={styles.plate}
+            />
           </TouchableOpacity>
         </ImageBackground>
 
         {/* 4. Chef */}
         <View style={styles.chefBar}>
-          <Image source={require('../assets/Placeholder/WormProtagonist_1.png')} style={styles.characterChef} />
+          <Image
+            source={require("../assets/Placeholder/WormProtagonist_1.png")}
+            style={styles.characterChef}
+          />
         </View>
 
         {/* 5. Conveyor belts — conveyorSpeed comes straight from LevelConfig.
@@ -258,7 +273,7 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
           {BELT_ROWS.map((row) => (
             <ImageBackground
               key={row}
-              source={require('../assets/Placeholder/Conveyor.png')}
+              source={require("../assets/Placeholder/Conveyor.png")}
               style={styles.conveyor}
               resizeMode="stretch"
             >
@@ -290,35 +305,79 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
 }
 
 const styles = StyleSheet.create({
-  /* 1 the screen thingy */
-  screenWrapper: { flex: 1, backgroundColor: '#222', alignItems: 'center', justifyContent: 'center' },
+  /* 1 */
+  screenWrapper: {
+    flex: 1,
+    backgroundColor: "#222",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   container: {
-    flex: 1, width: '100%', maxWidth: 420, backgroundColor: '#b87b4e',
-    alignItems: 'center', paddingVertical: 0, paddingHorizontal: 0,
+    flex: 1,
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: "#b87b4e",
+    alignItems: "center",
+    paddingVertical: 0,
+    paddingHorizontal: 0,
   },
   headerBackground: {
-    width: '105%', flex: 130, flexDirection: 'row', //the width: 105% is a temp fix please fix this
-    justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15,
+    width: "100%",
+    flex: 130,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 15,
   },
-  quitButton: { width: 90, height: 55, resizeMode: 'contain', left: 20 },
-  moneyIcon: { width: 40, height: 40, resizeMode: 'contain' },
+  quitButton: { width: 90, height: 55, resizeMode: "contain" },
+  moneyIcon: { width: 40, height: 40, resizeMode: "contain" },
 
-  /* 2 Customer Area*/
-  customerBox: { flex: 150, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 15, paddingHorizontal: 15 },
-  characterDog: { width: 160, height: 160, resizeMode: 'contain' },
-  patienceMeter: { width: 94, height: 130, marginTop: -80, resizeMode: 'contain' },
+  /* 2 */
+  customerBox: {
+    flex: 150,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 15,
+    paddingHorizontal: 15,
+  },
+  characterDog: { width: 160, height: 160, resizeMode: "contain" },
+  patienceMeter: {
+    width: 94,
+    height: 130,
+    marginTop: -80,
+    resizeMode: "contain",
+  },
 
   table: {
-    width: '100%', flex: 150, marginTop: -60, zIndex: 2,
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    width: "100%",
+    flex: 150,
+    marginTop: -60,
+    zIndex: 2,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
   plate: { width: 60, height: 60 },
 
-  /* 4 Chef Bar*/
-  chefBar: { flex: 130, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 15,  },
-  characterChef: { width: 115, height: 115, resizeMode: 'contain', left: 125, bottom: 30 },
+  /* 4 */
+  chefBar: {
+    flex: 130,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 20,
+    paddingHorizontal: 15,
+  },
+  characterChef: { width: 115, height: 115, resizeMode: "contain" },
 
-  /* 5 Conveyor area — gap adds breathing room between the 3 rows. */
-  conveyorGroup: { width: '100%', flex: 240, flexDirection: 'column', gap: CONVEYOR_ROW_GAP, bottom: 50 },
-  conveyor: { width: '100%', flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  /* 5 */
+  conveyorGroup: { width: "100%", flex: 240, flexDirection: "column" },
+  conveyor: {
+    width: "100%",
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });

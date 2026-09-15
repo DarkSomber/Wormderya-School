@@ -1,19 +1,13 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, StatusBar } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  StatusBar,
+  ImageBackground,
+} from "react-native";
 import AppButton from "../components/AppButton";
 import VolumeSlider from "../components/VolumeSlider";
-
-/**
- * SettingsScreen
- * ----------------------------------------------------------------------
- * Shown when the player taps "SETTING" on the title screen:
- *   [ background art ]        <- same placeholder pattern as other screens
- *   "Settings" heading
- *   [ Music panel: Master Volume / Music Volume / SFX sliders ]
- *   [ Credits ]                <- reuses AppButton, temporarily disabled
- *   [ Back ]                   <- reuses AppButton, returns to previous screen
- * ----------------------------------------------------------------------
- */
 
 export default function SettingsScreen({ onBack }) {
   // Local slider state just for this demo. Wire these up to your real
@@ -23,9 +17,11 @@ export default function SettingsScreen({ onBack }) {
   const [sfxVolume, setSfxVolume] = useState(0.8);
 
   return (
-    <View style={styles.background}>
-      <StatusBar barStyle="dark-content" />
-
+    <ImageBackground
+      source={require("../assets/Final/MainBackground.png")}
+      style={styles.background}
+      resizeMode="cover"
+    >
       <View style={styles.container}>
         <Text style={styles.heading}>Settings</Text>
 
@@ -69,14 +65,15 @@ export default function SettingsScreen({ onBack }) {
           backgroundImage={require("../assets/Final/buttons/buttonBack.png")}
         />
       </View>
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   background: {
     flex: 1,
-    // BACKGROUND PLACEHOLDER COLOR — same as the other screens
+    height: "100%",
+    width: "100%",
     backgroundColor: "#f3e6cf",
   },
   container: {
