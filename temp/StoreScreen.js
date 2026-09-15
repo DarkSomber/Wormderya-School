@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import ShopOutcomeModal from './ShopOutcomeModal';
+import ShopOutcomeModal from './components/gameplayReusables/ShopOutcomeModal.js';
 import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Text } from 'react-native';
 
 import MrRattyDiscount from './MrRattyDiscount.js';

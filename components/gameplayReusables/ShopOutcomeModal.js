@@ -1,5 +1,5 @@
 import React from 'react';
-import PopupModal from './PopupModal';
+import PopupModal from '../PopupModal';
 
 export default function ShopOutcomeModal({ visible, outcome, onDismiss }) {
   const isInflate = outcome === 'inflate';

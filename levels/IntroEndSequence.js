@@ -1,6 +1,6 @@
 import React from 'react';
 import SlideshowSequence from '../components/SlideshowSequence';
-import { computeStars } from '../UseScoreSystem';
+import { computeStars } from '../components/gameplayReusables/UseScoreSystem';
 
 /**
  * IntroEndSequence

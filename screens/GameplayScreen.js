@@ -1,18 +1,22 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
+//import { useSafeAreaInsets } from 'react-native-safe'; //find a way to use this guys
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Text } from 'react-native';
+import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Text, Alert } from 'react-native';
 import { ConveyorBelt } from '../components/gameplayReusables/ConveyorBelt';
 import { useWordInput, CurrentWordDisplay } from '../components/gameplayReusables/WordInput';
-import CustomerMood from '../CustomerMood';
-import LevelTimer from '../LevelTimer';
-import { useScoreSystem } from '../UseScoreSystem';
-import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount';
+import CustomerMood from '../components/gameplayReusables/CustomerMood';
+import LevelTimer from '../components/gameplayReusables/LevelTimer';
+import { useScoreSystem } from '../components/gameplayReusables/UseScoreSystem';
+import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount'; // Fix this gang this is the issue why it wont open the store.
+import AppButton from '../components/AppButton';
+
 
 import { LEVEL_1_CONFIG } from '../levels/levelPresets';
 import { useLevelMaker } from '../levels/useLevelMaker';
 import { LevelIntroSequence, LevelEndSequence } from '../levels/IntroEndSequence';
 
 const BELT_ROWS = [0, 1, 2]; // how many belt rows
+const CONVEYOR_ROW_GAP = 10; // vertical space between conveyor rows
 
 /**
  * GameplayScreen
@@ -29,7 +33,7 @@ const BELT_ROWS = [0, 1, 2]; // how many belt rows
  * "error from last round" state to reappear after Retry. A full
  * component remount can't miss a hook the way manual resets can.
  */
-export default function GameplayScreen({ onOpenStore, onBack, levelConfig = LEVEL_1_CONFIG }) {
+export default function GameplayScreen({ onOpenStore, onBack, isStoreOpen, levelConfig = LEVEL_1_CONFIG }) {
   const [sessionId, setSessionId] = useState(0);
 
   const handleRetry = useCallback(() => {
@@ -43,6 +47,7 @@ export default function GameplayScreen({ onOpenStore, onBack, levelConfig = LEVE
       onOpenStore={onOpenStore}
       onBack={onBack}
       onRetry={handleRetry}
+      isStoreOpen={isStoreOpen}
     />
   );
 }
@@ -70,7 +75,7 @@ export default function GameplayScreen({ onOpenStore, onBack, levelConfig = LEVE
  *   LevelEndSequence (levels/IntroEndSequence.js) --------- shows final score/stars,
  *                                                            calls onRetry() or onOpenStore()
  */
-function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
+function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }) {
   const [phase, setPhase] = useState('intro'); // 'intro' | 'playing' | 'end'
 
   // One ref per conveyor row.
@@ -83,7 +88,7 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
 
   const { score, addScoreFromWord, deductScore } = useScoreSystem();
 
-  const levelMaker = useLevelMaker(levelConfig);
+  const levelMaker = useLevelMaker(levelConfig, isStoreOpen);
 
   // Fires once per submitted word — whether it was auto-submitted (belt
   // filled to maxLetters) or manually served via the Plate button.
@@ -125,6 +130,14 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
     }
   }, [levelMaker.isLevelComplete, handleLevelEnd]);
 
+  useEffect(() => {
+    if (levelResult) levelMaker.stop();
+  }, [levelResult, levelMaker]);
+
+  useEffect(() => {
+    if (isStoreOpen) levelMaker.dismissRattyEvent();
+  }, [isStoreOpen, levelMaker]);
+
   const handleCustomerLeft = useCallback(() => {
     handleLevelEnd(false); // patience hit 0 -> always a loss, independent of the clock
   }, [handleLevelEnd]);
@@ -139,7 +152,11 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
     if (levelResult === 'lose') {
       onRetry(); // remounts the whole LevelSession — no manual state resets needed
     } else {
-      onOpenStore?.(); // or swap for level-select / next-level navigation later
+      //onOpenStore?.(); // or swap for level-select / next-level navigation later (!Remember to remove this.)
+      levelMaker.dismissRattyEvent();
+      setTimeout(() => {
+        onOpenStore?.();
+      }, 50)
     }
   };
 
@@ -174,8 +191,16 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
           style={styles.headerBackground}
           resizeMode="stretch"
         >
-          <Image source={require('../assets/Placeholder/QuitButton.png')} style={styles.quitButton} />
-          <Image source={require('../assets/Placeholder/pixel_coins.png')} style={styles.moneyIcon} />
+          {/*<Image source={require('../assets/Placeholder/QuitButton.png')} style={styles.quitButton} />*/
+          /*This is a temporary fix for the text inside the exit, fix the template first hand*/}
+          <TouchableOpacity onPress={onBack} activeOpacity={0.7}>
+            <Image source={require('../assets/Placeholder/QuitButton.png')} style={styles.quitButton}/>
+              <Text style={{ position: 'absolute', top: 12, left: 35, color: 'red', fontSize: 20 }}> 
+                Return
+              </Text>
+          </TouchableOpacity>
+
+          {/*<Image source={require('../assets/Placeholder/pixel_coins.png')} style={styles.moneyIcon} /> removed for further fixings */}
         </ImageBackground>
 
         {/* Timer — paused while Mr. Ratty's popup is up, or once the
@@ -227,7 +252,8 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
           <Image source={require('../assets/Placeholder/WormProtagonist_1.png')} style={styles.characterChef} />
         </View>
 
-        {/* 5. Conveyor belts — conveyorSpeed comes straight from LevelConfig */}
+        {/* 5. Conveyor belts — conveyorSpeed comes straight from LevelConfig.
+            gap spaces the rows apart. */}
         <View style={styles.conveyorGroup}>
           {BELT_ROWS.map((row) => (
             <ImageBackground
@@ -264,20 +290,20 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
 }
 
 const styles = StyleSheet.create({
-  /* 1 */
+  /* 1 the screen thingy */
   screenWrapper: { flex: 1, backgroundColor: '#222', alignItems: 'center', justifyContent: 'center' },
   container: {
     flex: 1, width: '100%', maxWidth: 420, backgroundColor: '#b87b4e',
     alignItems: 'center', paddingVertical: 0, paddingHorizontal: 0,
   },
   headerBackground: {
-    width: '100%', flex: 130, flexDirection: 'row',
+    width: '105%', flex: 130, flexDirection: 'row', //the width: 105% is a temp fix please fix this
     justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15,
   },
-  quitButton: { width: 90, height: 55, resizeMode: 'contain' },
+  quitButton: { width: 90, height: 55, resizeMode: 'contain', left: 20 },
   moneyIcon: { width: 40, height: 40, resizeMode: 'contain' },
 
-  /* 2 */
+  /* 2 Customer Area*/
   customerBox: { flex: 150, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 15, paddingHorizontal: 15 },
   characterDog: { width: 160, height: 160, resizeMode: 'contain' },
   patienceMeter: { width: 94, height: 130, marginTop: -80, resizeMode: 'contain' },
@@ -288,11 +314,11 @@ const styles = StyleSheet.create({
   },
   plate: { width: 60, height: 60 },
 
-  /* 4 */
-  chefBar: { flex: 130, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 15 },
-  characterChef: { width: 115, height: 115, resizeMode: 'contain' },
+  /* 4 Chef Bar*/
+  chefBar: { flex: 130, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 15,  },
+  characterChef: { width: 115, height: 115, resizeMode: 'contain', left: 125, bottom: 30 },
 
-  /* 5 */
-  conveyorGroup: { width: '100%', flex: 240, flexDirection: 'column' },
+  /* 5 Conveyor area — gap adds breathing room between the 3 rows. */
+  conveyorGroup: { width: '100%', flex: 240, flexDirection: 'column', gap: CONVEYOR_ROW_GAP, bottom: 50 },
   conveyor: { width: '100%', flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
 });

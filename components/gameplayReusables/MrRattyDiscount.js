@@ -8,7 +8,7 @@ export default function MrRattyDiscount({ visible, onDismiss }) {
       title={`Thank you for\nyour patronage!`}
       message="The next time Mr. Ratty will appear, prices will have a chance to get a discount."
       buttonText="Thank you!"
-      buttonColor="#FFE194" // Yellow
+      buttonColor="#d51a1a" // Yellow
       onPress={onDismiss}
       />
     );
