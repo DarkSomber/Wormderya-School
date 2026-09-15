@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Image, ImageBackground, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Text } from 'react-native';
 import { ConveyorBelt } from '../components/gameplayReusables/ConveyorBelt';
 import { useWordInput, CurrentWordDisplay } from '../components/gameplayReusables/WordInput';
 import CustomerMood from '../CustomerMood';
@@ -282,7 +282,6 @@ const styles = StyleSheet.create({
   characterDog: { width: 160, height: 160, resizeMode: 'contain' },
   patienceMeter: { width: 94, height: 130, marginTop: -80, resizeMode: 'contain' },
 
-  /* 3 */
   table: {
     width: '100%', flex: 150, marginTop: -60, zIndex: 2,
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center',

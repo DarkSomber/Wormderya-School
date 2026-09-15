@@ -35,6 +35,14 @@ function makeLetter(pool) {
  *   ref.getLetters()            currently visible letters, left to right
  *   props.onLetterPress(letter) tap hook for the future Word Input System
  *
+ * `isPaused` — freezes the belt mid-slide at its current position (no
+ * animation restarts, no letter rotation) until it goes back to false,
+ * at which point it resumes sliding the rest of the way to the next
+ * slot over a fresh slotDurationMs. It's a simple freeze/resume, not a
+ * tracked-remaining-time resume — on longer pauses the belt may appear
+ * to "catch up" slightly slower right after unpausing, which is an
+ * acceptable trade-off for how much simpler it keeps this file.
+ *
  * Movement model:
  * `maxLetters` letters are visible at once, plus one extra buffer letter
  * waiting just off the right edge. A single Animated value translates the
@@ -46,7 +54,7 @@ function makeLetter(pool) {
  * the snap is invisible and the belt reads as one continuous, wrapping motion.
  */
 const ConveyorBelt = forwardRef(function ConveyorBelt(
-  { config: configOverride, style, onLetterPress },
+  { config: configOverride, style, onLetterPress, isPaused = false },
   ref
 ) {
   const config = { ...DEFAULT_CONVEYOR_CONFIG, ...configOverride };
@@ -69,6 +77,14 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
   }, [letterPool]);
 
   useEffect(() => {
+    // While paused: make sure any in-flight tween is stopped (freezing
+    // translateX exactly where it was) and don't start a new one.
+    if (isPaused) {
+      runningRef.current = false;
+      translateX.stopAnimation();
+      return undefined;
+    }
+
     runningRef.current = true;
 
     const tick = () => {
@@ -98,7 +114,22 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
       runningRef.current = false;
       translateX.stopAnimation();
     };
-  }, [translateX, slotWidth, slotDurationMs, direction, rotateLetters]);
+  }, [translateX, slotWidth, slotDurationMs, direction, rotateLetters, isPaused]);
+
+  const isFirstRender = useRef(true);
+  useLayoutEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (isPaused) return; // don't kick off the next tween while frozen
+    // The rotated letters just committed and are pixel-identical to where
+    // the tween ended, so snapping translateX back to 0 here, in the same
+    // paint, is what makes the snap invisible and the belt read as one
+    // continuous, wrapping motion instead of a twitch.
+    translateX.setValue(0);
+    tickRef.current();
+  }, [letters, translateX, isPaused]);
 
   const isFirstRender = useRef(true);
   useLayoutEffect(() => {

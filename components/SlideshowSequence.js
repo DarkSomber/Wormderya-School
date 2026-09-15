@@ -23,7 +23,6 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
  * to tell them apart before the real art is dropped in.
  * ----------------------------------------------------------------------
  */
-
 export default function SlideshowSequence({
   slides,
   onComplete,
@@ -33,7 +32,7 @@ export default function SlideshowSequence({
   const [index, setIndex] = useState(0);
   const isLastSlide = index === slides.length - 1;
   const slide = slides[index];
-
+ 
   const handleNext = () => {
     if (isLastSlide) {
       onComplete && onComplete();
@@ -41,13 +40,10 @@ export default function SlideshowSequence({
       setIndex((i) => i + 1);
     }
   };
-
+ 
   return (
     <View style={styles.container}>
-      {/* ---------- SLIDE PLACEHOLDER ---------- */}
-      {/* Later, once you have art per slide, swap this block for:
-          <Image source={slide.image} style={styles.slideImage} resizeMode="cover" />
-      */}
+      {/* ---------- SLIDE CONTENT ---------- */}
       <View style={styles.slideCard}>
         {slide.image ? (
           <Image
@@ -55,6 +51,13 @@ export default function SlideshowSequence({
             style={styles.slideImage}
             resizeMode="cover"
           />
+        ) : slide.label ? (
+          <>
+            <Text style={styles.slideLabelText}>{slide.label}</Text>
+            {slide.subLabel ? (
+              <Text style={styles.slideSubLabelText}>{slide.subLabel}</Text>
+            ) : null}
+          </>
         ) : (
           <Text style={styles.slidePlaceholderText}>
             SLIDE {index + 1} OF {slides.length}
@@ -62,7 +65,7 @@ export default function SlideshowSequence({
           </Text>
         )}
       </View>
-
+ 
       <View style={styles.footer}>
         <TouchableOpacity
           activeOpacity={0.75}
@@ -77,11 +80,10 @@ export default function SlideshowSequence({
     </View>
   );
 }
-
+ 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // BACKGROUND PLACEHOLDER COLOR — same as the other screens
     backgroundColor: "#f3e6cf",
     alignItems: "center",
     justifyContent: "center",
@@ -100,6 +102,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 20,
     overflow: "hidden",
+    paddingHorizontal: 16,
   },
   slideImage: {
     width: "100%",
@@ -110,6 +113,19 @@ const styles = StyleSheet.create({
     color: "#8a5a30",
     fontWeight: "700",
     fontSize: 16,
+  },
+  slideLabelText: {
+    textAlign: "center",
+    color: "#5c3a21",
+    fontWeight: "800",
+    fontSize: 26,
+  },
+  slideSubLabelText: {
+    textAlign: "center",
+    color: "#8a5a30",
+    fontWeight: "600",
+    fontSize: 16,
+    marginTop: 10,
   },
   footer: {
     width: "100%",
