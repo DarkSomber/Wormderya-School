@@ -6,7 +6,7 @@ import { useWordInput, CurrentWordDisplay } from '../components/gameplayReusable
 import CustomerMood from '../CustomerMood';
 import LevelTimer from '../LevelTimer';
 import { useScoreSystem } from '../UseScoreSystem';
-import MrRattyDiscount from '../MrRattyDiscount';
+import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount';
 
 import { LEVEL_1_CONFIG } from '../levels/levelPresets';
 import { useLevelMaker } from '../levels/useLevelMaker';
