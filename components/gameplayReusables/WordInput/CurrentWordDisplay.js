@@ -126,8 +126,14 @@ export default function CurrentWordDisplay({
         />
       </Animated.View>
 
+      {/* Result line — absolutely positioned directly on top of the tile
+          row (a sibling of `row`, not a child, so it isn't clipped by
+          row's overflow:hidden) instead of sitting in normal flow below
+          it. That's what stops the tiles from shifting up/down every
+          time this text fades in or out. */}
       {lastResult ? (
         <Animated.Text
+          pointerEvents="none"
           style={[
             styles.resultText,
             lastResult.valid ? styles.validText : styles.invalidText,
@@ -189,9 +195,19 @@ const styles = StyleSheet.create({
     left: 0,
   },
   resultText: {
+    position: 'absolute',
+    top: 4, // matches wrapper's paddingVertical, so it lines up over the row
+    left: 0,
+    right: 0,
+    height: ROW_MIN_HEIGHT,
+    lineHeight: ROW_MIN_HEIGHT, // vertically centers the single line of text over the row
+    textAlign: 'center',
     fontFamily: FONT_WARNING,
-    fontSize: 14,
-    marginTop: 2,
+    fontSize: 12,
+    zIndex: 4, // above the row's own flash/ripple overlays
+    // Faint backdrop so the text stays legible over whatever tiles/blanks
+    // it's overlapping, without fully hiding them.
+    backgroundColor: 'rgba(255,255,255,0.85)',
   },
   validText: {
     color: VALID_COLOR,

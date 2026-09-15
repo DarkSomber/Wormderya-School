@@ -1,18 +1,22 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
+//import { useSafeAreaInsets } from 'react-native-safe'; //find a way to use this guys
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Text } from 'react-native';
+import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Text, Alert } from 'react-native';
 import { ConveyorBelt } from '../components/gameplayReusables/ConveyorBelt';
 import { useWordInput, CurrentWordDisplay } from '../components/gameplayReusables/WordInput';
-import CustomerMood from '../CustomerMood';
-import LevelTimer from '../LevelTimer';
-import { useScoreSystem } from '../UseScoreSystem';
-import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount';
+import CustomerMood from '../components/gameplayReusables/CustomerMood';
+import LevelTimer from '../components/gameplayReusables/LevelTimer';
+import { useScoreSystem } from '../components/gameplayReusables/UseScoreSystem';
+import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount'; // Fix this gang this is the issue why it wont open the store.
+import AppButton from '../components/AppButton';
+
 
 import { LEVEL_1_CONFIG } from '../levels/levelPresets';
 import { useLevelMaker } from '../levels/useLevelMaker';
 import { LevelIntroSequence, LevelEndSequence } from '../levels/IntroEndSequence';
 
 const BELT_ROWS = [0, 1, 2]; // how many belt rows
+const CONVEYOR_ROW_GAP = 10; // vertical space between conveyor rows
 
 /**
  * GameplayScreen
@@ -47,6 +51,7 @@ export default function GameplayScreen({
       onOpenStore={onOpenStore}
       onBack={onBack}
       onRetry={handleRetry}
+      isStoreOpen={isStoreOpen}
     />
   );
 }
@@ -87,7 +92,7 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
 
   const { score, addScoreFromWord, deductScore } = useScoreSystem();
 
-  const levelMaker = useLevelMaker(levelConfig);
+  const levelMaker = useLevelMaker(levelConfig, isStoreOpen);
 
   // Fires once per submitted word — whether it was auto-submitted (belt
   // filled to maxLetters) or manually served via the Plate button.
@@ -132,6 +137,14 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
     }
   }, [levelMaker.isLevelComplete, handleLevelEnd]);
 
+  useEffect(() => {
+    if (levelResult) levelMaker.stop();
+  }, [levelResult, levelMaker]);
+
+  useEffect(() => {
+    if (isStoreOpen) levelMaker.dismissRattyEvent();
+  }, [isStoreOpen, levelMaker]);
+
   const handleCustomerLeft = useCallback(() => {
     handleLevelEnd(false); // patience hit 0 -> always a loss, independent of the clock
   }, [handleLevelEnd]);
@@ -146,7 +159,11 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
     if (levelResult === "lose") {
       onRetry(); // remounts the whole LevelSession — no manual state resets needed
     } else {
-      onOpenStore?.(); // or swap for level-select / next-level navigation later
+      //onOpenStore?.(); // or swap for level-select / next-level navigation later (!Remember to remove this.)
+      levelMaker.dismissRattyEvent();
+      setTimeout(() => {
+        onOpenStore?.();
+      }, 50)
     }
   };
 
@@ -250,7 +267,8 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
           />
         </View>
 
-        {/* 5. Conveyor belts — conveyorSpeed comes straight from LevelConfig */}
+        {/* 5. Conveyor belts — conveyorSpeed comes straight from LevelConfig.
+            gap spaces the rows apart. */}
         <View style={styles.conveyorGroup}>
           {BELT_ROWS.map((row) => (
             <ImageBackground
