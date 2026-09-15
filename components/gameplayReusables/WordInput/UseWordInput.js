@@ -12,7 +12,7 @@ import { DEFAULT_LEVEL_CONFIG } from './LevelConfig';
 export const DEFAULT_MAX_LETTERS = 5;
 
 /**
- * useWordInput(conveyorRefs, levelConfig?, maxLetters?)
+ * useWordInput(conveyorRefs, levelConfig?, maxLetters?, onSubmit?)
  * -----------------------------------------
  * The Word Input System. It sits *on top of* one or more ConveyorBelt
  * instances — passed in as an array of refs, one per belt/row — and only
@@ -25,13 +25,22 @@ export const DEFAULT_MAX_LETTERS = 5;
  * the belt keeps scrolling exactly as before, this hook just reacts to
  * what the player selects.
  *
+ * `onSubmit(result)` — optional. Called every time a word is submitted,
+ * whether that submit was manual (the caller's own submitWord() call) or
+ * automatic (belt filled to maxLetters, see the effect near the bottom
+ * of this file). This is the ONE place a submit can happen, so wiring
+ * scoring/patience off this callback instead of off a manual
+ * submitWord() call means an auto-submitted word scores and restores
+ * patience exactly the same as a manually-served one.
+ *
  * Returned API:
- *   currentWord   [{ id, character }]  in selection order
- *   lastResult    { word, valid, score } | null   result of the last submit
+ *   currentWord         [{ id, character }]  in selection order
+ *   lastResult          { word, valid, score } | null   result of the last submit
  *   selectLetter(letter, beltIndex)    call from a belt's onLetterPress
  *   handleKeyPress(char)               call from a keyboard listener
  *   submitWord()                       validate + score + reset
- *   resetWord()                        clear the current word without submitting
+ *   resetWord()                        clear the whole current word without submitting
+ *   removeLastLetter()                 undo just the most recently selected letter
  */
 export function useWordInput(
   conveyorRefs,
@@ -47,11 +56,6 @@ export function useWordInput(
   // stops this in the normal case — an inactive Letter doesn't render a
   // TouchableOpacity at all — this just covers the keyboard-input path.
   const selectedIdsRef = useRef(new Set());
-
-  const onSubmitRef = useRef(onSubmit);
-  useEffect(() => {
-    onSubmitRef.current = onSubmit;
-  }, [onSubmit]);
 
   const selectLetter = useCallback(
     (letter, beltIndex) => {
@@ -121,6 +125,21 @@ export function useWordInput(
     // a gameplay-design decision for later, not something assumed here.
   }, []);
 
+  // Undo just the last selected letter (e.g. a "⌫" button next to
+  // CurrentWordDisplay), rather than clearing the whole word like
+  // resetWord does. Same caveat as resetWord: the letter already played
+  // its "disappearing" animation on the belt and doesn't come back —
+  // this only frees the player to pick a different letter instead of
+  // the one they're undoing.
+  const removeLastLetter = useCallback(() => {
+    setCurrentWord((prev) => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      selectedIdsRef.current.delete(last.id);
+      return prev.slice(0, -1);
+    });
+  }, []);
+
   const submitWord = useCallback(() => {
     const word = currentWord.map((l) => l.character).join('');
     const valid = isValidWord(word);
@@ -133,9 +152,9 @@ export function useWordInput(
 
     setLastResult(result);
     resetWord();
-    onSubmitRef.current?.(result); // fires for BOTH manual submit and auto-fill submit
+    onSubmit?.(result); // <-- notifies the caller (e.g. GameplayScreen's handleWordSubmit)
     return result;
-  }, [currentWord, levelConfig, resetWord]);
+  }, [currentWord, levelConfig, resetWord, onSubmit]);
 
   // Auto-submit the moment the player fills every slot. This reuses
   // submitWord as-is, so a full word that isn't in the database gets the
@@ -156,6 +175,7 @@ export function useWordInput(
     handleKeyPress,
     submitWord,
     resetWord,
+    removeLastLetter,
     maxLetters,
   };
 }

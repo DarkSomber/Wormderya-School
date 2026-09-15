@@ -20,63 +20,53 @@ export function computeStars(finalScore, targetScore) {
   return 1;
 }
 
-export const useScoreSystem = (initialCurrency = 0) => {
+/**
+ * useScoreSystem(onCurrencyEarned)
+ * ----------------------------------
+ * Owns the IN-LEVEL score only. Currency used to live here too
+ * (playerCurrency), but it moved out to UseWallet.js — currency has to
+ * survive LevelSession remounts (retries, new levels) and trips to the
+ * Store, while score deliberately resets every attempt.
+ *
+ * onCurrencyEarned is how a correct word still reaches the wallet
+ * without this hook needing to know the wallet exists — GameplayScreen
+ * wires it to `() => wallet.addCurrency(CURRENCY_PER_WORD)`.
+ *
+ * @param {() => void} [onCurrencyEarned] - called once per valid word
+ */
+export const useScoreSystem = (onCurrencyEarned) => {
   const [score, setScore] = useState(0);
-  const [playerCurrency, setPlayerCurrency] = useState(initialCurrency);
 
-  /**
-   * Called whenever the word input system validates a correct word
-   * @param {string} word - The valid formed word submitted by the player
-   * @param {number} timeBonus - Multiplier or bonus based on speed
-   * @param {number} activeMultiplier - Upgrade/Power-up modifier, or the
-   *   active LevelConfig's scoreMultiplier — same param, either source
-   * @returns {number} points earned (0 if the word was invalid/too short)
-   */
   const addScoreFromWord = useCallback((word, timeBonus = 1, activeMultiplier = 1) => {
-    // Guard: per the game rules, anything shorter than 3 letters is invalid
-    // and shouldn't award points, and a missing word shouldn't crash scoring.
     if (!word || word.length < 3) return 0;
 
     const basePoints = 50; // flat +50 per correct word
     const earnedPoints = Math.round(basePoints * timeBonus * activeMultiplier);
 
     setScore((prevScore) => prevScore + earnedPoints);
-    setPlayerCurrency((prevCurrency) => prevCurrency + earnedPoints); // Currency used for Ratty shop
+    onCurrencyEarned?.(); // wallet lives above this hook now — see UseWallet.js
 
     return earnedPoints;
-  }, []);
+  }, [onCurrencyEarned]);
 
   const deductScore = useCallback((amount) => {
     setScore((prev) => Math.max(0, prev - amount));
   }, []);
 
-  /**
-   * Resets the in-level score (e.g. when the player hits "Retry level"
-   * on the Lose Screen) WITHOUT touching playerCurrency, since currency
-   * is meant to persist between attempts/levels.
-   */
   const resetLevelScore = useCallback(() => {
     setScore(0);
   }, []);
 
-  /**
-   * Star rating for the CURRENT score against a given targetScore
-   * (usually levelConfig.targetScore). Recomputes on every call rather
-   * than being stored in state, since it's always fully derived from
-   * `score` — nothing to get out of sync.
-   */
   const getStarRating = useCallback((targetScore) => {
     return computeStars(score, targetScore);
   }, [score]);
 
   return {
     score,
-    playerCurrency,
     addScoreFromWord,
     deductScore,
     resetLevelScore,
     getStarRating,
     setScore,
-    setPlayerCurrency, // exposed so the Ratty/store screen can spend currency
   };
 };

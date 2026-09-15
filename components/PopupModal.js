@@ -1,25 +1,30 @@
 import React from 'react';
 import { StyleSheet, View, Text, Modal, TouchableOpacity } from 'react-native';
 
-export default function PopupModal({ 
-  visible, 
-  title, 
-  message, 
+export default function PopupModal({
+  visible,
+  title,
+  message,
   extraMessage,
   score,
-  buttonText, 
+  buttonText,
   buttonColor = '#FFE194', // Default color
-  onPress 
+  onPress,
+  // Optional second button — omit cancelText/onCancel to keep the
+  // original single-button behavior (every existing caller still works
+  // unchanged). Pass both to get a "Never mind" style second option.
+  cancelText,
+  onCancel,
 }) {
   return (
     <Modal
       visible={visible}
       transparent={true}
-      onRequestClose={onPress}
+      onRequestClose={onCancel ?? onPress}
     >
       <View style={styles.overlay}>
         <View style={styles.card}>
-          
+
           {/* Header Title */}
           <Text style={styles.title}>{title}</Text>
 
@@ -42,13 +47,24 @@ export default function PopupModal({
                </View>
             )}
 
-          {/* Action Button */}
-          <TouchableOpacity 
-            style={[styles.button, { backgroundColor: buttonColor }]} 
-            onPress={onPress}
-          >
-            <Text style={styles.buttonText}>{buttonText}</Text>
-          </TouchableOpacity>
+          {/* Action Button(s) */}
+          <View style={styles.buttonRow}>
+            {cancelText && onCancel ? (
+              <TouchableOpacity
+                style={[styles.button, styles.cancelButton]}
+                onPress={onCancel}
+              >
+                <Text style={styles.buttonText}>{cancelText}</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: buttonColor }]}
+              onPress={onPress}
+            >
+              <Text style={styles.buttonText}>{buttonText}</Text>
+            </TouchableOpacity>
+          </View>
 
         </View>
       </View>
@@ -120,6 +136,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
   button: {
     borderWidth: 2,
     borderColor: '#000',
@@ -128,7 +149,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     minWidth: 100,
     alignItems: 'center',
-    marginTop: 4,
+  },
+  cancelButton: {
+    backgroundColor: '#E0E0E0',
   },
   buttonText: {
     fontSize: 14,
