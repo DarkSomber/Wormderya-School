@@ -131,6 +131,20 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
     tickRef.current();
   }, [letters, translateX, isPaused]);
 
+  const isFirstRender = useRef(true);
+  useLayoutEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    // The rotated letters just committed and are pixel-identical to where
+    // the tween ended, so snapping translateX back to 0 here, in the same
+    // paint, is what makes the snap invisible and the belt read as one
+    // continuous, wrapping motion instead of a twitch.
+    translateX.setValue(0);
+    tickRef.current();
+  }, [letters, translateX]);
+
   const removeLetterById = useCallback((id) => {
     setLetters((prev) =>
       prev.map((l) =>

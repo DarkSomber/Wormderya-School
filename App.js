@@ -43,6 +43,9 @@ export default function App() {
   const openStore = () => { console.log('[App] openStore called'); setShowStore(true); };
   const closeStore = () => setShowStore(false);
 
+  // Switch between 'gameplay' and 'store'
+  const [currentScreen, setCurrentScreen] = useState('gameplay');
+  // Change SCREENS.MOVE to SCREEN.PLACEHOLDER_GAMEPLAY to switch to the placeholder screen
   const [showRushHour, setShowRushHour] = useState(false);
   const [showQuit, setShowQuit] = useState(false);
 
@@ -52,9 +55,22 @@ export default function App() {
   const wallet = useWallet(0);
 
   const renderCurrentScreen = () => {
-    switch (screen) {
-      case SCREENS.SPLASH:
-        return <SplashScreen onFinish={() => setScreen(SCREENS.HOME)} />;
+  switch (screen) {
+    case SCREENS.SPLASH:
+      return <SplashScreen onFinish={() => setScreen(SCREENS.HOME)} />;
+
+    case SCREENS.MODE_SELECT:
+      return (
+        <ModeSelectScreen
+          onSelectStoryMode={() => setScreen(SCREENS.LEVEL_SELECT)}
+          onSelectRushHour={() => {
+            // TODO: navigate into Rush Hour Mode gameplay
+            setShowRushHour(true)
+            console.log("Rush Hour Mode selected");
+          }}
+          onBack={() => setScreen(SCREENS.HOME)}
+        />
+      );
 
       case SCREENS.MODE_SELECT:
         return (

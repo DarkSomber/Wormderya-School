@@ -64,9 +64,7 @@ export function useLevelMaker(levelConfig) {
 
     const intervalId = setInterval(() => {
       if (completeRef.current) return;
-      console.log('[Ratty] rolling...', levelConfig.rattySpawnRate);
       if (Math.random() < levelConfig.rattySpawnRate) {
-        console.log('[Ratty] HIT — showRattyEvent → true');
         setShowRattyEvent(true);
       }
     }, levelConfig.rattyCheckIntervalMs);

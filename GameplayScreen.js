@@ -3,9 +3,9 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, Image, ImageBackground, TouchableOpacity } from 'react-native';
 import { ConveyorBelt } from './components/gameplayReusables/ConveyorBelt';
 import { useWordInput, CurrentWordDisplay } from './components/gameplayReusables/WordInput';
-import CustomerMood from './components/gameplayReusables/CustomerMood';
-import LevelTimer from './components/gameplayReusables/LevelTimer';
-import { useScoreSystem } from './components/gameplayReusables/UseScoreSystem';
+import CustomerMood from './CustomerMood';
+import LevelTimer from './LevelTimer';
+import { useScoreSystem } from './UseScoreSystem';
 import MrRattyDiscount from './MrRattyDiscount';
 
 import { LEVEL_1_CONFIG } from './levels/levelPresets';
