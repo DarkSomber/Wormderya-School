@@ -1,12 +1,13 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useImperativeHandle,
   useRef,
   useState,
   forwardRef,
 } from 'react';
-import { Animated, View, StyleSheet } from 'react-native';
+import { Animated, View, StyleSheet, Easing } from 'react-native';
 import Letter from './Letter';
 import { DEFAULT_CONVEYOR_CONFIG } from './Conveyorconfig';
 import { pickRandomLetter } from './Letterpool';
@@ -40,9 +41,9 @@ function makeLetter(pool) {
  * whole row left by exactly one slot's width over `slotDurationMs`. When
  * that finishes, the buffer letter has scrolled fully into view. We then
  * rotate the data (drop the letter that just scrolled off the left, spawn
- * a fresh buffer letter) and snap translateX back to 0 — since the
- * rotated layout is pixel-identical to where the tween ended, the snap is
- * invisible and the belt reads as one continuous, wrapping motion.
+ * a fresh buffer letter) and snap translateX back to 0 inside useLayoutEffect — 
+ * since the rotated layout is pixel-identical to where the tween ended, 
+ * the snap is invisible and the belt reads as one continuous, wrapping motion.
  */
 const ConveyorBelt = forwardRef(function ConveyorBelt(
   { config: configOverride, style, onLetterPress },
@@ -58,6 +59,7 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
 
   const translateX = useRef(new Animated.Value(0)).current;
   const runningRef = useRef(true);
+  const tickRef = useRef(() => {});
 
   const rotateLetters = useCallback(() => {
     setLetters((prev) => {
@@ -71,18 +73,25 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
 
     const tick = () => {
       if (!runningRef.current) return;
-      translateX.setValue(0);
       Animated.timing(translateX, {
         toValue: direction === 'rtl' ? slotWidth : -slotWidth,
         duration: slotDurationMs,
+        // Linear so the belt keeps one constant speed across the whole
+        // slot instead of easing in/out at every rotation.
+        easing: Easing.linear,
         useNativeDriver: true,
       }).start(({ finished }) => {
         if (!finished || !runningRef.current) return;
+        // Don't reset translateX or start the next tween here — do that
+        // in the layout effect below, once the rotated letters have
+        // actually committed. Resetting here first shows the *old*
+        // letters snapped back to their starting position for a frame
+        // before React catches up — that's the twitch.
         rotateLetters();
-        tick();
       });
     };
 
+    tickRef.current = tick;
     tick();
 
     return () => {
@@ -90,6 +99,20 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
       translateX.stopAnimation();
     };
   }, [translateX, slotWidth, slotDurationMs, direction, rotateLetters]);
+
+  const isFirstRender = useRef(true);
+  useLayoutEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    // The rotated letters just committed and are pixel-identical to where
+    // the tween ended, so snapping translateX back to 0 here, in the same
+    // paint, is what makes the snap invisible and the belt read as one
+    // continuous, wrapping motion instead of a twitch.
+    translateX.setValue(0);
+    tickRef.current();
+  }, [letters, translateX]);
 
   const removeLetterById = useCallback((id) => {
     setLetters((prev) =>

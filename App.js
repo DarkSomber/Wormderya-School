@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { View, StyleSheet} from "react-native";
 import SplashScreen from "./screens/SplashScreen";
 import HomeScreen from "./screens/HomeScreen";
 import ModeSelectScreen from "./screens/ModeSelectScreen";
@@ -32,10 +33,10 @@ const SCREENS = {
 };
 
 export default function App() {
+  const [screen, setScreen] = useState(SCREENS.SPLASH);
   // Switch between 'gameplay' and 'store'
   const [currentScreen, setCurrentScreen] = useState('gameplay');
   // Change SCREENS.MOVE to SCREEN.PLACEHOLDER_GAMEPLAY to switch to the placeholder screen
-  const [screen, setScreen] = useState(SCREENS.MOVE);
   const [showRushHour, setShowRushHour] = useState(false);
   const [showQuit, setShowQuit] = useState(false);
 
