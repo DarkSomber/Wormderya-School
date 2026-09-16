@@ -30,7 +30,8 @@ const SCREENS = {
   GAMEPLAY: "GAMEPLAY",
 };
 
-export default function App() {
+//ScreenSwitcher() holds the logic for switching between screens.
+function ScreenSwitcher() {
   const [screen, setScreen] = useState(SCREENS.SPLASH);
 
   // The Store is now an OVERLAY, not a separate `screen` value. It used
@@ -44,7 +45,7 @@ export default function App() {
   const closeStore = () => setShowStore(false);
 
   // Switch between 'gameplay' and 'store'
-  const [currentScreen, setCurrentScreen] = useState('gameplay');
+  const [currentScreen, setCurrentScreen] = useState("gameplay");
   // Change SCREENS.MOVE to SCREEN.PLACEHOLDER_GAMEPLAY to switch to the placeholder screen
   const [showRushHour, setShowRushHour] = useState(false);
   const [showQuit, setShowQuit] = useState(false);
@@ -163,10 +164,23 @@ export default function App() {
         onDismiss={() => setShowRushHour(false)}
       />
 
-      <QuitModal
-        visible={showQuit}
-        onQuit={() => setShowQuit(false)}
-      />
+      <QuitModal visible={showQuit} onQuit={() => setShowQuit(false)} />
+    </View>
+  );
+}
+
+export default function App() {
+  // On native (Expo Go / a real build) this renders full-screen as normal —
+  // the phone's own screen IS the frame, so no extra wrapper is needed.
+  if (Platform.OS !== "web") {
+    return <ScreenSwitcher />;
+  }
+
+  return (
+    <View style={styles.webBackdrop}>
+      <View style={styles.webPhoneFrame}>
+        <ScreenSwitcher />
+      </View>
     </View>
   );
 }

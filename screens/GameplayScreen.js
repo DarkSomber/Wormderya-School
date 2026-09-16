@@ -92,16 +92,19 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
 
   // Fires once per submitted word — whether it was auto-submitted (belt
   // filled to maxLetters) or manually served via the Plate button.
-  const handleWordSubmit = useCallback((result) => {
-    if (result.valid) {
-      addScoreFromWord(result.word, 1, levelConfig.scoreMultiplier);
-      customerRef.current?.restorePatience(100);
-      levelMaker.registerServedWord();
-    } else if (result.word.length > 0) {
-      deductScore(10);
-      customerRef.current?.applyWrongWordPenalty();
-    }
-  }, [addScoreFromWord, deductScore, levelConfig.scoreMultiplier, levelMaker]);
+  const handleWordSubmit = useCallback(
+    (result) => {
+      if (result.valid) {
+        addScoreFromWord(result.word, 1, levelConfig.scoreMultiplier);
+        customerRef.current?.restorePatience(100);
+        levelMaker.registerServedWord();
+      } else if (result.word.length > 0) {
+        deductScore(10);
+        customerRef.current?.applyWrongWordPenalty();
+      }
+    },
+    [addScoreFromWord, deductScore, levelConfig.scoreMultiplier, levelMaker],
+  );
 
   // Map the wide LevelConfig down to the narrow shape useWordInput/
   // ConveyorBelt already expect.
@@ -112,14 +115,14 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
       wordRules: { minLength: levelConfig.wordDifficulty.minLength },
     },
     levelConfig.maxLettersOnBelt,
-    handleWordSubmit
+    handleWordSubmit,
   );
 
   // null | 'win' | 'lose'
   const [levelResult, setLevelResult] = useState(null);
 
   const handleLevelEnd = useCallback((won) => {
-    setLevelResult((prev) => prev ?? (won ? 'win' : 'lose')); // ignore if already ended
+    setLevelResult((prev) => prev ?? (won ? "win" : "lose")); // ignore if already ended
   }, []);
 
   // Win path #1: clock hits 0 with enough score (LevelTimer calls this).
@@ -146,10 +149,10 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
     wordInput.submitWord(); // scoring/patience handled by handleWordSubmit via onSubmit
   };
 
-  const handleIntroComplete = () => setPhase('playing');
+  const handleIntroComplete = () => setPhase("playing");
 
   const handleEndComplete = () => {
-    if (levelResult === 'lose') {
+    if (levelResult === "lose") {
       onRetry(); // remounts the whole LevelSession — no manual state resets needed
     } else {
       //onOpenStore?.(); // or swap for level-select / next-level navigation later (!Remember to remove this.)
@@ -163,18 +166,23 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
   // Once the level actually ends, flip to the 'end' phase so
   // LevelEndSequence takes over rendering.
   useEffect(() => {
-    if (levelResult) setPhase('end');
+    if (levelResult) setPhase("end");
   }, [levelResult]);
 
-  if (phase === 'intro') {
-    return <LevelIntroSequence levelConfig={levelConfig} onComplete={handleIntroComplete} />;
+  if (phase === "intro") {
+    return (
+      <LevelIntroSequence
+        levelConfig={levelConfig}
+        onComplete={handleIntroComplete}
+      />
+    );
   }
 
-  if (phase === 'end') {
+  if (phase === "end") {
     return (
       <LevelEndSequence
         levelConfig={levelConfig}
-        won={levelResult === 'win'}
+        won={levelResult === "win"}
         finalScore={score}
         onComplete={handleEndComplete}
       />
@@ -184,10 +192,9 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
   return (
     <View style={styles.screenWrapper}>
       <View style={styles.container}>
-
         {/* 1. HEADER BANNER */}
         <ImageBackground
-          source={require('../assets/Placeholder/TopBoard.png')}
+          source={require("../assets/Placeholder/TopBoard.png")}
           style={styles.headerBackground}
           resizeMode="stretch"
         >
@@ -219,7 +226,7 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
             not just full-session retries. */}
         <View style={styles.customerBox}>
           <Image
-            source={require('../assets/Placeholder/SampleCustomer_1.png')}
+            source={require("../assets/Placeholder/SampleCustomer_1.png")}
             style={styles.characterDog}
           />
           <CustomerMood
@@ -238,18 +245,24 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
 
         {/* 3. Table / plate — serves the current word */}
         <ImageBackground
-          source={require('../assets/Placeholder/Table.png')}
+          source={require("../assets/Placeholder/Table.png")}
           style={styles.table}
-          resizeMode='stretch'
+          resizeMode="stretch"
         >
           <TouchableOpacity onPress={handleServePlate} activeOpacity={0.7}>
-            <Image source={require('../assets/Placeholder/Plate.png')} style={styles.plate} />
+            <Image
+              source={require("../assets/Placeholder/Plate.png")}
+              style={styles.plate}
+            />
           </TouchableOpacity>
         </ImageBackground>
 
         {/* 4. Chef */}
         <View style={styles.chefBar}>
-          <Image source={require('../assets/Placeholder/WormProtagonist_1.png')} style={styles.characterChef} />
+          <Image
+            source={require("../assets/Placeholder/WormProtagonist_1.png")}
+            style={styles.characterChef}
+          />
         </View>
 
         {/* 5. Conveyor belts — conveyorSpeed comes straight from LevelConfig.
@@ -258,7 +271,7 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
           {BELT_ROWS.map((row) => (
             <ImageBackground
               key={row}
-              source={require('../assets/Placeholder/Conveyor.png')}
+              source={require("../assets/Placeholder/Conveyor.png")}
               style={styles.conveyor}
               resizeMode="stretch"
             >
@@ -293,8 +306,13 @@ const styles = StyleSheet.create({
   /* 1 the screen thingy */
   screenWrapper: { flex: 1, backgroundColor: '#222', alignItems: 'center', justifyContent: 'center' },
   container: {
-    flex: 1, width: '100%', maxWidth: 420, backgroundColor: '#b87b4e',
-    alignItems: 'center', paddingVertical: 0, paddingHorizontal: 0,
+    flex: 1,
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: "#b87b4e",
+    alignItems: "center",
+    paddingVertical: 0,
+    paddingHorizontal: 0,
   },
   headerBackground: {
     width: '105%', flex: 130, flexDirection: 'row', //the width: 105% is a temp fix please fix this
@@ -309,8 +327,13 @@ const styles = StyleSheet.create({
   patienceMeter: { width: 94, height: 130, marginTop: -80, resizeMode: 'contain' },
 
   table: {
-    width: '100%', flex: 150, marginTop: -60, zIndex: 2,
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    width: "100%",
+    flex: 150,
+    marginTop: -60,
+    zIndex: 2,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
   plate: { width: 60, height: 60 },
 
