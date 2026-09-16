@@ -14,12 +14,7 @@ import QuitModal from './components/QuitModal';
 import RushHourModal from './screens/RushHourModal';
 import StoreScreen from './screens/StoreScreen';
 
-/**
- * Very small hand-rolled screen switcher so this demo doesn't require
- * pulling in React Navigation. Swap this for a real navigator
- * (e.g. @react-navigation/native-stack) whenever you're ready — each
- * screen's props map directly onto navigation actions.
- */
+// Manual screeen switchhing, react navigation willbeinputted later
 const SCREENS = {
   SPLASH: "SPLASH",
   HOME: "HOME",
@@ -45,7 +40,7 @@ function ScreenSwitcher() {
   const closeStore = () => setShowStore(false);
 
   // Switch between 'gameplay' and 'store'
-  const [currentScreen, setCurrentScreen] = useState("gameplay");
+  const [currentScreen, setCurrentScreen] = useState("gameplay");//For testing purposes
   // Change SCREENS.MOVE to SCREEN.PLACEHOLDER_GAMEPLAY to switch to the placeholder screen
   const [showRushHour, setShowRushHour] = useState(false);
   const [showQuit, setShowQuit] = useState(false);
@@ -153,7 +148,7 @@ function ScreenSwitcher() {
         {showStore && (
           <Modal>
             <View style={styles.overlay}>
-              <StoreScreen onBack={closeStore} wallet={wallet} />
+              <StoreScreen onBack={closeStore} wallet={wallet} onGoToLevelSelect={() => {closeStore(); setScreen(SCREENS.LEVEL_SELECT);}} />
             </View>
           </Modal>
         )}

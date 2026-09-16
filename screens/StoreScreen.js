@@ -36,7 +36,7 @@ const ALL_ITEM_IDS = SHOP_ITEMS.map((item) => item.id);
  * unmounted/remounted on every trip to/from Gameplay, and currency +
  * discount/inflate marks need to survive that.
  */
-export default function StoreScreen({ onBack, wallet }) {
+export default function StoreScreen({ onBack, wallet, onGoToLevelSelect}) {
   // null = hidden | 'inflate' = price rise | 'discount' = price drop
   const [rattyOutcome, setRattyOutcome] = useState(null);
 
@@ -169,7 +169,9 @@ export default function StoreScreen({ onBack, wallet }) {
       <ShopOutcomeModal
         visible={rattyOutcome !== null}
         outcome={rattyOutcome}
-        onDismiss={() => setRattyOutcome(null)}
+        onDismiss={() => {setRattyOutcome(null);
+          onGoToLevelSelect();
+        }}
       />
     </View>
   );
@@ -196,13 +198,13 @@ const styles = StyleSheet.create({
   // rest of the app uses for "leave this screen").
   backButtonWrapper: {
     position: 'absolute',
-    top: 20,
-    left: 15,
+    top: -18,
+    left: 5,
     zIndex: 10,
   },
   backButtonIcon: {
-    width: 60,
-    height: 36,
+    width: 100,
+    height: 100,
     resizeMode: 'contain',
   },
 
@@ -226,14 +228,14 @@ const styles = StyleSheet.create({
   shopPanel: {
     width: '100%',
     height: 430,
-    marginRight: 15,
+    marginRight: 20,
     paddingVertical: 25,         // Adds comfortable top & bottom padding inside board
-    paddingHorizontal: 15,
+    paddingHorizontal: 1,
     alignItems: 'center',
     borderRadius: 8,
     justifyContent: 'space-between',
     // Negative margin pulls the board UP to overlap Mr. Ratty's lower body
-    marginTop: -67,
+    marginTop: -100, 
     // Explicit low zIndex so this panel (and its Buy button) can never
     // render/receive-touches above sibling elements below it, like the
     // Decline button.
@@ -338,8 +340,8 @@ const styles = StyleSheet.create({
   },
   backButtonImage: {
     width: '100%',
-    height: 80,
+    height: 60,
     resizeMode: 'contain',
-    marginTop: 12,
+    marginTop: 2,
   },
 });
