@@ -25,6 +25,7 @@ const LEVELS = [
     width: 165,
     height: 105,
     image: require("../assets/Final/levels/Level-2-Logo.png"),
+    locked: true, //notice this is a temporary  fix and can be used on other features
   },
   {
     id: 3,
@@ -32,6 +33,7 @@ const LEVELS = [
     width: 135,
     height: 95,
     image: require("../assets/Final/levels/Level-3-Logo.png"),
+    locked: true, //notice this is a temporary  fix and can be used on other features
   },
   {
     id: 4,
@@ -39,6 +41,7 @@ const LEVELS = [
     width: 190,
     height: 150,
     image: require("../assets/Final/levels/Level-4-Logo.png"),
+    locked: true, //notice this is a temporary  fix and can be used on other features
   }, // e.g. a bigger "boss" node
 ];
 
@@ -72,7 +75,7 @@ export default function LevelSelectScreen({
             <LevelButton
               width={lvl.width}
               height={lvl.height}
-              locked={lockedLevels.includes(lvl.id)}
+              locked={lvl.locked || lockedLevels.includes(lvl.id)}
               onPress={() => onSelectLevel && onSelectLevel(lvl.id)}
               backgroundImage={lvl.image}
             />
@@ -123,7 +126,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 20,
-    paddingBottom: 32,
+    paddingBottom: 50,
     alignItems: "center",
   },
   backButton: {
