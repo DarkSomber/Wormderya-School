@@ -16,7 +16,7 @@ export const LEVEL_1_CONFIG = createLevelConfig({
   totalCustomers: 1,//For testing | original num is 3
   wordsPerCustomer: 1,//For testing | original num is 2
   scoreMultiplier: 1,
-  rattySpawnRate: 0.10,
+  rattySpawnRate: 0.0,//
   wordDifficulty: { minLength: 3, maxLength: 5 },
 });
 

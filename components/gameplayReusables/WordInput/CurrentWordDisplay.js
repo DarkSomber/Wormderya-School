@@ -142,7 +142,7 @@ export default function CurrentWordDisplay({
         >
           {lastResult.valid
             ? `${lastResult.word} — +${lastResult.score}`
-            : `${lastResult.word || '(empty)'} — not a word`}
+            : `${lastResult.word || '(empty)'} — Not a word/No Letters`}
         </Animated.Text>
       ) : null}
     </View>
