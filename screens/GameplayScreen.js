@@ -33,11 +33,7 @@ const CONVEYOR_ROW_GAP = 10; // vertical space between conveyor rows
  * "error from last round" state to reappear after Retry. A full
  * component remount can't miss a hook the way manual resets can.
  */
-export default function GameplayScreen({
-  onOpenStore,
-  onBack,
-  levelConfig = LEVEL_1_CONFIG,
-}) {
+export default function GameplayScreen({ onOpenStore, onBack, isStoreOpen, levelConfig = LEVEL_1_CONFIG }) {
   const [sessionId, setSessionId] = useState(0);
 
   const handleRetry = useCallback(() => {
@@ -79,8 +75,8 @@ export default function GameplayScreen({
  *   LevelEndSequence (levels/IntroEndSequence.js) --------- shows final score/stars,
  *                                                            calls onRetry() or onOpenStore()
  */
-function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
-  const [phase, setPhase] = useState("intro"); // 'intro' | 'playing' | 'end'
+function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }) {
+  const [phase, setPhase] = useState('intro'); // 'intro' | 'playing' | 'end'
 
   // One ref per conveyor row.
   const beltRef0 = useRef(null);
@@ -202,14 +198,16 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
           style={styles.headerBackground}
           resizeMode="stretch"
         >
-          <Image
-            source={require("../assets/Placeholder/QuitButton.png")}
-            style={styles.quitButton}
-          />
-          <Image
-            source={require("../assets/Placeholder/pixel_coins.png")}
-            style={styles.moneyIcon}
-          />
+          {/*<Image source={require('../assets/Placeholder/QuitButton.png')} style={styles.quitButton} />*/
+          /*This is a temporary fix for the text inside the exit, fix the template first hand*/}
+          <TouchableOpacity onPress={onBack} activeOpacity={0.7}>
+            <Image source={require('../assets/Placeholder/QuitButton.png')} style={styles.quitButton}/>
+              <Text style={{ position: 'absolute', top: 12, left: 35, color: 'red', fontSize: 20 }}> 
+                Return
+              </Text>
+          </TouchableOpacity>
+
+          {/*<Image source={require('../assets/Placeholder/pixel_coins.png')} style={styles.moneyIcon} /> removed for further fixings */}
         </ImageBackground>
 
         {/* Timer — paused while Mr. Ratty's popup is up, or once the
@@ -305,13 +303,8 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry }) {
 }
 
 const styles = StyleSheet.create({
-  /* 1 */
-  screenWrapper: {
-    flex: 1,
-    backgroundColor: "#222",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  /* 1 the screen thingy */
+  screenWrapper: { flex: 1, backgroundColor: '#222', alignItems: 'center', justifyContent: 'center' },
   container: {
     flex: 1,
     width: "100%",
@@ -322,32 +315,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   headerBackground: {
-    width: "100%",
-    flex: 130,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 15,
+    width: '105%', flex: 130, flexDirection: 'row', //the width: 105% is a temp fix please fix this
+    justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15,
   },
-  quitButton: { width: 90, height: 55, resizeMode: "contain" },
-  moneyIcon: { width: 40, height: 40, resizeMode: "contain" },
+  quitButton: { width: 90, height: 55, resizeMode: 'contain', left: 20 },
+  moneyIcon: { width: 40, height: 40, resizeMode: 'contain' },
 
-  /* 2 */
-  customerBox: {
-    flex: 150,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 15,
-    paddingHorizontal: 15,
-  },
-  characterDog: { width: 160, height: 160, resizeMode: "contain" },
-  patienceMeter: {
-    width: 94,
-    height: 130,
-    marginTop: -80,
-    resizeMode: "contain",
-  },
+  /* 2 Customer Area*/
+  customerBox: { flex: 150, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 15, paddingHorizontal: 15 },
+  characterDog: { width: 160, height: 160, resizeMode: 'contain' },
+  patienceMeter: { width: 94, height: 130, marginTop: -80, resizeMode: 'contain' },
 
   table: {
     width: "100%",
@@ -360,24 +337,11 @@ const styles = StyleSheet.create({
   },
   plate: { width: 60, height: 60 },
 
-  /* 4 */
-  chefBar: {
-    flex: 130,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 20,
-    paddingHorizontal: 15,
-  },
-  characterChef: { width: 115, height: 115, resizeMode: "contain" },
+  /* 4 Chef Bar*/
+  chefBar: { flex: 130, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 15,  },
+  characterChef: { width: 115, height: 115, resizeMode: 'contain', left: 125, bottom: 30 },
 
-  /* 5 */
-  conveyorGroup: { width: "100%", flex: 240, flexDirection: "column" },
-  conveyor: {
-    width: "100%",
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  /* 5 Conveyor area — gap adds breathing room between the 3 rows. */
+  conveyorGroup: { width: '100%', flex: 240, flexDirection: 'column', gap: CONVEYOR_ROW_GAP, bottom: 50 },
+  conveyor: { width: '100%', flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
 });
