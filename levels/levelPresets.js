@@ -10,11 +10,11 @@ import { createLevelConfig } from './LevelConfig';
 export const LEVEL_1_CONFIG = createLevelConfig({
   id: 'level-1',
   title: 'Level 1 — Warm Up',
-  conveyorSpeed: 1000, //For testing | original num is 1300
-  targetScore: 50,//For testing | original num is 150
-  timeLimitSeconds: 60, //For testing | original num is 180 or 3 minutes
-  totalCustomers: 1,//For testing | original num is 3
-  wordsPerCustomer: 1,//For testing | original num is 2
+  conveyorSpeed: 1600,
+  targetScore: 200,
+  timeLimitSeconds: 60,
+  totalCustomers: 3,
+  wordsPerCustomer: 2,
   scoreMultiplier: 1,
   rattySpawnRate: 0.10,
   wordDifficulty: { minLength: 3, maxLength: 5 },

@@ -26,7 +26,7 @@ export const LEVEL_CONFIG_DEFAULTS = {
 
   // --- Conveyor / Word Input ---
   conveyorSpeed: 1400,     // ms per slot -> ConveyorBelt config.slotDurationMs
-  maxLettersOnBelt: 6,     // ConveyorBelt config.maxLetters / useWordInput's maxLetters
+  maxLettersOnBelt: 5,     // ConveyorBelt config.maxLetters / useWordInput's maxLetters
   letterPool: null,        // -> ConveyorBelt config.letterPool. null = inherit
                             //    ConveyorBelt's own DEFAULT_LETTER_POOL; set an
                             //    array (e.g. ['A','B','K',...]) on a level to

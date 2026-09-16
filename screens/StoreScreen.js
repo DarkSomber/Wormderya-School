@@ -145,18 +145,8 @@ export default function StoreScreen({ onBack, wallet }) {
           </TouchableOpacity>
         </ImageBackground>
 
-        {/* 4. BOTTOM "NO THANK YOU!" BUTTON — declines the whole offer.
-            Wrapped + given an explicit zIndex/elevation so it can never
-            get shadowed by shopPanel's negative marginTop overlap above
-            it (that overlap was letting shopPanel/Buy's touch area steal
-            taps meant for this button, which made Decline silently fire
-            handleBuy instead — the actual cause of "always discount"). */}
-        <TouchableOpacity
-          onPress={handleDecline}
-          activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={styles.declineButtonWrapper}
-        >
+        {/* 4. BOTTOM "NO THANK YOU!" BUTTON — declines the whole offer */}
+        <TouchableOpacity onPress={handleDecline}>
           <Image
             source={require('../assets/Placeholder/DeclineButton.png')}
             style={styles.backButtonImage}
@@ -234,10 +224,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     // Negative margin pulls the board UP to overlap Mr. Ratty's lower body
     marginTop: -67,
-    // Explicit low zIndex so this panel (and its Buy button) can never
-    // render/receive-touches above sibling elements below it, like the
-    // Decline button.
-    zIndex: 1,
   },
   coinHeader: {
     flexDirection: 'row',
@@ -331,11 +317,6 @@ const styles = StyleSheet.create({
   },
 
   // 4. "NO THANK YOU!" BUTTON (declines Mr. Ratty's offer, stays on this screen)
-  declineButtonWrapper: {
-    width: '100%',
-    zIndex: 20,
-    elevation: 20, // Android needs elevation as well as zIndex to win touch priority
-  },
   backButtonImage: {
     width: '100%',
     height: 80,

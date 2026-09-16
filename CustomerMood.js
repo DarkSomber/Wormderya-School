@@ -1,9 +1,9 @@
 import React, { forwardRef, useState, useEffect, useRef, useImperativeHandle } from 'react';
 import { Image, StyleSheet } from 'react-native';
 
-const MOOD_HAPPY = require('../../assets/Placeholder/CustomerPatienceBar_Happy.png');
-const MOOD_IMPATIENT = require('../../assets/Placeholder/CustomerPatienceBar_Impatient.png');
-const MOOD_ANGRY = require('../../assets/Placeholder/CustomerPatienceBar_Angry.png');
+const MOOD_HAPPY = require('./assets/Placeholder/CustomerPatienceBar_Happy.png');
+const MOOD_IMPATIENT = require('./assets/Placeholder/CustomerPatienceBar_Impatient.png');
+const MOOD_ANGRY = require('./assets/Placeholder/CustomerPatienceBar_Angry.png');
 
 function getMoodImageSource(patience) {
   if (patience > 70) return MOOD_HAPPY;
@@ -11,16 +11,12 @@ function getMoodImageSource(patience) {
   return MOOD_ANGRY;
 }
 
-const CustomerMood = forwardRef(({ maxPatience = 100, decayRateMs = 4000, onCustomerLeft, onPatienceChange, style, isPaused = false }, ref) => {
+const CustomerMood = forwardRef(({ maxPatience = 100, decayRateMs = 4000, onCustomerLeft, onPatienceChange, style }, ref) => {
   const [patience, setPatience] = useState(maxPatience);
   const hasLeftRef = useRef(false);
 
-  // Passive patience decay over time. Skipped entirely while isPaused —
-  // no interval is even created, so there's nothing to accidentally let
-  // tick in the background while e.g. the Store or Pause menu is open.
+  // Passive patience decay over time.
   useEffect(() => {
-    if (isPaused) return undefined;
-
     const intervalId = setInterval(() => {
       setPatience((prev) => {
         if (prev <= 0) {
@@ -32,7 +28,7 @@ const CustomerMood = forwardRef(({ maxPatience = 100, decayRateMs = 4000, onCust
     }, decayRateMs);
 
     return () => clearInterval(intervalId);
-  }, [decayRateMs, isPaused]);
+  }, [decayRateMs]);
 
   // Fires onCustomerLeft exactly once, the moment patience hits 0.
   useEffect(() => {

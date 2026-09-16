@@ -25,7 +25,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
  *   registerServedWord()     call once per word useScoreSystem accepted
  *   dismissRattyEvent()      call when the Ratty modal is closed
  */
-export function useLevelMaker(levelConfig, isPaused = false) {
+export function useLevelMaker(levelConfig) {
   const [customerIndex, setCustomerIndex] = useState(0);
   const [wordsServedForCustomer, setWordsServedForCustomer] = useState(0);
   const [isLevelComplete, setIsLevelComplete] = useState(false);
@@ -57,26 +57,6 @@ export function useLevelMaker(levelConfig, isPaused = false) {
     });
   }, [levelConfig.wordsPerCustomer, levelConfig.totalCustomers]);
 
-
-  //used for ratty pausing game
-  useEffect(() => {
-    if (!levelConfig.rattySpawnRate || isPaused) return undefined;
-
-    const intervalId = setInterval(() => {
-      if (completeRef.current) return;
-      if (Math.random() < levelConfig.rattySpawnRate) {
-        setShowRattyEvent(true);
-      }
-    }, levelConfig.rattyCheckIntervalMs);
-
-    return () => clearInterval(intervalId);
-  }, [levelConfig.rattySpawnRate, levelConfig.rattyCheckIntervalMs, isPaused]);
-
-  //Stop basically silence timer
-  const stop = useCallback(() => {
-    completeRef.current = true;
-  }, []);
-
   // Mr. Ratty's random check-in timer. Cleared/restarted only if the
   // config's own rate/interval change, not on every render.
   useEffect(() => {
@@ -101,6 +81,5 @@ export function useLevelMaker(levelConfig, isPaused = false) {
     showRattyEvent,
     registerServedWord,
     dismissRattyEvent,
-    stop,
   };
 }
