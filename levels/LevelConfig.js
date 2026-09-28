@@ -6,8 +6,7 @@
  * can be created, copied, and passed around freely — including outside
  * of any component tree, e.g. in a level-select list.
  *
- * NOTE: this is a DIFFERENT, wider config than
- * components/gameplayReusables/WordInput/LevelConfig.js, which only
+ * NOTE: wider config than components/gameplayReusables/WordInput/LevelConfig.js, which only
  * covers scoreMultiplier + wordRules for the Word Input System. This
  * file is the level-wide superset — GameplayScreen maps the relevant
  * slice of it into useWordInput's own levelConfig param (see

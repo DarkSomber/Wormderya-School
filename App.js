@@ -29,25 +29,17 @@ const SCREENS = {
 function ScreenSwitcher() {
   const [screen, setScreen] = useState(SCREENS.SPLASH);
 
-  // The Store is now an OVERLAY, not a separate `screen` value. It used
-  // to be `SCREENS.STORE`, which fully unmounted GameplayScreen behind
-  // it — that's what was wiping the round (timer/score/belts/phase all
-  // reset) every time the player opened the Store and came back.
-  // Rendering it on top instead means whatever's underneath (usually
-  // GameplayScreen) never unmounts, so nothing resets.
+  // Overlay Store so progress don't reset
   const [showStore, setShowStore] = useState(false);
   const openStore = () => { console.log('[App] openStore called'); setShowStore(true); };
   const closeStore = () => setShowStore(false);
 
-  // Switch between 'gameplay' and 'store'
-  const [currentScreen, setCurrentScreen] = useState("gameplay");//For testing purposes
+
   // Change SCREENS.MOVE to SCREEN.PLACEHOLDER_GAMEPLAY to switch to the placeholder screen
   const [showRushHour, setShowRushHour] = useState(false);
   const [showQuit, setShowQuit] = useState(false);
 
-  // Lives here (not inside GameplayScreen/StoreScreen) so currency and
-  // Mr. Ratty's discount/inflate marks survive retries, new levels, and
-  // trips to the Store — exactly what "next time Ratty visits" needs.
+  // Global currency
   const wallet = useWallet(0);
 
   const renderCurrentScreen = () => {
@@ -67,19 +59,6 @@ function ScreenSwitcher() {
           onBack={() => setScreen(SCREENS.HOME)}
         />
       );
-
-      case SCREENS.MODE_SELECT:
-        return (
-          <ModeSelectScreen
-            onSelectStoryMode={() => setScreen(SCREENS.LEVEL_SELECT)}
-            onSelectRushHour={() => {
-              // TODO: navigate into Rush Hour Mode gameplay
-              setShowRushHour(true);
-              console.log("Rush Hour Mode selected");
-            }}
-            onBack={() => setScreen(SCREENS.HOME)}
-          />
-        );
 
       case SCREENS.SETTINGS:
         return <SettingsScreen onBack={() => setScreen(SCREENS.HOME)} />;
@@ -126,7 +105,7 @@ function ScreenSwitcher() {
             onStart={() => setScreen(SCREENS.MODE_SELECT)}
             onOpenSettings={() => setScreen(SCREENS.SETTINGS)}
             onQuit={() => {
-              // TODO: handle quit (e.g. close app, or show confirmation)
+              // Close app
               setShowQuit(true);
               console.log("Quit pressed");
             }}
@@ -140,10 +119,7 @@ function ScreenSwitcher() {
       {/* 1. Renders active screen — never unmounted by opening the Store */}
       {renderCurrentScreen()}
 
-      {/* 2. Store, as a full-screen overlay on top of whatever's active.
-          Only mounted while open, so it doesn't run its own timers/effects
-          in the background when closed — but the screen underneath (e.g.
-          GameplayScreen) stays mounted throughout. */}
+      {/* 2. Store full screen Overlay*/}
 
         {showStore && (
           <Modal>
@@ -184,8 +160,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  overlay: {
-  ...StyleSheet.absoluteFillObject,
-  backgroundColor: 'red', // Temporary debug color
-},
+  webBackdrop: {
+    flex: 1,
+    width: '100vw',
+    height: '100vh',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  webPhoneFrame: {
+    width: '100%',
+    maxWidth: 400,
+    height: '100%',
+    maxHeight: 820,
+    aspectRatio: 9 / 19.5, // Standard modern smartphone ratio (iPhone/Android)
+    overflow: 'hidden',
+  },
 });

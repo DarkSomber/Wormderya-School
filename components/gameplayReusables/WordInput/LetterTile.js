@@ -9,12 +9,7 @@ export const BLANK_RECTANGLE = require('../../../assets/Placeholder/BlankRectang
 
 /**
  * A single letter's box. CurrentWordDisplay renders one of these per
- * entry in `currentWord`, keyed by `letter.id` — React mounting a brand
- * new LetterTile *is* the "a box appears when you tap/type a letter"
- * behavior; this component just has to animate itself in on mount,
- * nothing external needs to trigger it. Uses the same BlankRectangle
- * placeholder art as the chef's side items, so it matches the rest of
- * the screen's placeholder visuals instead of a flat color box.
+ * entry in `currentWord`, keyed by `letter.id` — Animates the black box
  */
 export default function LetterTile({ character }) {
   const { scale, opacity, play } = useTileEntranceAnimation();

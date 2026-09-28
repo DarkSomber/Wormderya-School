@@ -4,14 +4,6 @@ import { Animated } from 'react-native';
 /**
  * Reusable animation primitives for the word-input UI.
  *
- * Deliberately NOT in WordValidator.js: that file's whole job is a pure
- * word -> boolean check with zero UI knowledge, so a different/larger
- * database can be swapped in per level without dragging Animated along
- * for the ride. This file is also deliberately NOT inline inside
- * CurrentWordDisplay.js anymore — pulling it out here is what actually
- * makes that component "cleaner", and lets LetterTile reuse the same
- * entrance animation without duplicating it.
- *
  * If you already have an AnimationSystem module (referenced in
  * UseWordInput.js's comments for the conveyor's letter-removal
  * animation), these hooks probably belong there instead — merge this

@@ -60,37 +60,22 @@ export function useLevelMaker(levelConfig, isPaused = false) {
 
   //used for ratty pausing game
   useEffect(() => {
-    if (!levelConfig.rattySpawnRate || isPaused) return undefined;
+  if (!levelConfig.rattySpawnRate || isPaused) return undefined;
 
-    const intervalId = setInterval(() => {
-      if (completeRef.current) return;
-      if (Math.random() < levelConfig.rattySpawnRate) {
-        setShowRattyEvent(true);
-      }
-    }, levelConfig.rattyCheckIntervalMs);
+  const intervalId = setInterval(() => {
+    if (completeRef.current) return;
+    if (Math.random() < levelConfig.rattySpawnRate) {
+      setShowRattyEvent(true);
+    }
+  }, levelConfig.rattyCheckIntervalMs);
 
-    return () => clearInterval(intervalId);
-  }, [levelConfig.rattySpawnRate, levelConfig.rattyCheckIntervalMs, isPaused]);
+  return () => clearInterval(intervalId);
+}, [levelConfig.rattySpawnRate, levelConfig.rattyCheckIntervalMs, isPaused]);
 
   //Stop basically silence timer
   const stop = useCallback(() => {
-    completeRef.current = true;
-  }, []);
-
-  // Mr. Ratty's random check-in timer. Cleared/restarted only if the
-  // config's own rate/interval change, not on every render.
-  useEffect(() => {
-    if (!levelConfig.rattySpawnRate) return undefined;
-
-    const intervalId = setInterval(() => {
-      if (completeRef.current) return;
-      if (Math.random() < levelConfig.rattySpawnRate) {
-        setShowRattyEvent(true);
-      }
-    }, levelConfig.rattyCheckIntervalMs);
-
-    return () => clearInterval(intervalId);
-  }, [levelConfig.rattySpawnRate, levelConfig.rattyCheckIntervalMs]);
+  completeRef.current = true;
+}, []);
 
   const dismissRattyEvent = useCallback(() => setShowRattyEvent(false), []);
 

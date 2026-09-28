@@ -1,6 +1,7 @@
 import React from 'react';
 import PopupModal from '../../PopupModal';
 
+//Determines the outcome of the level
 export default function LevelResultModal({ visible, type = 'win', score, onConfirm }) {
   const isWin = type === 'win';
 
