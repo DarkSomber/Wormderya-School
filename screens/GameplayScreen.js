@@ -1,13 +1,13 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 //import { useSafeAreaInsets } from 'react-native-safe'; //find a way to use this guys
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Text, Alert } from 'react-native';
+import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Text, Alert, } from 'react-native';
 import { ConveyorBelt } from '../components/gameplayReusables/ConveyorBelt';
 import { useWordInput, CurrentWordDisplay } from '../components/gameplayReusables/WordInput';
 import CustomerMood from '../components/gameplayReusables/CustomerMood';
 import LevelTimer from '../components/gameplayReusables/LevelTimer';
 import { useScoreSystem } from '../components/gameplayReusables/UseScoreSystem';
-import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount'; // Fix this gang this is the issue why it wont open the store.
+import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount'; // Issue fixed due to duplicates
 import AppButton from '../components/AppButton';
 
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
 
+//States for Future levels
 export const LETTER_ANIM_STATES = {
   SPAWNING: 'spawning',
   IDLE: 'idle',
@@ -9,13 +10,7 @@ export const LETTER_ANIM_STATES = {
   DISAPPEARING: 'disappearing',
 };
 
-/**
- * Small, reusable animation primitive shared by the conveyor and its
- * letters. Deliberately minimal for this stage — it only drives a single
- * scale value in and out — but every future animation state
- * (idle / moving / selected / disappearing) already has a named slot to
- * hook into as the game grows, instead of bolting more states on later.
- */
+//reusable animation 
 export function useSpawnAnimation(animState) {
   const scale = useRef(
     new Animated.Value(animState === LETTER_ANIM_STATES.SPAWNING ? 0 : 1)

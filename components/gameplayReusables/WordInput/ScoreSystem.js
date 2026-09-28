@@ -1,11 +1,9 @@
 /**
  * ScoreSystem
  * -----------
- * Turns a validated word into a number. Deliberately dumb for this
- * stage (10 points per letter) — the important part is that the
- * multiplier is never hard-coded here; it's always passed in from a
- * LevelConfig, so a level designer can change difficulty/reward without
- * touching this file.
+ * Turns a validated word into a number.
+ * Multiplier can be set by developers from other js so it's
+ * not hardcoded
  */
 export function baseScoreForWord(word) {
   return word.length * 10;

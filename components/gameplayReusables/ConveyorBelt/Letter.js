@@ -3,16 +3,11 @@ import { Animated, Text, View, StyleSheet, TouchableOpacity, Image } from 'react
 import { getLetterSprite } from './Spriteloader';
 import { useSpawnAnimation } from './Animationsystem';
 
-/**
- * Renders a single letter tile on the conveyor belt.
- *
- * A `letter` is a small, self-contained data object:
+/**A `letter` tile is a small, self-contained data object:
  *   { id, character, active, animState }
  *
  * The belt-wide horizontal scroll is handled entirely by ConveyorBelt's
  * Animated transform — a Letter only knows its fixed slot position
- * (`left`) inside that moving row, so it never needs to know how fast,
- * or whether, the belt is currently moving.
  */
 export default function Letter({ letter, left, width, height, onPress }) {
   const scale = useSpawnAnimation(letter.animState);

@@ -23,35 +23,13 @@ function makeLetter(pool) {
   };
 }
 
-/**
- * ConveyorBelt
- * ------------
- * Owns everything about moving letters along a belt: position, spawning,
- * speed, and wrap-around. It deliberately knows nothing about words,
- * scoring, or input — future systems are meant to reach in through:
- *
- *   ref.removeLetterById(id)    mark a letter inactive (blank slot, belt
- *                               keeps moving normally)
- *   ref.getLetters()            currently visible letters, left to right
- *   props.onLetterPress(letter) tap hook for the future Word Input System
- *
- * `isPaused` — freezes the belt mid-slide at its current position (no
- * animation restarts, no letter rotation) until it goes back to false,
- * at which point it resumes sliding the rest of the way to the next
- * slot over a fresh slotDurationMs. It's a simple freeze/resume, not a
- * tracked-remaining-time resume — on longer pauses the belt may appear
- * to "catch up" slightly slower right after unpausing, which is an
- * acceptable trade-off for how much simpler it keeps this file.
- *
+/** ConveyorBelt - Moving letter handling position, Spawning, speed, and wrap-around.
+ * `isPaused` — freezes the belt mid-slide at its current position a simple freeze/resume.
+ * 
  * Movement model:
  * `maxLetters` letters are visible at once, plus one extra buffer letter
- * waiting just off the right edge. A single Animated value translates the
- * whole row left by exactly one slot's width over `slotDurationMs`. When
- * that finishes, the buffer letter has scrolled fully into view. We then
- * rotate the data (drop the letter that just scrolled off the left, spawn
- * a fresh buffer letter) and snap translateX back to 0 inside useLayoutEffect — 
- * since the rotated layout is pixel-identical to where the tween ended, 
- * the snap is invisible and the belt reads as one continuous, wrapping motion.
+ * waiting just off the right edge. drop the letter that just scrolled off the left, spawn
+ * a fresh buffer letter
  */
 const ConveyorBelt = forwardRef(function ConveyorBelt(
   { config: configOverride, style, onLetterPress, isPaused = false },
@@ -79,7 +57,7 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
   useEffect(() => {
     // While paused: make sure any in-flight tween is stopped (freezing
     // translateX exactly where it was) and don't start a new one.
-    if (isPaused) {
+    if (isPaused) { 
       runningRef.current = false;
       translateX.stopAnimation();
       return undefined;
@@ -92,18 +70,11 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
       Animated.timing(translateX, {
         toValue: direction === 'rtl' ? slotWidth : -slotWidth,
         duration: slotDurationMs,
-        // Linear so the belt keeps one constant speed across the whole
-        // slot instead of easing in/out at every rotation.
-        easing: Easing.linear,
+        easing: Easing.linear, //keeps one constant speed across the whole belt
         useNativeDriver: true,
       }).start(({ finished }) => {
         if (!finished || !runningRef.current) return;
-        // Don't reset translateX or start the next tween here — do that
-        // in the layout effect below, once the rotated letters have
-        // actually committed. Resetting here first shows the *old*
-        // letters snapped back to their starting position for a frame
-        // before React catches up — that's the twitch.
-        rotateLetters();
+        rotateLetters(); //DOM updates first to handle snapback visbility
       });
     };
 
@@ -122,16 +93,12 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
       isFirstRender.current = false;
       return;
     }
-    if (isPaused) return; // don't kick off the next tween while frozen
-    // The rotated letters just committed and are pixel-identical to where
-    // the tween ended, so snapping translateX back to 0 here, in the same
-    // paint, is what makes the snap invisible and the belt read as one
-    // continuous, wrapping motion instead of a twitch.
+    if (isPaused) return; //Seamless transition even when paused
     translateX.setValue(0);
     tickRef.current();
   }, [letters, translateX, isPaused]);
 
-  const removeLetterById = useCallback((id) => {
+  const removeLetterById = useCallback((id) => { //Blank slot in conveyor
     setLetters((prev) =>
       prev.map((l) =>
         l.id === id
@@ -143,7 +110,7 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
 
   useImperativeHandle(ref, () => ({
     removeLetterById,
-    getLetters: () => letters.slice(0, maxLetters),
+    getLetters: () => letters.slice(0, maxLetters), //Visible letters chosen
   }));
 
   const viewportWidth = slotWidth * maxLetters;
@@ -163,7 +130,7 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
             left={i * slotWidth}
             width={slotWidth}
             height={slotHeight}
-            onPress={onLetterPress}
+            onPress={onLetterPress} //Hook for letter input
           />
         ))}
       </Animated.View>
@@ -175,7 +142,7 @@ export default ConveyorBelt;
 
 const styles = StyleSheet.create({
   viewport: {
-    bottom: 10, // Can be adjusted please adjust this mans
+    bottom: 2, // Adjusted to 2, before 10
     overflow: 'hidden',
     alignSelf: 'center',
   },

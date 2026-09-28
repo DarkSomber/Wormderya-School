@@ -8,7 +8,7 @@ import { DEFAULT_MAX_LETTERS } from './UseWordInput';
 const VALID_COLOR = '#2e7d32';
 const INVALID_COLOR = '#c62828';
 
-// How long the "WORD — not a word" / "WORD — +score" line stays fully
+// "WORD — +score" line stays fully
 // visible before it fades out. Edit here for a global change, or pass a
 // different value as the resultFadeDelayMs prop to override per screen.
 export const DEFAULT_RESULT_FADE_DELAY_MS = 2000;
@@ -16,14 +16,9 @@ const RESULT_FADE_DURATION_MS = 300;
 
 /**
  * Purely presentational — renders `maxLetters` fixed slots (Wordle-style):
- * filled ones show an animated LetterTile per letter in `currentWord`
- * (each pops in on mount, so a new tile appearing *is* the "box appears
- * when a letter is tapped/typed" behavior), the rest show an empty
- * BlankRectangle placeholder with no text. Reacts to `lastResult` with a
- * shake + red flash on an invalid word, or a ripple + green flash on a
- * valid one, across the whole row, and fades the result line out after
- * resultFadeDelayMs. useWordInput() doesn't know or care that this
- * exists; swap it for your own UI any time.
+ * filling rectangles. Reacts to `lastResult` through colors and shakes after resultFadeDelayMs. 
+ * useWordInput() doesn't know or care that this exists; 
+ * swap it for your own UI any time.
  */
 export default function CurrentWordDisplay({
   currentWord,
@@ -82,10 +77,7 @@ export default function CurrentWordDisplay({
   const rippleBackgroundColor = lastResult && lastResult.valid ? VALID_COLOR : INVALID_COLOR;
 
   // Fixed-length slot list: real letters first, then empty placeholders
-  // for the rest of maxLetters. This is what lets a shorter word (e.g.
-  // "AKO") still read clearly as submittable any time via the plate —
-  // the remaining slots are visibly empty/open, not implying you must
-  // fill all of them first.
+  // Doesn't require all slot filled to pass the word
   const slots = Array.from({ length: maxLetters }, (_, i) => currentWord[i] || null);
 
   return (
@@ -111,8 +103,7 @@ export default function CurrentWordDisplay({
         />
 
         {/* Ripple — only relevant/visible on a valid word; clipped by
-            the row's overflow:hidden so it reads as a contained ripple
-            rather than an expanding blob. */}
+            the row's overflow:hidden*/}
         <Animated.View
           pointerEvents="none"
           style={[
@@ -128,8 +119,7 @@ export default function CurrentWordDisplay({
 
       {/* Result line — absolutely positioned directly on top of the tile
           row (a sibling of `row`, not a child, so it isn't clipped by
-          row's overflow:hidden) instead of sitting in normal flow below
-          it. That's what stops the tiles from shifting up/down every
+          row's overflow:hidden) stops the tiles from shifting up/down every
           time this text fades in or out. */}
       {lastResult ? (
         <Animated.Text

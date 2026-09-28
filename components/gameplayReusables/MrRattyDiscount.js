@@ -1,15 +1,16 @@
 import React from 'react';
 import PopupModal from '../PopupModal';
 
+//Changed because it's redundant
 export default function MrRattyDiscount({ visible, onDismiss }) {
   return (
-      <PopupModal
+    <PopupModal
       visible={visible}
-      title={`Thank you for\nyour patronage!`}
-      message="The next time Mr. Ratty will appear, prices will have a chance to get a discount."
-      buttonText="Thank you!"
-      buttonColor="#d51a1a" // Yellow
+      title={`Mr. Ratty stops\nby to chat...`}
+      message="He looks like he's judging your cooking. Best get back to it."
+      buttonText="Get back to work"
+      buttonColor="#FFE194"
       onPress={onDismiss}
-      />
-    );
+    />
+  );
 }
