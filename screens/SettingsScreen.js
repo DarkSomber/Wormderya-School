@@ -1,11 +1,6 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  StatusBar,
-  ImageBackground,
-} from "react-native";
+import { View, StyleSheet, StatusBar, ImageBackground } from 'react-native';
+import Text from '../components/AppText';
 import AppButton from "../components/AppButton";
 import VolumeSlider from "../components/VolumeSlider";
 

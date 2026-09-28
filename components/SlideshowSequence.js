@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
+import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import Text from './AppText';
 
 /**
  * SlideshowSequence
@@ -136,10 +137,13 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#8a5a30",
     backgroundColor: "rgba(245, 236, 214, 0.9)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   nextButtonText: {
     fontSize: 16,
     fontWeight: "700",
     color: "#5c3a21",
+    textAlign: "center",
   },
 });

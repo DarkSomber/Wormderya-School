@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { View, StyleSheet, Modal, Platform } from "react-native"; //Added the platform here because bug
+import { useFonts } from "expo-font";
+import {
+  PixelifySans_400Regular,
+  PixelifySans_500Medium,
+  PixelifySans_600SemiBold,
+  PixelifySans_700Bold,
+} from "@expo-google-fonts/pixelify-sans";
+import { View, StyleSheet, Modal, Platform } from "react-native";
 import SplashScreen from "./screens/SplashScreen";
 import HomeScreen from "./screens/HomeScreen";
 import ModeSelectScreen from "./screens/ModeSelectScreen";
@@ -8,13 +15,19 @@ import LevelSelectScreen from "./screens/LevelSelectScreen";
 import StoryBackstoryScreen from "./screens/StoryBackstoryScreen";
 import GameplayScreen from "./screens/GameplayScreen";
 import { useWallet } from "./components/gameplayReusables/UseWallet";
+import { hasLevelPreset, getNextLevelId, getLevelConfigById, getAllLevelIds } from "./levels/levelPresets";
 
 /* Placeholder components */
 import QuitModal from './components/QuitModal';
 import RushHourModal from './screens/RushHourModal';
+import PopupModal from './components/PopupModal';
 import StoreScreen from './screens/StoreScreen';
 
-// Manual screeen switchhing, react navigation willbeinputted later
+// [TEST/DEBUG] Adds a level-select button that toggles "unlock all levels"
+// <-> "reset to Level 1". Set to false before release or before anything at all.
+const DEBUG_LEVEL_TOGGLE = true;
+
+// Manual screen switching; React Navigation later
 const SCREENS = {
   SPLASH: "SPLASH",
   HOME: "HOME",
@@ -25,17 +38,47 @@ const SCREENS = {
   GAMEPLAY: "GAMEPLAY",
 };
 
-//ScreenSwitcher() holds the logic for switching between screens.
+// Holds the screen-switching logic.
 function ScreenSwitcher() {
   const [screen, setScreen] = useState(SCREENS.SPLASH);
 
-  // Overlay Store so progress don't reset
+  // Level picked on LevelSelectScreen; GameplayScreen loads its preset.
+  const [currentLevelId, setCurrentLevelId] = useState(1);
+
+  // Levels the player may open (in memory only; resets on restart).
+  const [unlockedLevels, setUnlockedLevels] = useState([1]);
+  // Level shown in the "unlocked" popup, or null.
+  const [unlockNotice, setUnlockNotice] = useState(null);
+
+  // [TEST/DEBUG] True once every level with a preset is unlocked.
+  const debugAllUnlocked = getAllLevelIds().every((id) => unlockedLevels.includes(id));
+
+  // [TEST/DEBUG] Unlock everything, or reset progression back to Level 1.
+  const handleDebugToggle = () => {
+    setUnlockNotice(null);
+    if (debugAllUnlocked) {
+      setUnlockedLevels([1]);
+      setCurrentLevelId(1);
+    } else {
+      setUnlockedLevels(getAllLevelIds());
+    }
+  };
+
+  // Called once per won level.
+  const handleLevelComplete = (completedLevelId) => {
+    const nextId = getNextLevelId(completedLevelId);
+    if (nextId === null || unlockedLevels.includes(nextId)) return; // last level or already unlocked
+    setUnlockedLevels((prev) => (prev.includes(nextId) ? prev : [...prev, nextId]));
+    setUnlockNotice(nextId);
+  };
+
+  // Store overlays the screen so progress isn't lost
   const [showStore, setShowStore] = useState(false);
   const openStore = () => { console.log('[App] openStore called'); setShowStore(true); };
   const closeStore = () => setShowStore(false);
 
 
-  // Change SCREENS.MOVE to SCREEN.PLACEHOLDER_GAMEPLAY to switch to the placeholder screen
+  // Use SCREEN.PLACEHOLDER_GAMEPLAY to show the placeholder screen
   const [showRushHour, setShowRushHour] = useState(false);
   const [showQuit, setShowQuit] = useState(false);
 
@@ -66,14 +109,22 @@ function ScreenSwitcher() {
       case SCREENS.LEVEL_SELECT:
         return (
           <LevelSelectScreen
+            unlockedLevels={unlockedLevels}
+            onDebugToggle={DEBUG_LEVEL_TOGGLE ? handleDebugToggle : undefined} // [TEST/DEBUG]
+            debugAllUnlocked={debugAllUnlocked} // [TEST/DEBUG]
             onSelectLevel={(levelId) => {
+              if (!hasLevelPreset(levelId)) {
+                // No preset yet — nothing to play.
+                console.log(`Level ${levelId} selected but has no preset yet`);
+                return;
+              }
+              setCurrentLevelId(levelId);
               if (levelId === 1) {
-                // Level 1 plays its backstory intro first.
+                // Level 1 plays its backstory first.
                 setScreen(SCREENS.STORY_BACKSTORY);
               } else {
-                // TODO: other levels currently just log — send them
-                // straight into gameplay (or their own intro) once ready.
-                console.log(`Level ${levelId} selected`);
+                // TODO: per-level intros.
+                setScreen(SCREENS.GAMEPLAY);
               }
             }}
             onBack={() => setScreen(SCREENS.MODE_SELECT)}
@@ -91,6 +142,8 @@ function ScreenSwitcher() {
       case SCREENS.GAMEPLAY:
         return (
           <GameplayScreen
+            levelId={currentLevelId}
+            onLevelComplete={handleLevelComplete}
             onBack={() => setScreen(SCREENS.LEVEL_SELECT)}
             onOpenStore={openStore}
             isStoreOpen={showStore}
@@ -116,10 +169,10 @@ function ScreenSwitcher() {
 
   return (
     <View style={styles.container}>
-      {/* 1. Renders active screen — never unmounted by opening the Store */}
+      {/* 1. Active screen (stays mounted while the Store is open) */}
       {renderCurrentScreen()}
 
-      {/* 2. Store full screen Overlay*/}
+      {/* 2. Store overlay */}
 
         {showStore && (
           <Modal>
@@ -129,20 +182,29 @@ function ScreenSwitcher() {
           </Modal>
         )}
 
-      {/* 3. Global Modals rendered on top of everything */}
+      {/* 3. Global modals */}
       <RushHourModal
         visible={showRushHour}
         onDismiss={() => setShowRushHour(false)}
       />
 
       <QuitModal visible={showQuit} onQuit={() => setShowQuit(false)} />
+
+      {/* Level-unlocked warning */}
+      <PopupModal
+        visible={unlockNotice !== null}
+        title="NEW LEVEL UNLOCKED!"
+        message={unlockNotice !== null ? getLevelConfigById(unlockNotice).title : ""}
+        extraMessage="You can play it from the Level Select screen."
+        buttonText="Nice!"
+        onPress={() => setUnlockNotice(null)}
+      />
     </View>
   );
 }
 
-export default function App() {
-  // On native (Expo Go / a real build) this renders full-screen as normal —
-  // the phone's own screen IS the frame, so no extra wrapper is needed.
+function AppInner() {
+  // Native: the device screen is the frame.
   if (Platform.OS !== "web") {
     return <ScreenSwitcher />;
   }
@@ -154,6 +216,17 @@ export default function App() {
       </View>
     </View>
   );
+}
+
+export default function App() {
+  const [fontsLoaded] = useFonts({
+    PixelifySans_400Regular,
+    PixelifySans_500Medium,
+    PixelifySans_600SemiBold,
+    PixelifySans_700Bold,
+  });
+  if (!fontsLoaded) return null;
+  return <AppInner />;
 }
 
 const styles = StyleSheet.create({
@@ -172,7 +245,7 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     height: '100%',
     maxHeight: 820,
-    aspectRatio: 9 / 19.5, // Standard modern smartphone ratio (iPhone/Android)
+    aspectRatio: 9 / 19.5, // Modern phone ratio
     overflow: 'hidden',
   },
 });

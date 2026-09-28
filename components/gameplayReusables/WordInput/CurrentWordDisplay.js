@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Text, View, Image, StyleSheet } from 'react-native';
+import { Animated, Text, View, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import LetterTile, { TILE_SIZE, BLANK_RECTANGLE } from './LetterTile';
 import { useResultFeedbackAnimation } from './LetterAnimations';
 import { FONT_WARNING } from '../Font';
-import { DEFAULT_MAX_LETTERS } from './UseWordInput';
+import { DEFAULT_INPUT_BOX_COUNT } from './UseWordInput';
 
 const VALID_COLOR = '#2e7d32';
 const INVALID_COLOR = '#c62828';
@@ -15,15 +15,17 @@ export const DEFAULT_RESULT_FADE_DELAY_MS = 2000;
 const RESULT_FADE_DURATION_MS = 300;
 
 /**
- * Purely presentational — renders `maxLetters` fixed slots (Wordle-style):
+ * Purely presentational — renders `inputBoxCount` fixed slots (Wordle-style):
  * filling rectangles. Reacts to `lastResult` through colors and shakes after resultFadeDelayMs. 
  * useWordInput() doesn't know or care that this exists; 
  * swap it for your own UI any time.
  */
 export default function CurrentWordDisplay({
   currentWord,
+  slots: slotsProp, // fixed-length box list from useWordInput (preferred; keeps gaps)
+  onSlotPress, // (boxIndex) => void — tapping an OCCUPIED box; empty boxes ignore taps
   lastResult,
-  maxLetters = DEFAULT_MAX_LETTERS,
+  inputBoxCount = DEFAULT_INPUT_BOX_COUNT,
   resultFadeDelayMs = DEFAULT_RESULT_FADE_DELAY_MS,
 }) {
   const {
@@ -78,14 +80,21 @@ export default function CurrentWordDisplay({
 
   // Fixed-length slot list: real letters first, then empty placeholders
   // Doesn't require all slot filled to pass the word
-  const slots = Array.from({ length: maxLetters }, (_, i) => currentWord[i] || null);
+  const slots = slotsProp ?? Array.from({ length: inputBoxCount }, (_, i) => (currentWord || [])[i] || null);
 
   return (
     <View style={styles.wrapper}>
       <Animated.View style={[styles.row, { transform: [{ translateX: shakeX }] }]}>
         {slots.map((letter, i) =>
           letter ? (
-            <LetterTile key={letter.id} character={letter.character} />
+            // Whole box is the touch target, not just the glyph.
+            <TouchableOpacity
+              key={letter.id}
+              activeOpacity={0.7}
+              onPress={() => onSlotPress?.(i)}
+            >
+              <LetterTile character={letter.character} />
+            </TouchableOpacity>
           ) : (
             <Image
               key={`empty-${i}`}

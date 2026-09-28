@@ -1,40 +1,56 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
-//import { useSafeAreaInsets } from 'react-native-safe'; //find a way to use this guys
+import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
+//import { useSafeAreaInsets } from 'react-native-safe'; // TODO: use this
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Text, Alert, } from 'react-native';
+import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Alert } from 'react-native';
+import Text from '../components/AppText';
 import { ConveyorBelt } from '../components/gameplayReusables/ConveyorBelt';
 import { useWordInput, CurrentWordDisplay } from '../components/gameplayReusables/WordInput';
 import CustomerMood from '../components/gameplayReusables/CustomerMood';
 import LevelTimer from '../components/gameplayReusables/LevelTimer';
 import { useScoreSystem } from '../components/gameplayReusables/UseScoreSystem';
-import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount'; // Issue fixed due to duplicates
-import AppButton from '../components/AppButton';
+import { formatCurrency } from '../components/gameplayReusables/UseWallet';
+import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount'; 
+import AppButton from '../components/AppButton'; // why is this unused?
 
 
-import { LEVEL_1_CONFIG } from '../levels/levelPresets';
+import { getLevelConfigById } from '../levels/levelPresets';
+import { getBeltConfig } from '../levels/LevelConfig';
 import { useLevelMaker } from '../levels/useLevelMaker';
 import { LevelIntroSequence, LevelEndSequence } from '../levels/IntroEndSequence';
 
-const BELT_ROWS = [0, 1, 2]; // how many belt rows
-const CONVEYOR_ROW_GAP = 10; // vertical space between conveyor rows
+const BELT_ROWS = [0, 1, 2]; // belt rows
+const CONVEYOR_ROW_GAP = 10; // gap between rows
+
 
 /**
  * GameplayScreen
- * ----------------
- * Thin outer shell. Its only job is owning `sessionId` — bumping it on
- * retry forces React to fully unmount + remount <LevelSession>, which
- * throws away EVERY hook inside it (useWordInput, useScoreSystem,
- * useLevelMaker, phase state, all of it) and starts each fresh.
+ * --------------
+ * Thin shell that owns `sessionId` and the level -> difficulty lookup.
+ * Bumping sessionId on retry (or changing level) remounts <LevelSession>,
+ * resetting every hook inside it. A full remount can't miss state the way
+ * manual resets did (stale `lastResult`, useLevelMaker state).
  *
- * This replaces the old approach of manually calling resetLevelScore()
- * + bumping a levelKey prop threaded into individual components: that
- * approach silently missed useWordInput's `lastResult` and all of
- * useLevelMaker's internal state, which is exactly what caused stale
- * "error from last round" state to reappear after Retry. A full
- * component remount can't miss a hook the way manual resets can.
+ * Props:
+ *   levelId          number | string  preset to load (default 1)
+ *   levelConfig      optional; a ready-made LevelConfig, wins over levelId
+ *   onLevelComplete  optional; called once when the level is won
+ *   wallet           the useWallet() instance from App.js (single shared balance)
  */
-export default function GameplayScreen({ onOpenStore, onBack, isStoreOpen, levelConfig = LEVEL_1_CONFIG }) {
+export default function GameplayScreen({
+  onOpenStore,
+  onBack,
+  isStoreOpen,
+  onLevelComplete,
+  levelId = 1,
+  levelConfig: levelConfigOverride,
+  wallet,
+}) {
   const [sessionId, setSessionId] = useState(0);
+
+  const levelConfig = useMemo(
+    () => levelConfigOverride ?? getLevelConfigById(levelId),
+    [levelConfigOverride, levelId],
+  );
 
   const handleRetry = useCallback(() => {
     setSessionId((id) => id + 1);
@@ -42,40 +58,29 @@ export default function GameplayScreen({ onOpenStore, onBack, isStoreOpen, level
 
   return (
     <LevelSession
-      key={sessionId}
+      key={`${levelConfig.id}:${sessionId}`}
       levelConfig={levelConfig}
       onOpenStore={onOpenStore}
       onBack={onBack}
       onRetry={handleRetry}
+      onLevelComplete={onLevelComplete}
       isStoreOpen={isStoreOpen}
+      wallet={wallet}
     />
   );
 }
 
 /**
  * LevelSession
- * -------------
- * Everything that plays out over the course of ONE attempt at a level.
- * Every hook here starts clean whenever GameplayScreen remounts it with
- * a new `key` — no manual per-hook reset calls needed.
+ * ------------
+ * One attempt at a level. Remounted via `key`, so all hooks start clean.
  *
- * Data flow:
- *   LevelConfig (levels/levelPresets.js)
- *        |
- *        v
- *   useLevelMaker(levelConfig)  --------- customer cycling, Ratty timer, isLevelComplete
- *        |
- *        v
- *   LevelSession (this component) ------- reads levelMaker + score, decides what's on screen
- *        |                 \
- *        v                  v
- *   useScoreSystem      CustomerMood / LevelTimer (imperative + prop-driven)
- *        |
- *        v
- *   LevelEndSequence (levels/IntroEndSequence.js) --------- shows final score/stars,
- *                                                            calls onRetry() or onOpenStore()
+ * levelId -> getLevelConfigById -> LevelConfig
+ *   -> useLevelMaker (customers, Ratty, isLevelComplete)
+ *   -> useScoreSystem, CustomerMood, LevelTimer
+ *   -> LevelEndSequence (score/stars; calls onRetry or onOpenStore)
  */
-function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }) {
+function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComplete, isStoreOpen, wallet }) {
   const [phase, setPhase] = useState('intro'); // 'intro' | 'playing' | 'end'
 
   // One ref per conveyor row.
@@ -86,12 +91,14 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
 
   const customerRef = useRef(null);
 
-  const { score, addScoreFromWord, deductScore } = useScoreSystem();
+  // Score lives here (per attempt, can only go up). Currency lives ONLY in
+  // the App-level wallet; every scored word is forwarded to it once.
+  const { currency, addCurrency } = wallet;
+  const { score, addScoreFromWord } = useScoreSystem({ onCurrencyEarned: addCurrency });
 
   const levelMaker = useLevelMaker(levelConfig, isStoreOpen);
 
-  // Fires once per submitted word — whether it was auto-submitted (belt
-  // filled to maxLetters) or manually served via the Plate button.
+  // Runs on every submitted word (auto-submit or Plate button).
   const handleWordSubmit = useCallback(
     (result) => {
       if (result.valid) {
@@ -99,22 +106,24 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
         customerRef.current?.restorePatience(100);
         levelMaker.registerServedWord();
       } else if (result.word.length > 0) {
-        deductScore(10);
+        // Wrong word: patience penalty only. Score never decreases.
         customerRef.current?.applyWrongWordPenalty();
       }
     },
-    [addScoreFromWord, deductScore, levelConfig.scoreMultiplier, levelMaker],
+    [addScoreFromWord, levelConfig.scoreMultiplier, levelMaker],
   );
 
-  // Map the wide LevelConfig down to the narrow shape useWordInput/
-  // ConveyorBelt already expect.
+  // Map LevelConfig to the narrow shape useWordInput/ConveyorBelt expect.
   const wordInput = useWordInput(
     conveyorRefs,
     {
       scoreMultiplier: levelConfig.scoreMultiplier,
-      wordRules: { minLength: levelConfig.wordDifficulty.minLength },
+      wordRules: {
+        minLength: levelConfig.wordDifficulty.minLength,
+        maxLength: levelConfig.wordDifficulty.maxLength,
+      },
     },
-    levelConfig.maxLettersOnBelt,
+    levelConfig.inputBoxCount, // player input boxes: independent of any belt's letter count
     handleWordSubmit,
   );
 
@@ -125,8 +134,8 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
     setLevelResult((prev) => prev ?? (won ? "win" : "lose")); // ignore if already ended
   }, []);
 
-  // Win path #1: clock hits 0 with enough score (LevelTimer calls this).
-  // Win path #2: all customers served before time runs out (useLevelMaker).
+  // Win paths: clock ends with enough score (LevelTimer),
+  // or all customers served (useLevelMaker).
   useEffect(() => {
     if (levelMaker.isLevelComplete) {
       handleLevelEnd(true);
@@ -137,25 +146,34 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
     if (levelResult) levelMaker.stop();
   }, [levelResult, levelMaker]);
 
+  // Report a win once (ref guards against callback identity changes).
+  const completionReportedRef = useRef(false);
+  useEffect(() => {
+    if (levelResult === "win" && !completionReportedRef.current) {
+      completionReportedRef.current = true;
+      onLevelComplete?.(levelConfig.id);
+    }
+  }, [levelResult, onLevelComplete, levelConfig.id]);
+
   useEffect(() => {
     if (isStoreOpen) levelMaker.dismissRattyEvent();
   }, [isStoreOpen, levelMaker]);
 
   const handleCustomerLeft = useCallback(() => {
-    handleLevelEnd(false); // patience hit 0 -> always a loss, independent of the clock
+    handleLevelEnd(false); // patience hit 0 -> always a loss
   }, [handleLevelEnd]);
 
   const handleServePlate = () => {
-    wordInput.submitWord(); // scoring/patience handled by handleWordSubmit via onSubmit
+    wordInput.submitWord(); // scoring/patience handled via onSubmit
   };
 
   const handleIntroComplete = () => setPhase("playing");
 
   const handleEndComplete = () => {
     if (levelResult === "lose") {
-      onRetry(); // remounts the whole LevelSession — no manual state resets needed
+      onRetry(); // remounts LevelSession, resetting all state
     } else {
-      //onOpenStore?.(); // or swap for level-select / next-level navigation later (!Remember to remove this.)
+      //onOpenStore?.(); // swap for next-level navigation later (!Remember to remove this.)
       levelMaker.dismissRattyEvent();
       setTimeout(() => {
         onOpenStore?.();
@@ -163,8 +181,7 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
     }
   };
 
-  // Once the level actually ends, flip to the 'end' phase so
-  // LevelEndSequence takes over rendering.
+  // When the level ends, switch to the 'end' phase.
   useEffect(() => {
     if (levelResult) setPhase("end");
   }, [levelResult]);
@@ -199,19 +216,24 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
           resizeMode="stretch"
         >
           {/*<Image source={require('../assets/Placeholder/QuitButton.png')} style={styles.quitButton} />*/
-          /*This is a temporary fix for the text inside the exit, fix the template first hand*/}
-          <TouchableOpacity onPress={onBack} activeOpacity={0.7}>
+          /*Temporary fix for the text in the exit button; fix the template first*/}
+          <TouchableOpacity onPress={onBack} activeOpacity={0.7} style={styles.quitWrapper}>
             <Image source={require('../assets/Placeholder/QuitButton.png')} style={styles.quitButton}/>
-              <Text style={{ position: 'absolute', top: 12, left: 35, color: 'red', fontSize: 20 }}> 
+              <Text style={styles.quitText} numberOfLines={1}> 
                 Return
               </Text>
           </TouchableOpacity>
 
-          {/*<Image source={require('../assets/Placeholder/pixel_coins.png')} style={styles.moneyIcon} /> removed for further fixings */}
+          {/* Live wallet balance: [ NUMBER ] [ COIN ] */}
+          <View style={styles.coinDisplay}>
+            <Text style={styles.coinText} numberOfLines={1} adjustsFontSizeToFit>
+              {formatCurrency(currency)}
+            </Text>
+            <Image source={require('../assets/Placeholder/pixel_coins.png')} style={styles.moneyIcon} />
+          </View>
         </ImageBackground>
 
-        {/* Timer — paused while Mr. Ratty's popup is up, or once the
-            level has already ended, so it can't double-fire. */}
+        {/* Timer — paused during Ratty's popup or after the level ends. */}
         <LevelTimer
           targetScore={levelConfig.targetScore}
           currentScore={score}
@@ -220,10 +242,8 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
           onLevelEnd={handleLevelEnd}
         />
 
-        {/* 2. Customer + patience meter. Remounted (fresh patience) every
-            time useLevelMaker advances to the next customer — keyed on
-            customerIndex so mid-level customer changes reset it too,
-            not just full-session retries. */}
+        {/* 2. Customer + patience meter. Keyed on customerIndex so patience
+            resets for each new customer. */}
         <View style={styles.customerBox}>
           <Image
             source={require("../assets/Placeholder/SampleCustomer_1.png")}
@@ -239,8 +259,10 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
 
         <CurrentWordDisplay
           currentWord={wordInput.currentWord}
+          slots={wordInput.slots}
+          onSlotPress={wordInput.returnLetterFromSlot}
           lastResult={wordInput.lastResult}
-          maxLetters={wordInput.maxLetters}
+          inputBoxCount={wordInput.inputBoxCount}
         />
 
         {/* 3. Table / plate — serves the current word */}
@@ -265,8 +287,7 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
           />
         </View>
 
-        {/* 5. Conveyor belts — conveyorSpeed comes straight from LevelConfig.
-            gap spaces the rows apart. */}
+        {/* 5. Conveyor belts (speed from LevelConfig) */}
         <View style={styles.conveyorGroup}>
           {BELT_ROWS.map((row) => (
             <ImageBackground
@@ -279,10 +300,12 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
                 ref={conveyorRefs[row]}
                 style={styles.conveyorBelt}
                 config={{
-                  maxLetters: levelConfig.maxLettersOnBelt,
                   slotDurationMs: levelConfig.conveyorSpeed,
                   slotWidth: 70,
                   slotHeight: 60,
+                  // Only set when a level has one (null would override the default).
+                  ...(levelConfig.letterPool ? { letterPool: levelConfig.letterPool } : {}),
+                  ...getBeltConfig(levelConfig, row), // this belt's letter count + letterDistribution
                 }}
                 onLetterPress={(letter) => wordInput.selectLetter(letter, row)}
               />
@@ -293,7 +316,7 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, isStoreOpen }
         <StatusBar style="light" />
       </View>
 
-      {/* Mr. Ratty — pops up whenever useLevelMaker's timer rolls it. */}
+      {/* Mr. Ratty popup (rolled by useLevelMaker) */}
       <MrRattyDiscount
         visible={levelMaker.showRattyEvent}
         onDismiss={levelMaker.dismissRattyEvent}
@@ -318,7 +341,11 @@ const styles = StyleSheet.create({
     width: '105%', flex: 130, flexDirection: 'row', //the width: 105% is a temp fix please fix this
     justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15,
   },
-  quitButton: { width: 90, height: 55, resizeMode: 'contain', left: 20 },
+  quitWrapper: { width: 90, height: 55, left: 20, alignItems: 'center',},
+  quitButton: {...StyleSheet.absoluteFillObject, width: '100%', height: '100%', resizeMode: 'contain',},
+  quitText: {color: 'red', fontSize: 20, textAlign: 'center', bottom: 40}, //Brute forced yung bottom para di bumaba
+  coinDisplay: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 1, maxWidth: 170, gap: 10 },
+  coinText: { flexShrink: 1, fontSize: 22, fontWeight: 'bold', color: '#fff', textShadowColor: '#000', textShadowRadius: 2, textShadowOffset: { width: 1, height: 1 } },
   moneyIcon: { width: 40, height: 40, resizeMode: 'contain' },
 
   /* 2 Customer Area*/
@@ -341,7 +368,7 @@ const styles = StyleSheet.create({
   chefBar: { flex: 130, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 15,  },
   characterChef: { width: 115, height: 115, resizeMode: 'contain', left: 125, bottom: 30 },
 
-  /* 5 Conveyor area — gap adds breathing room between the 3 rows. */
+  /* 5 Conveyor area */
   conveyorGroup: { width: '100%', flex: 240, flexDirection: 'column', gap: CONVEYOR_ROW_GAP, bottom: 50 },
   conveyor: { width: '100%', flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
 });

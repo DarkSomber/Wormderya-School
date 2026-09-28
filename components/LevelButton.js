@@ -1,10 +1,6 @@
 import React from "react";
-import {
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  ImageBackground,
-} from "react-native";
+import { TouchableOpacity, StyleSheet, ImageBackground } from 'react-native';
+import Text from './AppText';
 
 /**
  * LevelButton

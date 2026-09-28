@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, StyleSheet } from 'react-native';
+import Text from './AppText';
 
 //Slideshow Sequence survives so the game won't crash. Functions like slideshow Sequence
 export default function CountdownSequence({ slides, onComplete, msPerSlide = 800 }) {

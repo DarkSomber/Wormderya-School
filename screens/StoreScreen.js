@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import ShopOutcomeModal from './ShopOutcomeModal.js';
-import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Text } from 'react-native';
+import { formatCurrency } from '../components/gameplayReusables/UseWallet';
+import { StyleSheet, View, Image, ImageBackground, TouchableOpacity } from 'react-native';
+import Text from '../components/AppText';
 
 // Same 3 items/prices that used to be hardcoded directly in the JSX,
 // now data so each item slot can be selected instead of only item 1
@@ -90,8 +92,10 @@ export default function StoreScreen({ onBack, wallet, onGoToLevelSelect}) {
         >
           {/* Coin Balance Header — live wallet balance, not a hardcoded 999 */}
           <View style={styles.coinHeader}>
+            <Text style={styles.coinText} numberOfLines={1} adjustsFontSizeToFit>
+              {formatCurrency(wallet.currency)}
+            </Text>
             <Image source={require('../assets/Placeholder/pixel_coins.png')} style={styles.coinIcon} />
-            <Text style={styles.coinText}>{wallet.currency}</Text>
           </View>
 
           {/* 3 Shop Items Row — each one tappable, price reflects live discount/inflate state */}
@@ -245,6 +249,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginTop: 20,
     alignItems: 'center',
+    justifyContent: 'center',
+    maxWidth: '80%',
     gap: 9,
   },
   coinIcon: {
@@ -253,6 +259,7 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   coinText: {
+    flexShrink: 1,
     fontSize: 28,
     fontWeight: 'bold',
     color: '#000',
@@ -336,7 +343,7 @@ const styles = StyleSheet.create({
   declineButtonWrapper: {
     width: '100%',
     zIndex: 20,
-    elevation: 20, // Android needs elevation as well as zIndex to win touch priority
+    elevation: 20, 
   },
   backButtonImage: {
     width: '100%',

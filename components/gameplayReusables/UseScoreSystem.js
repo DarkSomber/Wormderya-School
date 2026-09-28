@@ -20,9 +20,20 @@ export function computeStars(finalScore, targetScore) {
   return 1;
 }
 
-export const useScoreSystem = (initialCurrency = 0) => {
+/**
+ * useScoreSystem({ onCurrencyEarned })
+ * ------------------------------------
+ * Owns the in-level SCORE only. Score can only go up: there is no
+ * deduct/reset/set function exposed, so nothing outside this hook can
+ * lower it (penalties, purchases, store trips).
+ *
+ * It does NOT own any currency. Every point earned is reported once,
+ * through `onCurrencyEarned(points)`, to the single wallet created in
+ * App.js (useWallet().addCurrency). Spending happens only in the wallet,
+ * so it can never touch the score.
+ */
+export const useScoreSystem = ({ onCurrencyEarned } = {}) => {
   const [score, setScore] = useState(0);
-  const [playerCurrency, setPlayerCurrency] = useState(initialCurrency);
 
   /**
    * Called whenever the word input system validates a correct word
@@ -40,24 +51,16 @@ export const useScoreSystem = (initialCurrency = 0) => {
     const basePoints = 50; // flat +50 per correct word
     const earnedPoints = Math.round(basePoints * timeBonus * activeMultiplier);
 
+    // Score only ever goes up, so a zero/negative/NaN result awards nothing.
+    if (!(earnedPoints > 0)) return 0;
+
     setScore((prevScore) => prevScore + earnedPoints);
-    setPlayerCurrency((prevCurrency) => prevCurrency + earnedPoints); // Currency used for Ratty shop
+    // Exactly one wallet reward per scored word. Kept OUTSIDE the state
+    // updater above, since updaters can be invoked twice in dev.
+    onCurrencyEarned?.(earnedPoints);
 
     return earnedPoints;
-  }, []);
-
-  const deductScore = useCallback((amount) => {
-    setScore((prev) => Math.max(0, prev - amount));
-  }, []);
-
-  /**
-   * Resets the in-level score (e.g. when the player hits "Retry level"
-   * on the Lose Screen) WITHOUT touching playerCurrency, since currency
-   * is meant to persist between attempts/levels.
-   */
-  const resetLevelScore = useCallback(() => {
-    setScore(0);
-  }, []);
+  }, [onCurrencyEarned]);
 
   /**
    * Star rating for the CURRENT score against a given targetScore
@@ -71,12 +74,7 @@ export const useScoreSystem = (initialCurrency = 0) => {
 
   return {
     score,
-    playerCurrency,
     addScoreFromWord,
-    deductScore,
-    resetLevelScore,
     getStarRating,
-    setScore,
-    setPlayerCurrency, // exposed so the Ratty/store screen can spend currency
   };
 };

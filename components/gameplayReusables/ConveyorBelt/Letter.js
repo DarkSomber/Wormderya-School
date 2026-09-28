@@ -1,5 +1,6 @@
 import React from 'react';
-import { Animated, Text, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { Animated, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import Text from '../../AppText';
 import { getLetterSprite } from './Spriteloader';
 import { useSpawnAnimation } from './Animationsystem';
 
