@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, View, Text, Modal, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Modal, TouchableOpacity } from 'react-native';
+import Text from './AppText';
 
 export default function PopupModal({
   visible,

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Text, ImageBackground, StyleSheet } from 'react-native';
+import { Animated, ImageBackground, StyleSheet } from 'react-native';
+import Text from '../../AppText';
 import { useTileEntranceAnimation } from './LetterAnimations';
 
 export const TILE_SIZE = 40;

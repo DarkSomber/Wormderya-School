@@ -12,6 +12,17 @@ const INFLATE_FACTOR = 1.5;
 export const CURRENCY_PER_WORD = 5;
 
 /**
+ * formatCurrency(amount)
+ * ----------------------
+ * "1234567" -> "1,234,567". Hand-rolled instead of toLocaleString so it
+ * behaves the same on every JS engine (Hermes, JSC, web).
+ */
+export function formatCurrency(amount) {
+  const whole = Math.max(0, Math.floor(Number(amount) || 0));
+  return String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+/**
  * useWallet(initialCurrency)
  * ----------------------------
  * Owns currency + each shop item's discount/inflate price state.
@@ -36,7 +47,10 @@ export function useWallet(initialCurrency = 0) {
   const [currency, setCurrency] = useState(initialCurrency);
   const [priceStates, setPriceStates] = useState({}); // itemId -> 'discount' | 'inflated'
 
+  // Earning only: a zero/negative/NaN amount is ignored so this can never
+  // be used to spend. Spending goes through buyItem.
   const addCurrency = useCallback((amount) => {
+    if (!(amount > 0)) return;
     setCurrency((prev) => prev + amount);
   }, []);
 

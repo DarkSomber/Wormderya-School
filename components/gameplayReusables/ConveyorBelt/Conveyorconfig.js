@@ -21,6 +21,17 @@ export const DEFAULT_CONVEYOR_CONFIG = {
   // pool later — nothing else here needs to change.
   letterPool: DEFAULT_LETTER_POOL,
 
+  // Optional vowel/consonant weighting for spawned letters — see
+  // Letterpool.js's createVowelWeightPicker for the accepted shapes.
+  // Defaults to 'balanced' so every belt is vowel-weighted; pass null
+  // explicitly for a uniform pick across letterPool.
+  letterDistribution: 'balanced',
+
+  // Minimum number of vowels that must be on the belt at any time. When the
+  // belt drops below this, the next spawned letter is forced to be a vowel.
+  // Fallback only: each belt row sets its own via LevelConfig `belts`.
+  minVisibleVowels: 1,
+
   // Reserved width/height (px) per letter tile.
   slotWidth: 70,
   slotHeight: 50,

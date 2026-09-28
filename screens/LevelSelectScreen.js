@@ -1,17 +1,19 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  StatusBar,
-  ImageBackground,
-} from "react-native";
+import { View, StyleSheet, ScrollView, StatusBar, ImageBackground } from 'react-native';
+import Text from '../components/AppText';
 import LevelButton from "../components/LevelButton";
 import AppButton from "../components/AppButton";
+import { hasLevelPreset } from "../levels/levelPresets";
+import DebugButton from "../components/tests/DebugButton"; // [TEST/DEBUG]
 
-// Describe each level once; add/remove entries here to change the path.
-// `align` controls which side of the screen the node sits on.
+// Playable = has a preset AND is in `unlockedLevels` (owned by App).
+// `lockedLevels` force-locks a level.
+const isLevelLocked = (lvl, unlockedLevels, lockedLevels) =>
+  !hasLevelPreset(lvl.id) ||
+  lockedLevels.includes(lvl.id) ||
+  !unlockedLevels.includes(lvl.id);
+
+// One entry per level; `align` sets the side of the screen.
 const LEVELS = [
   {
     id: 1,
@@ -25,7 +27,6 @@ const LEVELS = [
     width: 165,
     height: 105,
     image: require("../assets/Final/levels/Level-2-Logo.png"),
-    locked: true, //notice this is a temporary  fix and can be used on other features
   },
   {
     id: 3,
@@ -33,7 +34,6 @@ const LEVELS = [
     width: 135,
     height: 95,
     image: require("../assets/Final/levels/Level-3-Logo.png"),
-    locked: true, //notice this is a temporary  fix and can be used on other features
   },
   {
     id: 4,
@@ -41,14 +41,16 @@ const LEVELS = [
     width: 190,
     height: 150,
     image: require("../assets/Final/levels/Level-4-Logo.png"),
-    locked: true, //notice this is a temporary  fix and can be used on other features
   }, // e.g. a bigger "boss" node
 ];
 
 export default function LevelSelectScreen({
   onSelectLevel,
   onBack,
+  unlockedLevels = [1],
   lockedLevels = [],
+  onDebugToggle, // [TEST/DEBUG] button shows only when provided
+  debugAllUnlocked = false, // [TEST/DEBUG]
 }) {
   return (
     <ImageBackground
@@ -75,13 +77,18 @@ export default function LevelSelectScreen({
             <LevelButton
               width={lvl.width}
               height={lvl.height}
-              locked={lvl.locked || lockedLevels.includes(lvl.id)}
+              locked={isLevelLocked(lvl, unlockedLevels, lockedLevels)}
               onPress={() => onSelectLevel && onSelectLevel(lvl.id)}
               backgroundImage={lvl.image}
             />
           </View>
         ))}
       </ScrollView>
+
+      {/* [TEST/DEBUG] unlock-all / reset toggle; remove for release */}
+      {onDebugToggle && (
+        <DebugButton allUnlocked={debugAllUnlocked} onPress={onDebugToggle} />
+      )}
 
       {/* ---------- BACK BUTTON ---------- */}
       <View style={styles.footer}>
@@ -98,14 +105,14 @@ export default function LevelSelectScreen({
 const styles = StyleSheet.create({
   background: {
     flex: 1,
-    // Fallback color in case the image fails to load
+    // Fallback if the image fails to load
     backgroundColor: "#ffebbd",
   },
   header: {
     paddingTop: 24,
     paddingBottom: 16,
     alignItems: "center",
-    // HEADER PLACEHOLDER COLOR — swap for a banner image later if wanted
+    // Placeholder color; swap for a banner image
     backgroundColor: "#f2b988",
     borderBottomWidth: 2,
     borderBottomColor: "#2a2a2a",
