@@ -9,6 +9,8 @@ import CustomerMood from '../components/gameplayReusables/CustomerMood';
 import LevelTimer from '../components/gameplayReusables/LevelTimer';
 import { useScoreSystem } from '../components/gameplayReusables/UseScoreSystem';
 import { formatCurrency } from '../components/gameplayReusables/UseWallet';
+import AchievementModal from '../components/gameplayReusables/AchievementModal';
+import { ACHIEVEMENTS } from '../components/gameplayReusables/Achievements.js';
 import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount'; 
 import AppButton from '../components/AppButton'; // why is this unused?
 
@@ -44,6 +46,7 @@ export default function GameplayScreen({
   levelId = 1,
   levelConfig: levelConfigOverride,
   wallet,
+  achievements,
 }) {
   const [sessionId, setSessionId] = useState(0);
 
@@ -66,6 +69,7 @@ export default function GameplayScreen({
       onLevelComplete={onLevelComplete}
       isStoreOpen={isStoreOpen}
       wallet={wallet}
+      achievements={achievements}
     />
   );
 }
@@ -80,7 +84,7 @@ export default function GameplayScreen({
  *   -> useScoreSystem, CustomerMood, LevelTimer
  *   -> LevelEndSequence (score/stars; calls onRetry or onOpenStore)
  */
-function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComplete, isStoreOpen, wallet }) {
+function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComplete, isStoreOpen, wallet, achievements}) {
   const [phase, setPhase] = useState('intro'); // 'intro' | 'playing' | 'end'
 
   // One ref per conveyor row.
@@ -105,12 +109,13 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComple
         addScoreFromWord(result.word, 1, levelConfig.scoreMultiplier);
         customerRef.current?.restorePatience(100);
         levelMaker.registerServedWord();
+        achievements.unlockAchievement(ACHIEVEMENTS.FIRST_WORD); //Achievement trigger
       } else if (result.word.length > 0) {
         // Wrong word: patience penalty only. Score never decreases.
         customerRef.current?.applyWrongWordPenalty();
       }
     },
-    [addScoreFromWord, levelConfig.scoreMultiplier, levelMaker],
+    [addScoreFromWord, levelConfig.scoreMultiplier, levelMaker, achievements],
   );
 
   // Map LevelConfig to the narrow shape useWordInput/ConveyorBelt expect.
@@ -233,12 +238,12 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComple
           </View>
         </ImageBackground>
 
-        {/* Timer — paused during Ratty's popup or after the level ends. */}
+        {/* Timer — paused during any popups or after the level ends. */}
         <LevelTimer
           targetScore={levelConfig.targetScore}
           currentScore={score}
           initialTimeInSeconds={levelConfig.timeLimitSeconds}
-          isPaused={levelResult !== null || levelMaker.showRattyEvent}
+          isPaused={levelResult !== null || levelMaker.showRattyEvent || achievements.currentAchievement !== null} //Added Achievements popup pause
           onLevelEnd={handleLevelEnd}
         />
 
@@ -320,6 +325,12 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComple
       <MrRattyDiscount
         visible={levelMaker.showRattyEvent}
         onDismiss={levelMaker.dismissRattyEvent}
+      />
+      {/* Achievement popup modal like mr ratty */}
+      <AchievementModal
+        visible={achievements.currentAchievement !== null}
+        achievement={achievements.currentAchievement}
+        onDismiss={achievements.dismissAchievement}
       />
     </View>
   );

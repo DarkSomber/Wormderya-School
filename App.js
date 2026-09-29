@@ -15,6 +15,7 @@ import LevelSelectScreen from "./screens/LevelSelectScreen";
 import StoryBackstoryScreen from "./screens/StoryBackstoryScreen";
 import GameplayScreen from "./screens/GameplayScreen";
 import { useWallet } from "./components/gameplayReusables/UseWallet";
+import { useAchievements } from "./components/gameplayReusables/UseAchievements.js";
 import { hasLevelPreset, getNextLevelId, getLevelConfigById, getAllLevelIds } from "./levels/levelPresets";
 
 /* Placeholder components */
@@ -84,6 +85,7 @@ function ScreenSwitcher() {
 
   // Global currency
   const wallet = useWallet(0);
+  const achievements = useAchievements(wallet);
 
   const renderCurrentScreen = () => {
   switch (screen) {
@@ -148,6 +150,7 @@ function ScreenSwitcher() {
             onOpenStore={openStore}
             isStoreOpen={showStore}
             wallet={wallet}
+            achievements={achievements}
           />
         );
 
