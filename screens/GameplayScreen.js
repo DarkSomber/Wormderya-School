@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 //import { useSafeAreaInsets } from 'react-native-safe'; // TODO: use this
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, useWindowDimensions } from 'react-native';
 import Text from '../components/AppText';
 import { ConveyorBelt } from '../components/gameplayReusables/ConveyorBelt';
 import { useWordInput, CurrentWordDisplay } from '../components/gameplayReusables/WordInput';
@@ -15,6 +15,7 @@ import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount';
 import AppButton from '../components/AppButton'; // why is this unused?
 
 
+
 import { getLevelConfigById } from '../levels/levelPresets';
 import { getBeltConfig } from '../levels/LevelConfig';
 import { useLevelMaker } from '../levels/useLevelMaker';
@@ -22,8 +23,7 @@ import { LevelIntroSequence, LevelEndSequence } from '../levels/IntroEndSequence
 import { getRushHourLevelConfig, getRushHourStageForWords } from '../levels/RushHourConfig';
 
 const BELT_ROWS = [0, 1, 2]; // belt rows
-const CONVEYOR_ROW_GAP = 10; // gap between rows
-
+const ART_RATIO = 512 / 1088;
 
 /**
  * GameplayScreen
@@ -106,6 +106,9 @@ export default function GameplayScreen({
  */
 function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack, onRetry, onLevelComplete, isStoreOpen, wallet, achievements }) {
   const [phase, setPhase] = useState('intro'); // 'intro' | 'playing' | 'end'
+  const { width: winW, height: winH } = useWindowDimensions();
+  const boxW = Math.min(winW, winH * ART_RATIO);
+  const boxH = boxW / ART_RATIO;
 
   // --- Rush Hour session state (all reset by the remount on retry) ---
   // Lives here, not in App: it never touches currentLevelId / unlockedLevels.
@@ -257,30 +260,27 @@ function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack,
 
   return (
     <View style={styles.screenWrapper}>
-      <View style={styles.container}>
+      <ImageBackground
+      source={require("../assets/Final/GameplayUI/GameplayScreen.png")}
+      style={[styles.container, { width: boxW, height: boxH }]}
+      resizeMode="stretch">
         {/* 1. HEADER BANNER */}
-        <ImageBackground
-          source={require("../assets/Placeholder/TopBoard.png")}
+        <View
           style={styles.headerBackground}
-          resizeMode="stretch"
         >
           {/*<Image source={require('../assets/Placeholder/QuitButton.png')} style={styles.quitButton} />*/
           /*Temporary fix for the text in the exit button; fix the template first*/}
           <TouchableOpacity onPress={onBack} activeOpacity={0.7} style={styles.quitWrapper}>
-            <Image source={require('../assets/Placeholder/QuitButton.png')} style={styles.quitButton}/>
-              <Text style={styles.quitText} numberOfLines={1}> 
-                Return
-              </Text>
+            <Image source={require('../assets/Final/GameplayUI/quit-sign.png')} style={styles.quitButton}/>
           </TouchableOpacity>
 
           {/* Live wallet balance: [ NUMBER ] [ COIN ] */}
-          <View style={styles.coinDisplay}>
+          <ImageBackground source={require('../assets/Final/GameplayUI/CoinPatience.png')} style={styles.coinDisplay} resizeMode='stretch'>
             <Text style={styles.coinText} numberOfLines={1} adjustsFontSizeToFit>
               {formatCurrency(currency)}
             </Text>
-            <Image source={require('../assets/Placeholder/pixel_coins.png')} style={styles.moneyIcon} />
-          </View>
-        </ImageBackground>
+          </ImageBackground>
+        </View>
 
         {/* Timer — paused during any popups or after the level ends. */}
         {/* Timer — paused during Ratty's popup or after the level ends.
@@ -322,18 +322,17 @@ function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack,
         />
 
         {/* 3. Table / plate — serves the current word */}
-        <ImageBackground
-          source={require("../assets/Placeholder/Table.png")}
+        <View
           style={styles.table}
           resizeMode="stretch"
         >
           <TouchableOpacity onPress={handleServePlate} activeOpacity={0.7}>
             <Image
-              source={require("../assets/Placeholder/Plate.png")}
+              source={require("../assets/Final/GameplayUI/serve-button.png")}
               style={styles.plate}
             />
           </TouchableOpacity>
-        </ImageBackground>
+        </View>
 
         {/* 4. Chef */}
         <View style={styles.chefBar}>
@@ -343,34 +342,32 @@ function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack,
           />
         </View>
 
-        {/* 5. Conveyor belts (speed from LevelConfig) */}
-        <View style={styles.conveyorGroup}>
-          {BELT_ROWS.map((row) => (
-            <ImageBackground
-              key={row}
-              source={require("../assets/Placeholder/Conveyor.png")}
-              style={styles.conveyor}
-              resizeMode="stretch"
-            >
-              <ConveyorBelt
-                ref={conveyorRefs[row]}
-                style={styles.conveyorBelt}
-                config={{
-                  slotDurationMs: levelConfig.conveyorSpeed,
-                  slotWidth: 70,
-                  slotHeight: 60,
-                  // Only set when a level has one (null would override the default).
-                  ...(levelConfig.letterPool ? { letterPool: levelConfig.letterPool } : {}),
-                  ...getBeltConfig(levelConfig, row), // this belt's letter count + letterDistribution
-                }}
-                onLetterPress={(letter) => wordInput.selectLetter(letter, row)}
-              />
-            </ImageBackground>
-          ))}
-        </View>
+        {/* 5. Conveyor belts: one image, three rows on top of it */}
+        <ImageBackground
+        source={require("../assets/Final/GameplayUI/conveyors.png")}
+        style={styles.conveyorGroup}
+        resizeMode="stretch"
+        >
+        {BELT_ROWS.map((row) => (
+        <View key={row} style={styles.conveyorRow}>
+          <ConveyorBelt
+          ref={conveyorRefs[row]}
+          style={styles.conveyorBelt}
+          config={{
+          slotDurationMs: levelConfig.conveyorSpeed,
+          slotWidth: 70,
+          slotHeight: 60,
+          ...(levelConfig.letterPool ? { letterPool: levelConfig.letterPool } : {}),
+          ...getBeltConfig(levelConfig, row),
+        }}
+        onLetterPress={(letter) => wordInput.selectLetter(letter, row)}
+      />
+    </View>
+  ))}
+</ImageBackground>
 
         <StatusBar style="light" />
-      </View>
+      </ImageBackground>
 
       {/* Mr. Ratty popup (rolled by useLevelMaker) */}
       <MrRattyDiscount
@@ -383,50 +380,46 @@ function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack,
 
 const styles = StyleSheet.create({
   /* 1 the screen thingy */
-  screenWrapper: { flex: 1, backgroundColor: '#222', alignItems: 'center', justifyContent: 'center' },
+  screenWrapper: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' },
   container: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 420,
-    backgroundColor: "#b87b4e",
-    alignItems: "center",
-    paddingVertical: 0,
-    paddingHorizontal: 0,
-  },
+  alignItems: 'center',   // remove flex:1, maxWidth, maxHeight, and aspectRatio
+},
   headerBackground: {
-    width: '105%', flex: 130, flexDirection: 'row', //the width: 105% is a temp fix please fix this
-    justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15,
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',   // anchor children to the TOP, so the overflow hangs downward like the mockup
+    height: 150,                 // the header bar's own visual height stays modest
   },
-  quitWrapper: { width: 90, height: 55, left: 20, alignItems: 'center',},
-  quitButton: {...StyleSheet.absoluteFillObject, width: '100%', height: '100%', resizeMode: 'contain',},
-  quitText: {color: 'red', fontSize: 20, textAlign: 'center', top: 14}, //Brute forced yung top since out of bound
-  coinDisplay: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 1, maxWidth: 170, gap: 10 },
-  coinText: { flexShrink: 1, fontSize: 22, fontWeight: 'bold', color: '#fff', textShadowColor: '#000', textShadowRadius: 2, textShadowOffset: { width: 1, height: 1 } },
-  moneyIcon: { width: 40, height: 40, resizeMode: 'contain' },
+  quitWrapper: { alignItems: 'center', justifyContent: 'center' },
+  quitButton: { width: 160, height: 125, resizeMode: 'stretch'},
+  coinDisplay: { width: 165, height: 240, alignItems: 'center', justifyContent: 'center'},
+  coinText: { flexShrink: 1, fontSize: 30, fontWeight: 'bold', color: '#fff', textShadowColor: '#000', textShadowRadius: 2, textShadowOffset: { width: 1, height: 1 },
+  paddingBottom: 151, paddingLeft: 40 },
 
   stageText: { fontSize: 18, fontWeight: 'bold', color: '#fff', textShadowColor: '#000', textShadowRadius: 2, textShadowOffset: { width: 1, height: 1 } },
 
   /* 2 Customer Area*/
   customerBox: { flex: 150, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 15, paddingHorizontal: 15 },
-  characterDog: { width: 160, height: 160, resizeMode: 'contain' },
-  patienceMeter: { width: 94, height: 130, marginTop: -80, resizeMode: 'contain' },
+  characterDog: { width: 160, height: 160, resizeMode: 'contain', marginBottom: 85, right: 25},
+  patienceMeter: { width: 104, height: 130, marginTop: -165, marginLeft: 50, resizeMode: 'contain' },
 
   table: {
     width: "100%",
     flex: 150,
     marginTop: -60,
-    zIndex: 2,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
   },
-  plate: { width: 60, height: 60 },
+  plate: { width: 120, height: 60, marginTop: 25, resizeMode: 'stretch' },
 
   /* 4 Chef Bar*/
   chefBar: { flex: 130, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 15,  },
-  characterChef: { width: 115, height: 115, resizeMode: 'contain', left: 125, bottom: 30 },
+  characterChef: { width: 115, height: 115, resizeMode: 'contain', left: 125, bottom: 60 },
 
   /* 5 Conveyor area */
-  conveyorGroup: { width: '100%', flex: 240, flexDirection: 'column', gap: CONVEYOR_ROW_GAP, bottom: 50 },
-  conveyor: { width: '100%', flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  conveyorGroup: { width: '100%', flex: 240, flexDirection: 'column', bottom: 75, },
+  conveyorRow: { justifyContent: 'center', alignItems: 'center', bottom: 17}, 
+  conveyorBelt: {marginTop: 45},
 });

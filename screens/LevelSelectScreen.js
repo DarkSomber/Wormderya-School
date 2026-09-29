@@ -19,28 +19,28 @@ const LEVELS = [
     id: 1,
     align: "flex-start",
     size: 100,
-    image: require("../assets/Final/levels/Level-1-Logo.png"),
+    image: require("../assets/Final/levels/Level_1_Sinangag.png"),
   },
   {
     id: 2,
     align: "flex-end",
     width: 165,
     height: 105,
-    image: require("../assets/Final/levels/Level-2-Logo.png"),
+    image: require("../assets/Final/levels/Level_2_Adobo.png"),
   },
   {
     id: 3,
     align: "flex-start",
     width: 135,
     height: 95,
-    image: require("../assets/Final/levels/Level-3-Logo.png"),
+    image: require("../assets/Final/levels/Level_3_Sinigang-na-Bangus.png"),
   },
   {
     id: 4,
     align: "flex-end",
     width: 190,
     height: 150,
-    image: require("../assets/Final/levels/Level-4-Logo.png"),
+    image: require("../assets/Final/levels/Level_4_Boss_kare-kare.png"),
   }, // e.g. a bigger "boss" node
 ];
 
