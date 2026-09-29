@@ -12,9 +12,35 @@ import AppButton from "../components/AppButton";
 import VolumeSlider from "../components/VolumeSlider";
 
 const PANEL_TITLES = {
-  music: "Music",
+  music: "Settings",
   credits: "Credits",
   achievements: "Achievement",
+};
+
+// Space reserved above AND below the panel so it sits in the middle of the
+// screen. It must clear the back button (top 20 + 48 tall = 68), so 64 + the
+// container's 16 padding = 80px on both sides.
+const PANEL_VERTICAL_MARGIN = 64;
+
+const ART_BORDER = { left: 0.046, right: 0.858, top: 0.02, bottom: 0.979 };
+
+// Gap between the drawn border and the sliders/labels.
+const CONTENT_PAD_X = "10%";
+const CONTENT_PAD_Y = 40;
+
+const artW = ART_BORDER.right - ART_BORDER.left;
+const artH = ART_BORDER.bottom - ART_BORDER.top;
+const ART_STYLE = {
+  position: "absolute",
+  width: `${100 / artW}%`,
+  height: `${100 / artH}%`,
+  left: `${(-ART_BORDER.left / artW) * 100}%`,
+  top: `${(-ART_BORDER.top / artH) * 100}%`,
+
+  transform: [
+    { translateX: 20},
+    { translateY: 20},
+  ],
 };
 
 export default function SettingsScreen({ onBack }) {
@@ -32,29 +58,12 @@ export default function SettingsScreen({ onBack }) {
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.container}>
-        {/* TOP BAR */}
-
-        <View style={styles.topBar}>
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={onBack}
-            style={styles.backCircle}
-          >
-            <Image
-              source={require("../assets/Final/buttons/buttonSettings-Back.png")}
-              style={styles.backCircleImage}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* SETTINGS PANEL */}
-        <ImageBackground
-          source={require("../assets/Final/SettingsPanel.png")}
-          style={styles.panel}
-          imageStyle={styles.panelImage}
-          resizeMode="cover"
-        >
+        <View style={styles.panel}>
+          <Image
+            source={require("../assets/Final/SettingsPanel.png")}
+            style={ART_STYLE}
+            resizeMode="stretch"
+          />
           <Text style={styles.panelTitle}>{PANEL_TITLES[view]}</Text>
           <View style={styles.panelDivider} />
 
@@ -80,13 +89,14 @@ export default function SettingsScreen({ onBack }) {
               />
 
               <View style={styles.panelButtonRow}>
+                {/* Image and target now match (they were swapped before). */}
                 <AppButton
-                  onPress={() => setView("credits")}
+                  onPress={() => setView("achievements")}
                   style={styles.panelSmallButton}
                   backgroundImage={require("../assets/Final/buttons/buttonSettings-Achievements.png")}
                 />
                 <AppButton
-                  onPress={() => setView("achievements")}
+                  onPress={() => setView("credits")}
                   style={styles.panelSmallButton}
                   multiline
                   backgroundImage={require("../assets/Final/buttons/buttonSettings-Credits.png")}
@@ -111,7 +121,23 @@ export default function SettingsScreen({ onBack }) {
               />
             </>
           )}
-        </ImageBackground>
+        </View>
+
+        {/* BACK BUTTON — absolute, so it no longer pushes the panel down.
+            Rendered after the panel so it stays on top and tappable. */}
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={onBack}
+            style={styles.backCircle}
+          >
+            <Image
+              source={require("../assets/Final/buttons/buttonSettings-Back.png")}
+              style={styles.backCircleImage}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
       </View>
     </ImageBackground>
   );
@@ -128,41 +154,48 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "100%",
     alignItems: "center",
-    paddingTop: 20,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    justifyContent: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 4,
   },
   topBar: {
-    width: "100%",
-    alignItems: "flex-start",
-    marginBottom: 12,
+    position: "absolute",
+    top: 20,
+    left: 16,
   },
   backCircle: {
-    width: 48,
-    height: 48,
+    width: 50,
+    height: 50,
+    top: 50,
     alignItems: "center",
     justifyContent: "center",
   },
   backCircleImage: {
-    width: "60",
-    height: "60",
+    width: 60, 
+    height: 60,
   },
   panel: {
     width: "100%",
     flex: 1,
-    overflow: "hidden",
-    paddingVertical: 25,
-    paddingHorizontal: 18,
+    marginVertical: PANEL_VERTICAL_MARGIN,
+    alignSelf: "center",
+    overflow: "hidden", 
+    paddingVertical: CONTENT_PAD_Y,
+    paddingHorizontal: CONTENT_PAD_X,
     alignItems: "center",
+    justifyContent: "center",
   },
-  panelImage: {
-    borderRadius: 20,
+  backgroundImage: {
+    transform: [
+      { translateX: 20},
+      { translateY: -30},
+    ]
   },
   panelTitle: {
-    fontSize: 20,
+    fontSize: 28,
     fontWeight: "700",
     color: "#5c3a21",
-    marginBottom: 8,
+    marginBottom: 22,
   },
   panelDivider: {
     width: "100%",
@@ -172,17 +205,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sliderSpacing: {
-    marginBottom: 14,
+    marginBottom: 26,
     width: "100%",
   },
   panelButtonRow: {
     flexDirection: "column",
     alignItems: "center",
     marginTop: "auto",
+    marginBottom: 30,
     gap: 20,
   },
   panelSmallButton: {
-    size: 25,
+    width: 230,
+    height: 64,
   },
   placeholderContent: {
     width: "100%",
@@ -202,7 +237,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   panelBackButton: {
-    width: 160,
-    height: 48,
+    width: 200,
+    height: 60,
   },
 });

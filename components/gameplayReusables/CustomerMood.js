@@ -11,26 +11,48 @@ function getMoodImageSource(patience) {
   return MOOD_ANGRY;
 }
 
-const CustomerMood = forwardRef(({ maxPatience = 100, decayRateMs = 4000, onCustomerLeft, onPatienceChange, style }, ref) => {
+const CustomerMood = forwardRef(({
+  maxPatience = 100,
+  decayRateMs = 4000,
+  drainMultiplier = 1, // <1 slower drain, >1 faster. Applied to decayRateMs.
+  onCustomerLeft,
+  onPatienceChange,
+  style,
+}, ref) => {
   const [patience, setPatience] = useState(maxPatience);
   const hasLeftRef = useRef(false);
 
-  // Passive patience decay over time.
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      setPatience((prev) => {
-        if (prev <= 0) {
-          clearInterval(intervalId); // already empty, stop ticking
-          return prev;
-        }
-        return Math.max(0, prev - 10);
-      });
-    }, decayRateMs);
+  // Read multiplier through a ref so mid-customer changes take effect
+  // without resetting the interval (which would "heal" the customer).
+  const drainRef = useRef(drainMultiplier);
+  drainRef.current = drainMultiplier;
 
-    return () => clearInterval(intervalId);
+  // Passive decay. Reschedules on every tick so a live multiplier change
+  // is honored without remounting the customer.
+  useEffect(() => {
+    let intervalId;
+    let cancelled = false;
+
+    const schedule = () => {
+      if (cancelled) return;
+      const mult = drainRef.current || 1;
+      const base = Math.max(100, decayRateMs / mult);
+      intervalId = setInterval(() => {
+        setPatience((prev) => {
+          if (prev <= 0) return prev;
+          return Math.max(0, prev - 10);
+        });
+        clearInterval(intervalId);
+        schedule();
+      }, base);
+    };
+    schedule();
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
   }, [decayRateMs]);
 
-  // Fires onCustomerLeft exactly once, the moment patience hits 0.
   useEffect(() => {
     if (patience <= 0 && !hasLeftRef.current) {
       hasLeftRef.current = true;
@@ -38,19 +60,15 @@ const CustomerMood = forwardRef(({ maxPatience = 100, decayRateMs = 4000, onCust
     }
   }, [patience, onCustomerLeft]);
 
-  // Optional: lets a parent react to patience changes too (e.g. for a
-  // numeric readout elsewhere on screen) without owning the image logic.
   useEffect(() => {
     onPatienceChange?.(patience);
   }, [patience, onPatienceChange]);
 
-  // Called when player submits an invalid word or wrong spelling
   const applyWrongWordPenalty = (penaltyAmount = 15) => {
-    if (hasLeftRef.current) return; // ignore penalties after customer already left
+    if (hasLeftRef.current) return;
     setPatience((prev) => Math.max(0, prev - penaltyAmount));
   };
 
-  // Called when player successfully serves an order
   const restorePatience = (restoreAmount = 20) => {
     if (hasLeftRef.current) return;
     setPatience((prev) => Math.min(maxPatience, prev + restoreAmount));

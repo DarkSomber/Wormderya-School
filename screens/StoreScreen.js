@@ -3,147 +3,221 @@ import ShopOutcomeModal from './ShopOutcomeModal.js';
 import { formatCurrency } from '../components/gameplayReusables/UseWallet';
 import AchievementModal from '../components/gameplayReusables/AchievementModal';
 import { ACHIEVEMENTS } from '../components/gameplayReusables/Achievements.js';
-import { StyleSheet, View, Image, ImageBackground, TouchableOpacity } from 'react-native';
+import { UPGRADE_LIST } from '../components/gameplayReusables/UseUpgrades';
+import {
+  StyleSheet,
+  View,
+  Image,
+  ImageBackground,
+  TouchableOpacity,
+  ScrollView,
+} from 'react-native';
 import Text from '../components/AppText';
 
-// Same 3 items/prices that used to be hardcoded directly in the JSX,
-// now data so each item slot can be selected instead of only item 1
-// ever being "chosen" (which never even showed, since `itemSelected`
-// wasn't a real style before now).
-const SHOP_ITEMS = [
-  {
-    id: 'satisfaction-boost',
-    image: require('../assets/Placeholder/SatisfactionBoost.png'),
-    basePrice: 10,
-    description: 'Customers have more patience',
-  },
-  {
-    id: 'extra-time',
-    image: require('../assets/Placeholder/Clock.png'),
-    basePrice: 20,
-    description: 'Adds a few seconds to the clock',
-  },
-  {
-    id: 'score-multiplier',
-    image: require('../assets/Placeholder/Multiplier.png'),
-    basePrice: 50,
-    description: 'Doubles points from words for a short while',
-  },
-];
-const ALL_ITEM_IDS = SHOP_ITEMS.map((item) => item.id);
+const NO_UPGRADES = {
+  ownedPermanent: new Set(),
+  activeTemporary: {},
+  isActive: () => false,
+  rewardMultiplier: 1,
+  patienceDrainMultiplier: 1,
+  extraHealth: 0,
+  consumeExtraHealth: () => {},
+  buyUpgrade: () => ({ success: false, reason: 'unavailable' }),
+  startNewRound: () => {},
+};
 
-/**
- * StoreScreen
- * -----------
- * `wallet` is the useWallet() instance created once in App.js — passed
- * down as a prop rather than instantiated here, since this screen gets
- * unmounted/remounted on every trip to/from Gameplay, and currency +
- * discount/inflate marks need to survive that.
- */
-export default function StoreScreen({ onBack, wallet, achievements, onGoToLevelSelect}) {
-  // null = hidden | 'inflate' = price rise | 'discount' = price drop
+export default function StoreScreen({
+  onBack,
+  wallet,
+  achievements,
+  upgrades,
+  onGoToLevelSelect,
+}) {
+  const safeUpgrades = upgrades ?? NO_UPGRADES;
+
   const [rattyOutcome, setRattyOutcome] = useState(null);
+  const [selectedId, setSelectedId] = useState(UPGRADE_LIST[0].id);
+  const [feedback, setFeedback] = useState(null); // last action result, shown in status line
 
-  // Which item is currently highlighted — defaults to the first one so
-  // the screen still looks the same as before on first render.
-  const [selectedItemId, setSelectedItemId] = useState(SHOP_ITEMS[0].id);
-  const selectedItem = SHOP_ITEMS.find((item) => item.id === selectedItemId);
-  const selectedPrice = wallet.getEffectivePrice(selectedItem.id, selectedItem.basePrice);
-  const affordable = wallet.canAfford(selectedItem.id, selectedItem.basePrice);
+  const selected = UPGRADE_LIST.find((u) => u.id === selectedId) || UPGRADE_LIST[0];
+  const price = wallet.getEffectivePrice(selected.id, selected.price);
+  const owned = safeUpgrades.ownedPermanent.has(selected.id);
+  const active = safeUpgrades.isActive(selected.id);
+  const affordable = wallet.currency >= price;
 
   const handleBuy = () => {
-    const result = wallet.buyItem(selectedItem.id, selectedItem.basePrice, ALL_ITEM_IDS);
-    if (result.success) setRattyOutcome('discount');
-    achievements.unlockAchievement(ACHIEVEMENTS.FIRST_PURCHASE); //Connected to the achievement modal
-    // insufficient funds: Buy is disabled below when !affordable, so
-    // this branch shouldn't actually fire in normal use.
+    setFeedback(null);
+
+    if (owned) {
+      setFeedback({ type: 'error', text: 'Already owned.' });
+      return;
+    }
+
+    if (!affordable) {
+      setFeedback({
+        type: 'error',
+        text: `Not enough coins (need ${price}, have ${wallet.currency}).`,
+      });
+      // eslint-disable-next-line no-undef
+      if (__DEV__) {
+        console.log(
+          `[Store] buy blocked: need=${price} have=${wallet.currency} id=${selected.id}`
+        );
+      }
+      return;
+    }
+
+    // eslint-disable-next-line no-undef
+    if (__DEV__) {
+      console.log(
+        `[Store] buying "${selected.name}" for ${price} (currency before=${wallet.currency})`
+      );
+    }
+
+    const result = safeUpgrades.buyUpgrade(selected);
+
+    // eslint-disable-next-line no-undef
+    if (__DEV__) {
+      console.log(`[Store] buyUpgrade result:`, result);
+    }
+
+    if (result.success) {
+      setFeedback({ type: 'ok', text: `Bought ${selected.name}!` });
+      achievements.unlockAchievement(ACHIEVEMENTS.FIRST_PURCHASE);
+      setRattyOutcome('discount');
+    } else {
+      setFeedback({
+        type: 'error',
+        text:
+          result.reason === 'insufficient'
+            ? 'Not enough coins.'
+            : result.reason === 'owned'
+            ? 'Already owned.'
+            : 'Purchase failed.',
+      });
+    }
   };
 
   const handleDecline = () => {
-    wallet.declineOffer(ALL_ITEM_IDS);
+    wallet.declineOffer(UPGRADE_LIST.map((u) => u.id));
     setRattyOutcome('inflate');
   };
+
+  const statusLine = owned
+    ? 'OWNED'
+    : active
+    ? 'ACTIVE'
+    : feedback
+    ? feedback.text
+    : `${price} coins${!affordable ? ' — not enough coins' : ''}`;
+
+  const statusColor = feedback
+    ? feedback.type === 'ok'
+      ? '#2E7D32'
+      : '#7A2E2E'
+    : '#7A2E2E';
 
   return (
     <View style={styles.screenWrapper}>
       <View style={styles.container}>
-
-        {/* Back button — leaves the shop at any point without buying,
-            independent of the "No thank you!" button below (which only
-            declines Mr. Ratty's specific offer and stays on this screen) */}
-        <TouchableOpacity onPress={onBack} activeOpacity={0.7} style={styles.backButtonWrapper}>
-          <Image source={require('../assets/Final/buttons/buttonBack.png')} style={styles.backButtonIcon} />
+        <TouchableOpacity
+          onPress={onBack}
+          activeOpacity={0.7}
+          style={styles.backButtonWrapper}
+        >
+          <Image
+            source={require('../assets/Final/buttons/buttonBack.png')}
+            style={styles.backButtonIcon}
+          />
         </TouchableOpacity>
 
-        {/* 1. TOP SIGN */}
         <Image
           source={require('../assets/Placeholder/TopBoard.png')}
           style={styles.shopSign}
         />
 
-        {/* 2. MR. RATTY */}
         <Image
           source={require('../assets/Placeholder/MrRatty.png')}
           style={styles.ratMerchant}
         />
 
-        {/* 3. MAIN BOARD */}
         <ImageBackground
           source={require('../assets/Placeholder/Board.png')}
           style={styles.shopPanel}
           resizeMode="stretch"
         >
-          {/* Coin Balance Header — live wallet balance, not a hardcoded 999 */}
           <View style={styles.coinHeader}>
             <Text style={styles.coinText} numberOfLines={1} adjustsFontSizeToFit>
               {formatCurrency(wallet.currency)}
             </Text>
-            <Image source={require('../assets/Placeholder/pixel_coins.png')} style={styles.coinIcon} />
+            <Image
+              source={require('../assets/Placeholder/pixel_coins.png')}
+              style={styles.coinIcon}
+            />
           </View>
 
-          {/* 3 Shop Items Row — each one tappable, price reflects live discount/inflate state */}
-          <View style={styles.itemRow}>
-            {SHOP_ITEMS.map((item) => {
-              const price = wallet.getEffectivePrice(item.id, item.basePrice);
-              const onSale = price < item.basePrice;
-              const pricedUp = price > item.basePrice;
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.itemRow}
+          >
+            {UPGRADE_LIST.map((item) => {
+              const itemPrice = wallet.getEffectivePrice(item.id, item.price);
+              const onSale = itemPrice < item.price;
+              const pricedUp = itemPrice > item.price;
+              const itemOwned = safeUpgrades.ownedPermanent.has(item.id);
 
               return (
                 <TouchableOpacity
                   key={item.id}
                   style={styles.itemSlotContainer}
-                  onPress={() => setSelectedItemId(item.id)}
+                  onPress={() => {
+                    setSelectedId(item.id);
+                    setFeedback(null);
+                  }}
                   activeOpacity={0.7}
                 >
-                  <Image
-                    source={item.image}
-                    style={[styles.itemBoxImage, selectedItemId === item.id && styles.itemSelected]}
-                  />
+                  <View
+                    style={[
+                      styles.itemSlotBox,
+                      selectedId === item.id && styles.itemSelected,
+                    ]}
+                  >
+                    <Text style={styles.itemSlotInitial}>
+                      {item.name.charAt(0)}
+                    </Text>
+                    {itemOwned && <Text style={styles.ownedBadge}>✓</Text>}
+                  </View>
                   <View style={styles.priceContainer}>
-                    <Image source={require('../assets/Placeholder/pixel_coins.png')} style={styles.smallCoinIcon} />
+                    <Image
+                      source={require('../assets/Placeholder/pixel_coins.png')}
+                      style={styles.smallCoinIcon}
+                    />
                     <Text style={styles.priceText}>
-                      {price}{onSale ? ' ↓' : ''}{pricedUp ? ' ↑' : ''}
+                      {itemPrice}
+                      {onSale ? ' ↓' : ''}
+                      {pricedUp ? ' ↑' : ''}
                     </Text>
                   </View>
                 </TouchableOpacity>
               );
             })}
-          </View>
+          </ScrollView>
 
-          {/* Description Text — follows whichever item is selected */}
-          <Text style={styles.descriptionText}>
-            {selectedItem.description}
-          </Text>
-          <Text style={styles.affordabilityText}>
-            {selectedPrice} coins{!affordable ? ' — not enough coins' : ''}
+          <Text style={styles.descriptionText}>{selected.name}</Text>
+          <Text style={styles.affordabilityText}>{selected.description}</Text>
+          <Text style={[styles.affordabilityText, { color: statusColor }]}>
+            {statusLine}
           </Text>
 
-          {/* Buy Button — buys whatever's currently selected, disabled if unaffordable */}
+          {/* Buy is only hard-disabled when already owned. If not affordable,
+              it still taps and shows a clear message instead of silently
+              doing nothing. */}
           <TouchableOpacity
             onPress={handleBuy}
             activeOpacity={0.8}
-            disabled={!affordable}
-            style={!affordable ? styles.buyButtonDisabled : undefined}
+            disabled={owned}
+            style={owned ? styles.buyButtonDisabled : undefined}
           >
             <Image
               source={require('../assets/Placeholder/BuyButton.png')}
@@ -152,12 +226,6 @@ export default function StoreScreen({ onBack, wallet, achievements, onGoToLevelS
           </TouchableOpacity>
         </ImageBackground>
 
-        {/* 4. BOTTOM "NO THANK YOU!" BUTTON — declines the whole offer.
-            Wrapped + given an explicit zIndex/elevation so it can never
-            get shadowed by shopPanel's negative marginTop overlap above
-            it (that overlap was letting shopPanel/Buy's touch area steal
-            taps meant for this button, which made Decline silently fire
-            handleBuy instead — the actual cause of "always discount"). */}
         <TouchableOpacity
           onPress={handleDecline}
           activeOpacity={0.7}
@@ -169,19 +237,17 @@ export default function StoreScreen({ onBack, wallet, achievements, onGoToLevelS
             style={styles.backButtonImage}
           />
         </TouchableOpacity>
-
       </View>
 
-      {/* SHOP OUTCOME MODAL */}
       <ShopOutcomeModal
         visible={rattyOutcome !== null}
         outcome={rattyOutcome}
-        onDismiss={() => {setRattyOutcome(null);
-          onGoToLevelSelect();
+        onDismiss={() => {
+          setRattyOutcome(null);
+          onGoToLevelSelect?.();
         }}
       />
-      {/* Trigger achievement modal */}
-      <AchievementModal 
+      <AchievementModal
         visible={achievements.currentAchievement !== null}
         achievement={achievements.currentAchievement}
         onDismiss={achievements.dismissAchievement}
@@ -205,10 +271,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-start',
   },
-
-  // Back button — top-left, above everything else, so it's reachable
-  // no matter what else is on screen (uses the same buttonBack.png the
-  // rest of the app uses for "leave this screen").
   backButtonWrapper: {
     position: 'absolute',
     top: -18,
@@ -220,38 +282,27 @@ const styles = StyleSheet.create({
     height: 100,
     resizeMode: 'contain',
   },
-
-  // 1. SIGN AT THE TOP
   shopSign: {
     width: '100%',
     height: 150,
     resizeMode: 'stretch',
   },
-
-  // 2. MR. RATTY
   ratMerchant: {
     width: 380,
     height: 400,
     resizeMode: 'stretch',
-    // Tucks Mr. Ratty slightly under the top ceiling board
     marginTop: -150,
   },
-
-  // 3. MAIN SHOP PANEL
   shopPanel: {
     width: '100%',
     height: 430,
     marginRight: 20,
-    paddingVertical: 25,         // Adds comfortable top & bottom padding inside board
+    paddingVertical: 25,
     paddingHorizontal: 1,
     alignItems: 'center',
     borderRadius: 8,
     justifyContent: 'space-between',
-    // Negative margin pulls the board UP to overlap Mr. Ratty's lower body
-    marginTop: -100, 
-    // Explicit low zIndex so this panel (and its Buy button) can never
-    // render/receive-touches above sibling elements below it, like the
-    // Decline button.
+    marginTop: -100,
     zIndex: 1,
   },
   coinHeader: {
@@ -273,35 +324,43 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
   },
-  divider: {
-    width: '90%',
-    height: 2,
-    backgroundColor: '#7A5230',
-    marginVertical: 10,
-  },
-
-  // ITEMS
   itemRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '90%',
-    marginVertical: 10,
-    marginLeft: 15,
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    gap: 12,
   },
   itemSlotContainer: {
     alignItems: 'center',
+    width: 100,
   },
-  itemBoxImage: {
+  itemSlotBox: {
     width: 90,
     height: 90,
-    resizeMode: 'contain',
-  },
-  // Actually defined now — previously referenced in the item row but
-  // never declared, so tapping/selecting an item had no visible effect.
-  itemSelected: {
+    backgroundColor: '#E8D6B0',
     borderWidth: 3,
-    borderColor: '#FFE194',
+    borderColor: '#7A5230',
     borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemSelected: {
+    borderColor: '#FFE194',
+    borderWidth: 4,
+  },
+  itemSlotInitial: {
+    fontSize: 44,
+    fontWeight: 'bold',
+    color: '#5A3A1A',
+  },
+  ownedBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 6,
+    fontSize: 20,
+    color: '#2E7D32',
+    fontWeight: 'bold',
   },
   priceContainer: {
     flexDirection: 'row',
@@ -315,20 +374,18 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   priceText: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#000',
   },
-
-  // DESCRIPTION & BUY BUTTON
   descriptionText: {
     fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
     color: '#000',
-    marginVertical: 10,
-    marginLeft: 15,
     marginTop: -10,
+    marginBottom: 4,
+    paddingHorizontal: 10,
   },
   affordabilityText: {
     fontSize: 13,
@@ -336,6 +393,7 @@ const styles = StyleSheet.create({
     color: '#7A2E2E',
     textAlign: 'center',
     marginBottom: 6,
+    paddingHorizontal: 16,
   },
   buyButtonImage: {
     width: 170,
@@ -347,12 +405,10 @@ const styles = StyleSheet.create({
   buyButtonDisabled: {
     opacity: 0.4,
   },
-
-  // 4. "NO THANK YOU!" BUTTON (declines Mr. Ratty's offer, stays on this screen)
   declineButtonWrapper: {
     width: '100%',
     zIndex: 20,
-    elevation: 20, 
+    elevation: 20,
   },
   backButtonImage: {
     width: '100%',
