@@ -9,6 +9,8 @@ import CustomerMood from '../components/gameplayReusables/CustomerMood';
 import LevelTimer from '../components/gameplayReusables/LevelTimer';
 import { useScoreSystem } from '../components/gameplayReusables/UseScoreSystem';
 import { formatCurrency } from '../components/gameplayReusables/UseWallet';
+import AchievementModal from '../components/gameplayReusables/AchievementModal';
+import { ACHIEVEMENTS } from '../components/gameplayReusables/Achievements.js';
 import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount'; 
 import AppButton from '../components/AppButton'; // why is this unused?
 
@@ -49,6 +51,7 @@ export default function GameplayScreen({
   levelId = 1,
   levelConfig: levelConfigOverride,
   wallet,
+  achievements,
   mode = 'normal',
 }) {
   const [sessionId, setSessionId] = useState(0);
@@ -68,6 +71,7 @@ export default function GameplayScreen({
   }, []);
 
   return (
+    <>
     <LevelSession
       key={`${levelConfig.id}:${sessionId}`}
       levelConfig={levelConfig}
@@ -77,8 +81,16 @@ export default function GameplayScreen({
       onLevelComplete={onLevelComplete}
       isStoreOpen={isStoreOpen}
       wallet={wallet}
+      achievements={achievements}
       mode={mode}
     />
+    <AchievementModal   //Positioned here so it doesn't unmount when there's something on top
+        visible={achievements.currentAchievement !== null}
+        achievement={achievements.currentAchievement}
+        onDismiss={achievements.dismissAchievement}
+      />
+    </>
+    
   );
 }
 
@@ -92,7 +104,7 @@ export default function GameplayScreen({
  *   -> useScoreSystem, CustomerMood, LevelTimer
  *   -> LevelEndSequence (score/stars; calls onRetry or onOpenStore)
  */
-function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack, onRetry, onLevelComplete, isStoreOpen, wallet }) {
+  function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack, onRetry, onLevelComplete, isStoreOpen, wallet, achievements }) {
   const [phase, setPhase] = useState('intro'); // 'intro' | 'playing' | 'end'
 
   // --- Rush Hour session state (all reset by the remount on retry) ---
@@ -131,6 +143,7 @@ function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack,
         addScoreFromWord(result.word, 1, levelConfig.scoreMultiplier);
         customerRef.current?.restorePatience(100);
         levelMaker.registerServedWord();
+        achievements.unlockAchievement(ACHIEVEMENTS.FIRST_WORD); //Achievement trigger
 
         if (isRushHour) {
           // Restore some time (LevelTimer applies it once per id and caps it),
@@ -144,7 +157,7 @@ function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack,
         customerRef.current?.applyWrongWordPenalty();
       }
     },
-    [addScoreFromWord, levelConfig.scoreMultiplier, levelConfig.timeBonusSeconds, levelMaker, isRushHour],
+    [addScoreFromWord, levelConfig.scoreMultiplier, levelConfig.timeBonusSeconds, levelMaker, achievements, isRushHour],
   );
 
   // Map LevelConfig to the narrow shape useWordInput/ConveyorBelt expect.
@@ -269,13 +282,14 @@ function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack,
           </View>
         </ImageBackground>
 
+        {/* Timer — paused during any popups or after the level ends. */}
         {/* Timer — paused during Ratty's popup or after the level ends.
             Rush Hour: endless (time-out = run over), restored by correct words, capped. */}
         <LevelTimer
           targetScore={levelConfig.targetScore}
           currentScore={score}
           initialTimeInSeconds={levelConfig.timeLimitSeconds}
-          isPaused={levelResult !== null || levelMaker.showRattyEvent}
+          isPaused={levelResult !== null || levelMaker.showRattyEvent || achievements.currentAchievement !== null} //Added Achievements popup pause
           onLevelEnd={handleLevelEnd}
           endless={isRushHour}
           timeBonus={isRushHour ? timeBonus : null}
@@ -385,7 +399,7 @@ const styles = StyleSheet.create({
   },
   quitWrapper: { width: 90, height: 55, left: 20, alignItems: 'center',},
   quitButton: {...StyleSheet.absoluteFillObject, width: '100%', height: '100%', resizeMode: 'contain',},
-  quitText: {color: 'red', fontSize: 20, textAlign: 'center', bottom: 40}, //Brute forced yung bottom para di bumaba
+  quitText: {color: 'red', fontSize: 20, textAlign: 'center', top: 14}, //Brute forced yung top since out of bound
   coinDisplay: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 1, maxWidth: 170, gap: 10 },
   coinText: { flexShrink: 1, fontSize: 22, fontWeight: 'bold', color: '#fff', textShadowColor: '#000', textShadowRadius: 2, textShadowOffset: { width: 1, height: 1 } },
   moneyIcon: { width: 40, height: 40, resizeMode: 'contain' },

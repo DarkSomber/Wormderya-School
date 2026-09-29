@@ -15,6 +15,7 @@ import LevelSelectScreen from "./screens/LevelSelectScreen";
 import StoryBackstoryScreen from "./screens/StoryBackstoryScreen";
 import GameplayScreen from "./screens/GameplayScreen";
 import { useWallet } from "./components/gameplayReusables/UseWallet";
+import { useAchievements } from "./components/gameplayReusables/UseAchievements.js";
 import { hasLevelPreset, getNextLevelId, getLevelConfigById, getAllLevelIds } from "./levels/levelPresets";
 
 /* Placeholder components */
@@ -87,6 +88,7 @@ function ScreenSwitcher() {
 
   // Global currency
   const wallet = useWallet(0);
+  const achievements = useAchievements(wallet);
 
   const renderCurrentScreen = () => {
   switch (screen) {
@@ -156,6 +158,7 @@ function ScreenSwitcher() {
             onOpenStore={openStore}
             isStoreOpen={showStore}
             wallet={wallet}
+            achievements={achievements}
           />
         );
 
@@ -185,7 +188,11 @@ function ScreenSwitcher() {
         {showStore && (
           <Modal>
             <View style={styles.overlay}>
-              <StoreScreen onBack={closeStore} wallet={wallet} onGoToLevelSelect={() => {closeStore(); setScreen(SCREENS.LEVEL_SELECT);}} />
+              <StoreScreen 
+                onBack={closeStore} 
+                wallet={wallet} 
+                achievements={achievements}
+                onGoToLevelSelect={() => {closeStore(); setScreen(SCREENS.LEVEL_SELECT);}} />
             </View>
           </Modal>
         )}
@@ -202,8 +209,8 @@ function ScreenSwitcher() {
       <QuitModal visible={showQuit} onQuit={() => setShowQuit(false)} />
 
       {/* Level-unlocked warning */}
-      <PopupModal
-        visible={unlockNotice !== null}
+      <PopupModal  //Now requires achievements to be dismissed before appearing
+        visible={unlockNotice !== null && achievements.currentAchievement === null}
         title="NEW LEVEL UNLOCKED!"
         message={unlockNotice !== null ? getLevelConfigById(unlockNotice).title : ""}
         extraMessage="You can play it from the Level Select screen."
