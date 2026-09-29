@@ -104,7 +104,7 @@ export default function GameplayScreen({
  *   -> useScoreSystem, CustomerMood, LevelTimer
  *   -> LevelEndSequence (score/stars; calls onRetry or onOpenStore)
  */
-function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack, onRetry, onLevelComplete, isStoreOpen, wallet, achievements }) {
+  function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack, onRetry, onLevelComplete, isStoreOpen, wallet, achievements }) {
   const [phase, setPhase] = useState('intro'); // 'intro' | 'playing' | 'end'
 
   // --- Rush Hour session state (all reset by the remount on retry) ---
