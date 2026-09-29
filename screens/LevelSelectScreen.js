@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Image,
@@ -7,57 +7,104 @@ import {
   StatusBar,
   ImageBackground,
   TouchableOpacity,
+  Platform,
+  useWindowDimensions,
 } from "react-native";
-import Text from "../components/AppText";
-import LevelButton from "../components/LevelButton";
 import { hasLevelPreset } from "../levels/levelPresets";
 import DebugButton from "../components/tests/DebugButton"; // [TEST/DEBUG]
 
-// Playable = has a preset AND is in `unlockedLevels` (owned by App).
-// `lockedLevels` force-locks a level.
 const isLevelLocked = (lvl, unlockedLevels, lockedLevels) =>
   !hasLevelPreset(lvl.id) ||
   lockedLevels.includes(lvl.id) ||
   !unlockedLevels.includes(lvl.id);
 
-// One entry per level; `align` sets the side of the screen.
 const LEVELS = [
-  {
-    id: 1,
-    align: "flex-start",
-    size: 230,
-    image: require("../assets/Final/levels/Level_1_Sinangag.png"),
-  },
-  {
-    id: 2,
-    align: "flex-end",
-    size: 230,
-    image: require("../assets/Final/levels/Level_2_Adobo.png"),
-  },
-  {
-    id: 3,
-    align: "flex-start",
-    size: 300,
-    image: require("../assets/Final/levels/Level_3_Sinigang-na-Bangus.png"),
-  },
-  {
-    id: 4,
-    align: "flex-end",
-    size: 325,
-    image: require("../assets/Final/levels/Level_4_Boss_kare-kare.png"),
-  }, // e.g. a bigger "boss" node
+  { id: 1, image: require("../assets/Final/levels/Level_1_Sinangag.png") },
+  { id: 2, image: require("../assets/Final/levels/Level_2_Adobo.png") },
+  { id: 3, image: require("../assets/Final/levels/Level_3_Sinigang-na-Bangus.png") },
+  { id: 4, image: require("../assets/Final/levels/Level_4_Boss_kare-kare.png") },
 ];
 
-const NODE_SPACING = 50;
+const IMAGE_WIDTH_RATIO = 0.70;
+const IMAGE_HEIGHT_RATIO = 0.38;
+const BOTTOM_OFFSET_RATIO = 0.10;
+const IMAGE_DROP_RATIO = 0.03;
+
+// DEBUG BUTTON TOGGLE
+const ENABLE_DEBUG_BUTTON = true;
+
+// [TEST/DEBUG]
+const DEBUG_TOP_RATIO = 0.17;
+
+const SHOW_DEBUG_BUTTON = ENABLE_DEBUG_BUTTON && __DEV__;
+
+function LevelImage({ level, locked, onPlay, width, height, drop }) {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.85}
+      disabled={locked}
+      onPress={onPlay}
+      style={{
+        width,
+        height,
+        opacity: locked ? 0.5 : 1,
+        transform: [{ translateY: drop }],
+      }}
+    >
+      <Image source={level.image} style={styles.levelImage} resizeMode="contain" />
+    </TouchableOpacity>
+  );
+}
 
 export default function LevelSelectScreen({
   onSelectLevel,
   onBack,
   unlockedLevels = [1],
   lockedLevels = [],
-  onDebugToggle, // [TEST/DEBUG] button shows only when provided
+  onDebugToggle, // [TEST/DEBUG]
+  onDebugResetSave, // [TEST/DEBUG]
   debugAllUnlocked = false, // [TEST/DEBUG]
 }) {
+  const { width, height } = useWindowDimensions();
+
+  const pageWidth = width;
+  const imageWidth = Math.round(width * IMAGE_WIDTH_RATIO);
+  const imageHeight = Math.round(height * IMAGE_HEIGHT_RATIO);
+  const imageDrop = Math.round(height * IMAGE_DROP_RATIO);
+
+  const backSize = Math.round(Math.min(width * 0.65, 56));
+  const topInset =
+    (Platform.OS === "android" ? StatusBar.currentHeight ?? 24 : 44) + 8;
+
+  const debugTop = Math.round(height * DEBUG_TOP_RATIO);
+
+  const scrollRef = useRef(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const snapOffsets = LEVELS.map((_, i) => i * pageWidth);
+
+  const indexFromOffset = (x) =>
+    Math.min(LEVELS.length - 1, Math.max(0, Math.round(x / pageWidth)));
+
+  const handleMomentumEnd = (e) => {
+    setSelectedIndex(indexFromOffset(e.nativeEvent.contentOffset.x));
+  };
+
+  const handleDragEnd = (e) => {
+    const { contentOffset, velocity } = e.nativeEvent;
+    const vx = velocity ? Math.abs(velocity.y ?? velocity.x) : 0;
+    if (vx < 0.1) {
+      const i = indexFromOffset(contentOffset.x);
+      setSelectedIndex(i);
+      scrollRef.current?.scrollTo({ x: i * pageWidth, animated: true });
+    }
+  };
+
+  const playLevel = (lvl) => {
+    if (isLevelLocked(lvl, unlockedLevels, lockedLevels)) return;
+    onSelectLevel && onSelectLevel(lvl.id);
+  };
+
   return (
     <ImageBackground
       source={require("../assets/Final/LevelSelectionMainBG.png")}
@@ -66,47 +113,76 @@ export default function LevelSelectScreen({
     >
       <StatusBar barStyle="dark-content" />
 
-      {/* ---------- TOP BAR: back button + title pill ---------- */}
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          activeOpacity={0.75}
-          onPress={onBack}
-          style={styles.titlePill}
-        >
-          <Image
-            source={require("../assets/Final/buttons/buttonLevelSelectBack.png")}
-          />
-        </TouchableOpacity>
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={onBack}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={[styles.backButton, { top: topInset, left: width * 0.04 }]}
+      >
+        <Image
+          source={require("../assets/Final/buttons/buttonLevelSelectBack.png")}
+          style={{ width: backSize, height: backSize }}
+          resizeMode="contain"
+        />
+      </TouchableOpacity>
 
-        {/* Spacer so the title pill stays visually centered against the back button */}
-        <View />
-      </View>
-
-      {/* ---------- SCROLLABLE LEVEL ROW ---------- */}
-      <View style={styles.rowWrapper}>
+      <View
+        style={[
+          styles.carousel,
+          {
+            height: imageHeight,
+            bottom: Math.round(height * BOTTOM_OFFSET_RATIO),
+          },
+        ]}
+      >
         <ScrollView
-          horizontal
+          ref={scrollRef}
+          style={{ width: pageWidth, height: imageHeight }}
+          contentContainerStyle={{ alignItems: "center" }}
           showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
+          horizontal
+          bounces={false}
+          overScrollMode="never"
+          nestedScrollEnabled
+          snapToOffsets={snapOffsets}
+          snapToEnd={false}
           decelerationRate="fast"
-          contentContainerStyle={styles.rowContent}
+          disableIntervalMomentum
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={handleMomentumEnd}
+          onScrollEndDrag={handleDragEnd}
         >
           {LEVELS.map((lvl) => (
-            <LevelButton
+            <View
               key={lvl.id}
-              width={lvl.width ?? lvl.size}
-              height={lvl.height ?? lvl.size}
-              locked={isLevelLocked(lvl, unlockedLevels, lockedLevels)}
-              onPress={() => onSelectLevel && onSelectLevel(lvl.id)}
-              backgroundImage={lvl.image}
-              style={styles.nodeSpacing}
-            />
+              style={[styles.page, { width: pageWidth, height: imageHeight }]}
+            >
+              <LevelImage
+                level={lvl}
+                locked={isLevelLocked(lvl, unlockedLevels, lockedLevels)}
+                onPlay={() => playLevel(lvl)}
+                width={imageWidth}
+                height={imageHeight}
+                drop={imageDrop}
+              />
+            </View>
           ))}
         </ScrollView>
       </View>
 
-      {/* [TEST/DEBUG] unlock-all / reset toggle; remove for release */}
-      {onDebugToggle && (
-        <DebugButton allUnlocked={debugAllUnlocked} onPress={onDebugToggle} />
+      {/* [TEST/DEBUG] */}
+      {SHOW_DEBUG_BUTTON && onDebugToggle && (
+        <View
+          style={[styles.debugWrap, { top: debugTop }]}
+          pointerEvents="box-none"
+        >
+          <DebugButton
+            allUnlocked={debugAllUnlocked}
+            onPress={onDebugToggle}
+            onResetSave={onDebugResetSave}
+          />
+        </View>
       )}
     </ImageBackground>
   );
@@ -115,38 +191,38 @@ export default function LevelSelectScreen({
 const styles = StyleSheet.create({
   background: {
     flex: 1,
+    width: "100%",
     height: "100%",
-    width: "100%",
-    // Fallback if the image fails to load
     backgroundColor: "#ffebbd",
+    overflow: "hidden",
   },
-  topBar: {
-    width: "100%",
-    flexDirection: "row",
+
+  backButton: { position: "absolute", zIndex: 10 },
+
+  carousel: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    overflow: "hidden",
+    top: 560,
+  },
+  page: {
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: 20,
-    paddingHorizontal: 16,
-    bottom: 20,
-    right: 15,
-  },
-  rowWrapper: {
-    marginLeft: 25,
-    marginTop: 400,
-    flex: 1,
     justifyContent: "center",
   },
-  titlePill: {
-    marginTop: 10,
-    marginRight: 500,
-    flexDirection: "row",
-    alignItems: "center",
+
+  levelImage: {
+    width: "100%",
+    height: "100%",
   },
-  rowContent: {
+
+  // [TEST/DEBUG]
+  debugWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    marginTop: 40,
     alignItems: "center",
-    paddingHorizontal: 24,
-  },
-  nodeSpacing: {
-    marginRight: NODE_SPACING,
+    zIndex: 20,
   },
 });

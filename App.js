@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useFonts } from "expo-font";
 import {
   PixelifySans_400Regular,
@@ -16,19 +16,17 @@ import StoryBackstoryScreen from "./screens/StoryBackstoryScreen";
 import GameplayScreen from "./screens/GameplayScreen";
 import { useWallet } from "./components/gameplayReusables/UseWallet";
 import { useAchievements } from "./components/gameplayReusables/UseAchievements.js";
+import { useUpgrades } from "./components/gameplayReusables/UseUpgrades";
 import { hasLevelPreset, getNextLevelId, getLevelConfigById, getAllLevelIds } from "./levels/levelPresets";
+import { loadGameData, saveGameData, clearGameData, DEFAULT_SAVE } from "./components/GameSave";
 
-/* Placeholder components */
 import QuitModal from './components/QuitModal';
 import RushHourModal from './screens/RushHourModal';
 import PopupModal from './components/PopupModal';
 import StoreScreen from './screens/StoreScreen';
 
-// [TEST/DEBUG] Adds a level-select button that toggles "unlock all levels"
-// <-> "reset to Level 1". Set to false before release or before anything at all.
 const DEBUG_LEVEL_TOGGLE = true;
 
-// Manual screen switching; React Navigation later
 const SCREENS = {
   SPLASH: "SPLASH",
   HOME: "HOME",
@@ -39,22 +37,79 @@ const SCREENS = {
   GAMEPLAY: "GAMEPLAY",
 };
 
-// Holds the screen-switching logic.
+/**
+ * Owns the persisted state. Loads once on mount, keeps a single snapshot
+ * in memory, and exposes a `patch` function the sub-hooks call to update
+ * their slice. Every patch writes the full snapshot immediately.
+ */
+function useGameSave() {
+  const [loaded, setLoaded] = useState(false);
+  const snapshotRef = useRef({ ...DEFAULT_SAVE });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const data = await loadGameData();
+      if (cancelled) return;
+      snapshotRef.current = data;
+      setLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // One writer: patch a slice, persist the whole snapshot.
+  const patch = useCallback((slice, value) => {
+    const next = { ...snapshotRef.current, [slice]: value };
+    snapshotRef.current = next;
+    saveGameData(next);
+  }, []);
+
+  const reset = useCallback(async () => {
+    await clearGameData();
+    snapshotRef.current = { ...DEFAULT_SAVE };
+  }, []);
+
+  return { loaded, snapshot: snapshotRef.current, patch, reset };
+}
+
 function ScreenSwitcher() {
+  const { loaded, snapshot, patch, reset } = useGameSave();
+
   const [screen, setScreen] = useState(SCREENS.SPLASH);
 
-  // Level picked on LevelSelectScreen; GameplayScreen loads its preset.
-  const [currentLevelId, setCurrentLevelId] = useState(1);
-
-  // Levels the player may open (in memory only; resets on restart).
-  const [unlockedLevels, setUnlockedLevels] = useState([1]);
-  // Level shown in the "unlocked" popup, or null.
+  const [currentLevelId, setCurrentLevelId] = useState(snapshot.currentLevelId);
+  const [unlockedLevels, setUnlockedLevels] = useState(snapshot.unlockedLevels);
   const [unlockNotice, setUnlockNotice] = useState(null);
+  const [showStore, setShowStore] = useState(false);
+  const [showRushHour, setShowRushHour] = useState(false);
+  const [gameMode, setGameMode] = useState('normal');
+  const [showQuit, setShowQuit] = useState(false);
 
-  // [TEST/DEBUG] True once every level with a preset is unlocked.
+  // Push top-level changes into the save snapshot.
+  useEffect(() => {
+    if (loaded) patch('unlockedLevels', unlockedLevels);
+  }, [unlockedLevels, loaded, patch]);
+  useEffect(() => {
+    if (loaded) patch('currentLevelId', currentLevelId);
+  }, [currentLevelId, loaded, patch]);
+
+  // Wallet / achievements / upgrades. Each receives its slice of the save
+  // and reports back via onChange, which we write to the snapshot.
+  const wallet = useWallet(0, {
+    initialState: snapshot.wallet,
+    onChange: (w) => patch('wallet', w),
+  });
+  const achievements = useAchievements(wallet, {
+    initialState: snapshot.achievements,
+    onChange: (a) => patch('achievements', a),
+  });
+  const upgrades = useUpgrades(wallet, {
+    initialState: snapshot.upgrades,
+    onChange: (u) => patch('upgrades', u),
+  });
+
   const debugAllUnlocked = getAllLevelIds().every((id) => unlockedLevels.includes(id));
 
-  // [TEST/DEBUG] Unlock everything, or reset progression back to Level 1.
   const handleDebugToggle = () => {
     setUnlockNotice(null);
     if (debugAllUnlocked) {
@@ -65,51 +120,41 @@ function ScreenSwitcher() {
     }
   };
 
-  // Called once per won level.
+  const handleDebugResetSave = async () => {
+    await reset();
+    setUnlockedLevels([1]);
+    setCurrentLevelId(1);
+    setUnlockNotice(null);
+  };
+
   const handleLevelComplete = (completedLevelId) => {
     const nextId = getNextLevelId(completedLevelId);
-    if (nextId === null || unlockedLevels.includes(nextId)) return; // last level or already unlocked
+    if (nextId === null || unlockedLevels.includes(nextId)) return;
     setUnlockedLevels((prev) => (prev.includes(nextId) ? prev : [...prev, nextId]));
     setUnlockNotice(nextId);
   };
 
-  // Store overlays the screen so progress isn't lost
-  const [showStore, setShowStore] = useState(false);
-  const openStore = () => { console.log('[App] openStore called'); setShowStore(true); };
+  const openStore = () => setShowStore(true);
   const closeStore = () => setShowStore(false);
 
-
-  // Use SCREEN.PLACEHOLDER_GAMEPLAY to show the placeholder screen
-  const [showRushHour, setShowRushHour] = useState(false);
-  // 'normal' | 'rushHour'. Separate from currentLevelId / unlockedLevels, which
-  // Rush Hour never reads or writes.
-  const [gameMode, setGameMode] = useState('normal');
-  const [showQuit, setShowQuit] = useState(false);
-
-  // Global currency
-  const wallet = useWallet(0);
-  const achievements = useAchievements(wallet);
+  // While the save is loading, keep the splash on screen.
+  if (!loaded) {
+    return <SplashScreen onFinish={() => {}} />;
+  }
 
   const renderCurrentScreen = () => {
-  switch (screen) {
-    case SCREENS.SPLASH:
-      return <SplashScreen onFinish={() => setScreen(SCREENS.HOME)} />;
+    switch (screen) {
+      case SCREENS.SPLASH:
+        return <SplashScreen onFinish={() => setScreen(SCREENS.HOME)} />;
 
-    case SCREENS.MODE_SELECT:
-      return (
-        <ModeSelectScreen
-          onSelectStoryMode={() => {
-            setGameMode('normal');
-            setScreen(SCREENS.LEVEL_SELECT);
-          }}
-          onSelectRushHour={() => {
-            // Show the Rush Hour intro popup; dismissing it starts the run.
-            setGameMode('rushHour');
-            setShowRushHour(true);
-          }}
-          onBack={() => setScreen(SCREENS.HOME)}
-        />
-      );
+      case SCREENS.MODE_SELECT:
+        return (
+          <ModeSelectScreen
+            onSelectStoryMode={() => { setGameMode('normal'); setScreen(SCREENS.LEVEL_SELECT); }}
+            onSelectRushHour={() => { setGameMode('rushHour'); setShowRushHour(true); }}
+            onBack={() => setScreen(SCREENS.HOME)}
+          />
+        );
 
       case SCREENS.SETTINGS:
         return <SettingsScreen onBack={() => setScreen(SCREENS.HOME)} />;
@@ -118,23 +163,15 @@ function ScreenSwitcher() {
         return (
           <LevelSelectScreen
             unlockedLevels={unlockedLevels}
-            onDebugToggle={DEBUG_LEVEL_TOGGLE ? handleDebugToggle : undefined} // [TEST/DEBUG]
-            debugAllUnlocked={debugAllUnlocked} // [TEST/DEBUG]
+            onDebugToggle={DEBUG_LEVEL_TOGGLE ? handleDebugToggle : undefined}
+            onDebugResetSave={DEBUG_LEVEL_TOGGLE ? handleDebugResetSave : undefined}
+            debugAllUnlocked={debugAllUnlocked}
             onSelectLevel={(levelId) => {
-              if (!hasLevelPreset(levelId)) {
-                // No preset yet — nothing to play.
-                console.log(`Level ${levelId} selected but has no preset yet`);
-                return;
-              }
+              if (!hasLevelPreset(levelId)) return;
               setGameMode('normal');
               setCurrentLevelId(levelId);
-              if (levelId === 1) {
-                // Level 1 plays its backstory first.
-                setScreen(SCREENS.STORY_BACKSTORY);
-              } else {
-                // TODO: per-level intros.
-                setScreen(SCREENS.GAMEPLAY);
-              }
+              if (levelId === 1) setScreen(SCREENS.STORY_BACKSTORY);
+              else setScreen(SCREENS.GAMEPLAY);
             }}
             onBack={() => setScreen(SCREENS.MODE_SELECT)}
           />
@@ -159,6 +196,7 @@ function ScreenSwitcher() {
             isStoreOpen={showStore}
             wallet={wallet}
             achievements={achievements}
+            upgrades={upgrades}
           />
         );
 
@@ -168,11 +206,7 @@ function ScreenSwitcher() {
           <HomeScreen
             onStart={() => setScreen(SCREENS.MODE_SELECT)}
             onOpenSettings={() => setScreen(SCREENS.SETTINGS)}
-            onQuit={() => {
-              // Close app
-              setShowQuit(true);
-              console.log("Quit pressed");
-            }}
+            onQuit={() => { setShowQuit(true); }}
           />
         );
     }
@@ -180,36 +214,30 @@ function ScreenSwitcher() {
 
   return (
     <View style={styles.container}>
-      {/* 1. Active screen (stays mounted while the Store is open) */}
       {renderCurrentScreen()}
 
-      {/* 2. Store overlay */}
+      {showStore && (
+        <Modal>
+          <View style={styles.overlay}>
+            <StoreScreen
+              onBack={closeStore}
+              wallet={wallet}
+              achievements={achievements}
+              upgrades={upgrades}
+              onGoToLevelSelect={() => { closeStore(); setScreen(SCREENS.LEVEL_SELECT); }}
+            />
+          </View>
+        </Modal>
+      )}
 
-        {showStore && (
-          <Modal>
-            <View style={styles.overlay}>
-              <StoreScreen 
-                onBack={closeStore} 
-                wallet={wallet} 
-                achievements={achievements}
-                onGoToLevelSelect={() => {closeStore(); setScreen(SCREENS.LEVEL_SELECT);}} />
-            </View>
-          </Modal>
-        )}
-
-      {/* 3. Global modals */}
       <RushHourModal
         visible={showRushHour}
-        onDismiss={() => {
-          setShowRushHour(false);
-          setScreen(SCREENS.GAMEPLAY); // gameMode is already 'rushHour'
-        }}
+        onDismiss={() => { setShowRushHour(false); setScreen(SCREENS.GAMEPLAY); }}
       />
 
       <QuitModal visible={showQuit} onQuit={() => setShowQuit(false)} />
 
-      {/* Level-unlocked warning */}
-      <PopupModal  //Now requires achievements to be dismissed before appearing
+      <PopupModal
         visible={unlockNotice !== null && achievements.currentAchievement === null}
         title="NEW LEVEL UNLOCKED!"
         message={unlockNotice !== null ? getLevelConfigById(unlockNotice).title : ""}
@@ -222,11 +250,7 @@ function ScreenSwitcher() {
 }
 
 function AppInner() {
-  // Native: the device screen is the frame.
-  if (Platform.OS !== "web") {
-    return <ScreenSwitcher />;
-  }
-
+  if (Platform.OS !== "web") return <ScreenSwitcher />;
   return (
     <View style={styles.webBackdrop}>
       <View style={styles.webPhoneFrame}>
@@ -248,9 +272,8 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  overlay: { flex: 1 },
   webBackdrop: {
     flex: 1,
     width: '100vw',
@@ -263,7 +286,7 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     height: '100%',
     maxHeight: 820,
-    aspectRatio: 9 / 19.5, // Modern phone ratio
+    aspectRatio: 9 / 19.5,
     overflow: 'hidden',
   },
 });

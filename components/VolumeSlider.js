@@ -38,13 +38,15 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   label: {
-    fontSize: 14,
+    fontSize: 20,
     fontWeight: "700",
     color: "#5c3a21",
-    marginBottom: 6,
+    marginBottom: 10,
   },
   slider: {
-    width: "100%",
-    height: 36,
+    width: "80%",
+    height: 40,
+    alignSelf: "center",
+    transform: [{ scale: 1.25 }],
   },
 });
