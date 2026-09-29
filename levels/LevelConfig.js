@@ -60,10 +60,12 @@ export const LEVEL_CONFIG_DEFAULTS = {
   timeLimitSeconds: 60,    // -> LevelTimer initialTimeInSeconds
   totalCustomers: 5,       // customers before the level completes
   wordsPerCustomer: 3,     // correct words to serve a customer
+  patienceDecayMs: 4000,   // -> CustomerMood decayRateMs (-10 patience per tick). 4000 = CustomerMood's own default
 
   // --- Mr. Ratty ---
   rattySpawnRate: 0.15,        // chance (0-1) per check
   rattyCheckIntervalMs: 15000, // ms between checks
+  rattyCooldownMs: 0,          // min ms between encounters (also after level start). 0 = off, i.e. unchanged behavior
 };
 
 export function createLevelConfig(overrides = {}) {

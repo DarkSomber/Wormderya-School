@@ -1,23 +1,12 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 
 /**
- * useAchievements(wallet)
- * ------------------------
- * Owns which achievements have already been earned, and what's
- * currently queued up to show as a popup. Takes `wallet` directly
- * (same pattern as useScoreSystem taking onCurrencyEarned) so unlocking
- * an achievement can hand out its coin reward via wallet.addCurrency —
- * addCurrency already guards against non-positive amounts, so nothing
- * extra is needed here.
+ * Checks achievements already completed.
+ * unlocking an achievement can hand out its coin reward via wallet.addCurrency.
  *
- * Instantiate ONCE in App.js, right next to useWallet — same reasoning:
- * GameplayScreen/StoreScreen remount or switch away regularly, which
- * would wipe out which achievements had already been earned if this
- * lived inside either of them instead.
+ * Instantiate ONCE in App.js to not lose progress
  *
- * `queue` (rather than a single flag) exists so if two achievements
- * unlock in the same moment, the player sees them one at a time instead
- * of the second silently overwriting the first.
+ * `queue` Checks two achievements going together
  *
  * Returned API:
  *   unlockedIds               Set of achievement ids already earned
@@ -33,7 +22,7 @@ export function useAchievements(wallet) {
 
   // setUnlockedIds is async, so reading `unlockedIds` directly inside
   // unlockAchievement could see a stale value if two unlocks land in
-  // the same tick. This ref always has the latest set to check against.
+  // the same tick. Ref checks latest.
   const unlockedRef = useRef(unlockedIds);
   unlockedRef.current = unlockedIds;
 

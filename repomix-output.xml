@@ -166,6 +166,48 @@ package.json
 <files>
 This section contains the contents of the repository's files.
 
+<file path="components/gameplayReusables/MrRattyInflate.js">
+import React from 'react';
+import PopupModal from '../PopupModal';
+
+export default function MrRattyInflate({ visible, onDismiss }) {
+  return (
+      <PopupModal
+      visible={visible}
+      title={`Mr. Ratty will\nremember you`}
+      message="The next time Mr. Ratty will appear, prices will have a chance to inflate."
+      buttonText="uh..."
+      buttonColor="#FFE194" // Yellow
+      onPress={onDismiss}
+      />
+    );
+}
+</file>
+
+<file path="components/gameplayReusables/ShopOutcomeModal.js">
+import React from 'react';
+import PopupModal from '../PopupModal';
+
+export default function ShopOutcomeModal({ visible, outcome, onDismiss }) {
+  const isInflate = outcome === 'inflate';
+
+  return (
+    <PopupModal
+      visible={visible}
+      title={isInflate ? "Mr. Ratty will\nremember you" : "Thank you for\nyour patronage!"}
+      message={
+        isInflate 
+          ? "The next time Mr. Ratty will appear, prices will have a chance to inflate."
+          : "The next time Mr. Ratty will appear, prices will have a chance to get a discount."
+      }
+      buttonText={isInflate ? "uh..." : "Thank you!"}
+      buttonColor="#FFE194"
+      onPress={onDismiss}
+    />
+  );
+}
+</file>
+
 <file path="components/tests/DebugButton.js">
 import React from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
@@ -240,310 +282,6 @@ const AppText = React.forwardRef(function AppText({ style, ...rest }, ref) {
 export default AppText;
 </file>
 
-<file path="components/gameplayReusables/LevelTimer.js">
-import React, { useState, useEffect, useRef } from 'react';
-import { View } from 'react-native';
-import Text from '../AppText';
-
-/**
- * LevelTimer
- *
- * @param {number} targetScore - score/serve quota needed to win the level
- * @param {number} currentScore - live score from useScoreSystem
- * @param {number} initialTimeInSeconds - countdown length
- * @param {boolean} isPaused - freezes the countdown (e.g. while Mr. Ratty's
- *   shop popup is open), defaults to false so existing behavior is unchanged
- * @param {(won: boolean, finalScore: number) => void} onLevelEnd - called
- *   exactly once when time runs out, so the parent screen can show the
- *   Win Screen or Lose Screen from the storyboard.
- */
-const LevelTimer = ({
-  targetScore,
-  currentScore,
-  initialTimeInSeconds = 60,
-  isPaused = false,
-  onLevelEnd,
-}) => {
-  const [timeLeft, setTimeLeft] = useState(initialTimeInSeconds);
-  const [isGameOver, setIsGameOver] = useState(false);
-
-  // Keep the latest score in a ref instead of a dependency, so the
-  // countdown interval doesn't get torn down and recreated every time
-  // the player earns points (that was the bug: [currentScore] as a
-  // dependency reset the interval on every score change, causing the
-  // countdown to drift/stutter instead of ticking evenly every second).
-  const scoreRef = useRef(currentScore);
-  useEffect(() => {
-    scoreRef.current = currentScore;
-  }, [currentScore]);
-
-  // Countdown interval — only restarts if paused state or game-over state changes.
-  useEffect(() => {
-    if (isPaused || isGameOver) return undefined;
-
-    const timerId = setInterval(() => {
-      setTimeLeft((prevTime) => {
-        if (prevTime <= 1) {
-          clearInterval(timerId);
-          return 0;
-        }
-        return prevTime - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timerId);
-  }, [isPaused, isGameOver]);
-
-  // Determine win/loss exactly once, the moment the clock actually hits 0.
-  useEffect(() => {
-    if (timeLeft === 0 && !isGameOver) {
-      setIsGameOver(true);
-      const finalScore = scoreRef.current;
-      const won = finalScore >= targetScore;
-      onLevelEnd?.(won, finalScore);
-    }
-  }, [timeLeft, isGameOver, targetScore, onLevelEnd]);
-
-  // Format seconds to MM:SS
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60; //Timer
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
-  return (
-    <View>
-      <Text style={{ fontSize: 24, fontWeight: 'bold' }}>
-        Time: {formatTime(timeLeft)}
-      </Text>
-    </View>
-  );
-};
-
-export default LevelTimer;
-</file>
-
-<file path="components/gameplayReusables/MrRattyInflate.js">
-import React from 'react';
-import PopupModal from '../PopupModal';
-
-export default function MrRattyInflate({ visible, onDismiss }) {
-  return (
-      <PopupModal
-      visible={visible}
-      title={`Mr. Ratty will\nremember you`}
-      message="The next time Mr. Ratty will appear, prices will have a chance to inflate."
-      buttonText="uh..."
-      buttonColor="#FFE194" // Yellow
-      onPress={onDismiss}
-      />
-    );
-}
-</file>
-
-<file path="components/gameplayReusables/ShopOutcomeModal.js">
-import React from 'react';
-import PopupModal from '../PopupModal';
-
-export default function ShopOutcomeModal({ visible, outcome, onDismiss }) {
-  const isInflate = outcome === 'inflate';
-
-  return (
-    <PopupModal
-      visible={visible}
-      title={isInflate ? "Mr. Ratty will\nremember you" : "Thank you for\nyour patronage!"}
-      message={
-        isInflate 
-          ? "The next time Mr. Ratty will appear, prices will have a chance to inflate."
-          : "The next time Mr. Ratty will appear, prices will have a chance to get a discount."
-      }
-      buttonText={isInflate ? "uh..." : "Thank you!"}
-      buttonColor="#FFE194"
-      onPress={onDismiss}
-    />
-  );
-}
-</file>
-
-<file path="components/gameplayReusables/UseWallet.js">
-import { useState, useCallback, useMemo } from 'react';
-
-const DISCOUNT_FACTOR = 0.5;
-const INFLATE_FACTOR = 1.5;
-
-// Currency per correctly-served word — kept FLAT and separate from
-// score/scoreMultiplier on purpose, so the shop's economy doesn't shift
-// every time a level's multiplier changes. Tuned against the Store's
-// static prices (10 / 20 / 50): ~2 words for the cheapest item, ~4 for
-// the middle one, ~10 for the priciest — was 1 word for all three
-// before, since currency used to just mirror the flat +50/word score.
-export const CURRENCY_PER_WORD = 5;
-
-/**
- * formatCurrency(amount)
- * ----------------------
- * "1234567" -> "1,234,567". Hand-rolled instead of toLocaleString so it
- * behaves the same on every JS engine (Hermes, JSC, web).
- */
-export function formatCurrency(amount) {
-  const whole = Math.max(0, Math.floor(Number(amount) || 0));
-  return String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
-
-/**
- * useWallet(initialCurrency)
- * ----------------------------
- * Owns currency + each shop item's discount/inflate price state.
- * Instantiate ONCE in App.js (not inside GameplayScreen/StoreScreen —
- * both of those remount/switch away regularly, which would wipe
- * currency and the discount/inflate marks that are meant to persist
- * between visits).
- *
- * Doesn't know what the items ARE — StoreScreen passes in itemId +
- * basePrice per call, so this stays reusable without needing its own
- * copy of the item list.
- *
- * Returned API:
- *   currency                              live coin balance
- *   addCurrency(amount)                   called from useScoreSystem's onCurrencyEarned
- *   getEffectivePrice(itemId, basePrice)  basePrice adjusted for that item's discount/inflate state
- *   canAfford(itemId, basePrice)
- *   buyItem(itemId, basePrice, allItemIds)      -> { success, outcome: 'discount' | 'insufficient' }
- *   declineOffer(allItemIds)                    -> { outcome: 'inflate' }
- */
-export function useWallet(initialCurrency = 0) {
-  const [currency, setCurrency] = useState(initialCurrency);
-  const [priceStates, setPriceStates] = useState({}); // itemId -> 'discount' | 'inflated'
-
-  // Earning only: a zero/negative/NaN amount is ignored so this can never
-  // be used to spend. Spending goes through buyItem.
-  const addCurrency = useCallback((amount) => {
-    if (!(amount > 0)) return;
-    setCurrency((prev) => prev + amount);
-  }, []);
-
-  const getEffectivePrice = useCallback((itemId, basePrice) => {
-    const state = priceStates[itemId];
-    if (state === 'discount') return Math.round(basePrice * DISCOUNT_FACTOR);
-    if (state === 'inflated') return Math.round(basePrice * INFLATE_FACTOR);
-    return basePrice;
-  }, [priceStates]);
-
-  const canAfford = useCallback(
-    (itemId, basePrice) => currency >= getEffectivePrice(itemId, basePrice),
-    [currency, getEffectivePrice]
-  );
-
-  // Buying: pay the effective price, clear this item's own price state
-  // (its discount, if any, is used up), then mark a DIFFERENT random
-  // item on discount for next visit.
-  const buyItem = useCallback((itemId, basePrice, allItemIds) => {
-    const price = getEffectivePrice(itemId, basePrice);
-    if (currency < price) return { success: false, outcome: 'insufficient' };
-
-    setCurrency((prev) => prev - price);
-    setPriceStates((prev) => {
-      const next = { ...prev, [itemId]: undefined };
-      const others = allItemIds.filter((id) => id !== itemId);
-      const lucky = others[Math.floor(Math.random() * others.length)];
-      if (lucky) next[lucky] = 'discount';
-      return next;
-    });
-
-    return { success: true, outcome: 'discount' };
-  }, [currency, getEffectivePrice]);
-
-  // Declining: mark a random item price-increased for next visit.
-  const declineOffer = useCallback((allItemIds) => {
-    const target = allItemIds[Math.floor(Math.random() * allItemIds.length)];
-    setPriceStates((prev) => ({ ...prev, [target]: 'inflated' }));
-    return { outcome: 'inflate' };
-  }, []);
-
-  return useMemo(() => ({
-    currency,
-    addCurrency,
-    getEffectivePrice,
-    canAfford,
-    buyItem,
-    declineOffer,
-  }), [currency, addCurrency, getEffectivePrice, canAfford, buyItem, declineOffer]);
-}
-</file>
-
-<file path="components/CountdownSequence.js">
-import React, { useState, useEffect } from "react";
-import { View, StyleSheet } from 'react-native';
-import Text from './AppText';
-
-//Slideshow Sequence survives so the game won't crash. Functions like slideshow Sequence
-export default function CountdownSequence({ slides, onComplete, msPerSlide = 800 }) {
-  const [index, setIndex] = useState(0);
-  const isLastSlide = index === slides.length - 1;
-  const slide = slides[index];
-
-  // loop for each slide
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (isLastSlide) {
-        onComplete && onComplete();
-      } else {
-        setIndex((i) => i + 1);
-      }
-    }, msPerSlide);
-
-    // Safety net so it won't fire twice
-    return () => clearTimeout(timeoutId);
-  }, [index, isLastSlide, msPerSlide, onComplete]);
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.slideCard}>
-        <Text style={styles.slideLabelText}>{slide.label}</Text>
-        {slide.subLabel ? (
-          <Text style={styles.slideSubLabelText}>{slide.subLabel}</Text>
-        ) : null}
-      </View>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f3e6cf",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 30,
-  },
-  slideCard: {
-    width: "100%",
-    flex: 1,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: "#8a5a30",
-    backgroundColor: "rgba(255,255,255,0.4)",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 16,
-  },
-  slideLabelText: {
-    textAlign: "center",
-    color: "#5c3a21",
-    fontWeight: "800",
-    fontSize: 26,
-  },
-  slideSubLabelText: {
-    textAlign: "center",
-    color: "#8a5a30",
-    fontWeight: "600",
-    fontSize: 16,
-    marginTop: 10,
-  },
-});
-</file>
-
 <file path="components/PauseModal.js">
 import React from 'react';
 import PopupModal from './PopupModal';
@@ -574,171 +312,6 @@ export default function PauseModal({ visible, onResume, onQuitPress }) {
 }
 </file>
 
-<file path="components/PopupModal.js">
-import React from 'react';
-import { StyleSheet, View, Modal, TouchableOpacity } from 'react-native';
-import Text from './AppText';
-
-export default function PopupModal({
-  visible,
-  title,
-  message,
-  extraMessage,
-  score,
-  buttonText,
-  buttonColor = '#FFE194', // Default color
-  onPress,
-  // Optional second button — omit cancelText/onCancel to keep the
-  // original single-button behavior (every existing caller still works
-  // unchanged). Pass both to get a "Never mind" style second option.
-  cancelText,
-  onCancel,
-}) {
-  return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      onRequestClose={onCancel ?? onPress}
-    >
-      <View style={styles.overlay}>
-        <View style={styles.card}>
-
-          {/* Header Title */}
-          <Text style={styles.title}>{title}</Text>
-
-          {/* Divider Line */}
-          <View style={styles.divider} />
-
-          {/* Body Content */}
-          <View style={styles.body}>
-            {message && <Text style={styles.messageText}>{message}</Text>}
-          </View>
-          <View style={styles.body}>
-            {extraMessage && <Text style={styles.extraMessageText}>{extraMessage}</Text>}
-          </View>
-
-
-            {/* Styled Score Display */}
-          {score !== undefined && (
-              <View style={styles.scoreBox}>
-                <Text style={styles.scoreText}>SCORE: {score}</Text>
-               </View>
-            )}
-
-          {/* Action Button(s) */}
-          <View style={styles.buttonRow}>
-            {cancelText && onCancel ? (
-              <TouchableOpacity
-                style={[styles.button, styles.cancelButton]}
-                onPress={onCancel}
-              >
-                <Text style={styles.buttonText}>{cancelText}</Text>
-              </TouchableOpacity>
-            ) : null}
-
-            <TouchableOpacity
-              style={[styles.button, { backgroundColor: buttonColor }]}
-              onPress={onPress}
-            >
-              <Text style={styles.buttonText}>{buttonText}</Text>
-            </TouchableOpacity>
-          </View>
-
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  card: {
-    width: '85%',
-    maxWidth: 320,
-    backgroundColor: '#FFF8E7',
-    borderWidth: 3,
-    borderColor: '#000',
-    borderRadius: 8,
-    padding: 20,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-    textAlign: 'center',
-    lineHeight: 26,
-  },
-  divider: {
-    width: '100%',
-    height: 1.5,
-    backgroundColor: '#333',
-    marginVertical: 14,
-  },
-  body: {
-    alignItems: 'center',
-    marginBottom: 16,
-    width: '100%',
-  },
-  messageText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#000',
-    textAlign: 'center',
-    lineHeight: 18,
-    marginTop: 10,
-  },
-  // Dedicated styling for the score display
-  scoreBox: {
-    marginTop: 12,
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-  },
-  scoreText: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#000',
-    letterSpacing: 1,
-  },
-  extraMessageText: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#000',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 4,
-  },
-  button: {
-    borderWidth: 2,
-    borderColor: '#000',
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 24,
-    minWidth: 100,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#E0E0E0',
-  },
-  buttonText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-});
-</file>
-
 <file path="components/QuitModal.js">
 import React from 'react';
 import PopupModal from './PopupModal';
@@ -757,59 +330,6 @@ export default function QuitModal({ visible, onQuit, onCancel }) {
     />
   );
 }
-</file>
-
-<file path="components/VolumeSlider.js">
-import React from "react";
-import { View, StyleSheet } from 'react-native';
-import Text from './AppText';
-import Slider from "@react-native-community/slider";
-
-/**
- * VolumeSlider
- * ----------------------------------------------------------------------
- * A single labeled row: "Label" above a slider. Used for Master Volume,
- * Music Volume, and Sound Effects (SFX) in SettingsScreen, but generic
- * enough to reuse for any other 0–1 value slider later on.
- *
- * Requires: @react-native-community/slider
- *   npx expo install @react-native-community/slider
- * ----------------------------------------------------------------------
- */
-
-export default function VolumeSlider({ label, value, onValueChange, style }) {
-  return (
-    <View style={[styles.row, style]}>
-      <Text style={styles.label}>{label}</Text>
-      <Slider
-        style={styles.slider}
-        minimumValue={0}
-        maximumValue={1}
-        value={value}
-        onValueChange={onValueChange}
-        minimumTrackTintColor="#4caf50"
-        maximumTrackTintColor="#f0e6d2"
-        thumbTintColor="#ffffff"
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  row: {
-    width: "100%",
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#5c3a21",
-    marginBottom: 6,
-  },
-  slider: {
-    width: "100%",
-    height: 36,
-  },
-});
 </file>
 
 <file path="screens/RushHourModal.js">
@@ -899,36 +419,6 @@ yarn-error.*
 /android
 </file>
 
-<file path="app.json">
-{
-  "expo": {
-    "name": "wormderya-beta",
-    "slug": "wormderya-beta",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      "expo-font"
-    ]
-  }
-}
-</file>
-
 <file path="index.js">
 import { registerRootComponent } from 'expo';
 
@@ -962,195 +452,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-</file>
-
-<file path="components/gameplayReusables/ConveyorBelt/Conveyorconfig.js">
-import { DEFAULT_LETTER_POOL } from './Letterpool';
-
-/**
- * Central tuning knobs for a ConveyorBelt instance. Override any subset
- * via the `config` prop:
- *
- *   <ConveyorBelt config={{ slotDurationMs: 900, maxLetters: 7 }} />
- *
- * Later this can grow into a per-level LevelConfig (wordDatabase,
- * scoreMultiplier, levelRules, ...) without ConveyorBelt itself changing.
- */
-export const DEFAULT_CONVEYOR_CONFIG = {
-  // Time (ms) for the belt to travel exactly one slot's width.
-  // Lower = faster belt.
-  slotDurationMs: 1400,
-
-  // Visual scroll direction, No way to access yet, Note to self/next programmer: find a way to access it.
-  direction: 'ltr', // 'ltr' | 'rtl'
-
-  // Characters the belt can spawn. Swap for the Tagalog word-database
-  // pool later — nothing else here needs to change.
-  letterPool: DEFAULT_LETTER_POOL,
-
-  // Optional vowel/consonant weighting for spawned letters — see
-  // Letterpool.js's createVowelWeightPicker for the accepted shapes.
-  // null = uniform pick across letterPool (original behavior).
-  letterDistribution: null,
-
-  // Reserved width/height (px) per letter tile.
-  slotWidth: 70,
-  slotHeight: 50,
-
-  // How many letter slots are visible on the belt at once. (Internally
-  // ConveyorBelt tracks one extra buffer letter off-screen for a smooth
-  // wrap-around — that's an implementation detail, not configured here.)
-  maxLetters: 6,
-};
-</file>
-
-<file path="components/gameplayReusables/ConveyorBelt/index.js">
-export { default as ConveyorBelt } from './Conveyorbelt';
-export { default as Letter } from './Letter';
-export { DEFAULT_CONVEYOR_CONFIG } from './Conveyorconfig';
-export {
-  DEFAULT_LETTER_POOL,
-  VOWELS,
-  LETTER_DISTRIBUTION_PROFILES,
-  getVowelsInPool,
-  getConsonantsInPool,
-  pickRandomLetter,
-  createVowelWeightPicker,
-} from './Letterpool';
-export { LETTER_ANIM_STATES, useSpawnAnimation, playTimingAnimation } from './Animationsystem';
-export {
-  registerLetterSprite,
-  registerLetterSprites,
-  getLetterSprite,
-  registerLetterFrames,
-  getLetterFrames,
-} from './Spriteloader';
-</file>
-
-<file path="components/gameplayReusables/ConveyorBelt/Letterpool.js">
-/**
- * Test letter pool for the conveyor prototype. Swap this out for the
- * formal Tagalog letter set (or generate it from the word database) once
- * the Word Input System and dictionary are in place — nothing else in
- * the conveyor needs to change to support that swap, since ConveyorBelt
- * only ever pulls from `config.letterPool`.
- */
-export const DEFAULT_LETTER_POOL = [
-  'A', 'B', 'K', 'D', 'E', 'G', 'H', 'I', 'L',
-  'M', 'N', 'O', 'P', 'R', 'S', 'T', 'U', 'W', 'Y',
-];
-
-// Tagalog vowels. Fixed on purpose (not derived from the pool) so the
-// vowel/consonant split stays correct even if DEFAULT_LETTER_POOL grows.
-export const VOWELS = ['A', 'E', 'I', 'O', 'U'];
-
-export function getVowelsInPool(pool = DEFAULT_LETTER_POOL) {
-  return pool.filter((ch) => VOWELS.includes(ch));
-}
-
-export function getConsonantsInPool(pool = DEFAULT_LETTER_POOL) {
-  return pool.filter((ch) => !VOWELS.includes(ch));
-}
-
-/**
- * Named vowel-weight profiles a level's `letterDistribution` can reference
- * by name. Each is a [min, max] range — a random value inside it is drawn
- * per pick (see createVowelWeightPicker) so consecutive letters don't all
- * share the exact same weight and become predictable.
- */
-export const LETTER_DISTRIBUTION_PROFILES = {
-  balanced: [0.30, 0.40],
-  vowelHeavy: [0.45, 0.60],
-  consonantHeavy: [0.15, 0.25],
-};
-
-function randomInRange([min, max]) {
-  return min + Math.random() * (max - min);
-}
-
-function weightForProfileName(name) {
-  const range = LETTER_DISTRIBUTION_PROFILES[name] ?? LETTER_DISTRIBUTION_PROFILES.balanced;
-  return randomInRange(range);
-}
-
-/**
- * Turns a LevelConfig's `letterDistribution` into a `getVowelWeight()`
- * function that ConveyorBelt calls once per spawned letter. This is the
- * one place that decides how the profiles behave over time, so
- * ConveyorBelt itself never needs to know what a "profile" is.
- *
- * Accepted `letterDistribution` shapes:
- *   - null / undefined        -> uniform pick across the whole pool
- *                                 (legacy behavior; returned getter yields null)
- *   - a number (0-1)          -> fixed vowel weight, used every pick
- *   - a profile name string   -> 'balanced' | 'vowelHeavy' | 'consonantHeavy';
- *                                 a fresh weight is drawn from that profile's
- *                                 range on every pick
- *   - { profiles: [...names], minStreak?, maxStreak? }
- *                              -> "mixed": one named profile is chosen at
- *                                 random and held for a short run of
- *                                 letters (minStreak–maxStreak, default 3–5)
- *                                 before rerolling, so the belt produces
- *                                 stretches that read as balanced, then
- *                                 vowel-heavy, then consonant-heavy,
- *                                 instead of shuffling every tile
- */
-export function createVowelWeightPicker(letterDistribution) {
-  if (letterDistribution === undefined || letterDistribution === null) {
-    return () => null;
-  }
-
-  if (typeof letterDistribution === 'number') {
-    return () => letterDistribution;
-  }
-
-  if (typeof letterDistribution === 'string') {
-    return () => weightForProfileName(letterDistribution);
-  }
-
-  if (letterDistribution && Array.isArray(letterDistribution.profiles) && letterDistribution.profiles.length > 0) {
-    const { profiles, minStreak = 3, maxStreak = 5 } = letterDistribution;
-    let remaining = 0;
-    let currentName = profiles[0];
-    return () => {
-      if (remaining <= 0) {
-        currentName = profiles[Math.floor(Math.random() * profiles.length)];
-        remaining = minStreak + Math.floor(Math.random() * (maxStreak - minStreak + 1));
-      }
-      remaining -= 1;
-      return weightForProfileName(currentName);
-    };
-  }
-
-  return () => null;
-}
-
-/**
- * Picks one letter from `pool`.
- *
- * `vowelWeight`:
- *   - null/undefined -> uniform pick across the whole pool (original,
- *     unweighted behavior — unchanged for any caller that doesn't pass it)
- *   - a number 0-1 -> that fraction of picks are drawn from the pool's
- *     vowels, the rest from its consonants
- */
-export function pickRandomLetter(pool = DEFAULT_LETTER_POOL, vowelWeight = null) {
-  if (vowelWeight === null || vowelWeight === undefined) {
-    return pool[Math.floor(Math.random() * pool.length)];
-  }
-
-  const vowels = getVowelsInPool(pool);
-  const consonants = getConsonantsInPool(pool);
-
-  let source;
-  if (vowels.length === 0) source = consonants;
-  else if (consonants.length === 0) source = vowels;
-  else source = Math.random() < vowelWeight ? vowels : consonants;
-
-  return source.length > 0
-    ? source[Math.floor(Math.random() * source.length)]
-    : pool[Math.floor(Math.random() * pool.length)];
-}
 </file>
 
 <file path="components/gameplayReusables/ConveyorBelt/Spriteloader.js">
@@ -1356,6 +657,888 @@ const styles = StyleSheet.create({
 });
 </file>
 
+<file path="components/gameplayReusables/LevelTimer.js">
+import React, { useState, useEffect, useRef } from 'react';
+import { View } from 'react-native';
+import Text from '../AppText';
+
+/**
+ * LevelTimer
+ *
+ * @param {number} targetScore - score/serve quota needed to win the level
+ * @param {number} currentScore - live score from useScoreSystem
+ * @param {number} initialTimeInSeconds - countdown length
+ * @param {boolean} isPaused - freezes the countdown (e.g. while Mr. Ratty's
+ *   shop popup is open), defaults to false so existing behavior is unchanged
+ * @param {(won: boolean, finalScore: number) => void} onLevelEnd - called
+ *   exactly once when time runs out, so the parent screen can show the
+ *   Win Screen or Lose Screen from the storyboard.
+ */
+const LevelTimer = ({
+  targetScore,
+  currentScore,
+  initialTimeInSeconds = 60,
+  isPaused = false,
+  onLevelEnd,
+}) => {
+  const [timeLeft, setTimeLeft] = useState(initialTimeInSeconds);
+  const [isGameOver, setIsGameOver] = useState(false);
+
+  // Keep the latest score in a ref instead of a dependency, so the
+  // countdown interval doesn't get torn down and recreated every time
+  // the player earns points (that was the bug: [currentScore] as a
+  // dependency reset the interval on every score change, causing the
+  // countdown to drift/stutter instead of ticking evenly every second).
+  const scoreRef = useRef(currentScore);
+  useEffect(() => {
+    scoreRef.current = currentScore;
+  }, [currentScore]);
+
+  // Countdown interval — only restarts if paused state or game-over state changes.
+  useEffect(() => {
+    if (isPaused || isGameOver) return undefined;
+
+    const timerId = setInterval(() => {
+      setTimeLeft((prevTime) => {
+        if (prevTime <= 1) {
+          clearInterval(timerId);
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerId);
+  }, [isPaused, isGameOver]);
+
+  // Determine win/loss exactly once, the moment the clock actually hits 0.
+  useEffect(() => {
+    if (timeLeft === 0 && !isGameOver) {
+      setIsGameOver(true);
+      const finalScore = scoreRef.current;
+      const won = finalScore >= targetScore;
+      onLevelEnd?.(won, finalScore);
+    }
+  }, [timeLeft, isGameOver, targetScore, onLevelEnd]);
+
+  // Format seconds to MM:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60; //Timer
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  return (
+    <View>
+      <Text style={{ fontSize: 24, fontWeight: 'bold' }}>
+        Time: {formatTime(timeLeft)}
+      </Text>
+    </View>
+  );
+};
+
+export default LevelTimer;
+</file>
+
+<file path="components/gameplayReusables/UseWallet.js">
+import { useState, useCallback, useMemo } from 'react';
+
+const DISCOUNT_FACTOR = 0.5;
+const INFLATE_FACTOR = 1.5;
+
+// Currency per correctly-served word — kept FLAT and separate from
+// score/scoreMultiplier on purpose, so the shop's economy doesn't shift
+// every time a level's multiplier changes. Tuned against the Store's
+// static prices (10 / 20 / 50): ~2 words for the cheapest item, ~4 for
+// the middle one, ~10 for the priciest — was 1 word for all three
+// before, since currency used to just mirror the flat +50/word score.
+export const CURRENCY_PER_WORD = 5;
+
+/**
+ * formatCurrency(amount)
+ * ----------------------
+ * "1234567" -> "1,234,567". Hand-rolled instead of toLocaleString so it
+ * behaves the same on every JS engine (Hermes, JSC, web).
+ */
+export function formatCurrency(amount) {
+  const whole = Math.max(0, Math.floor(Number(amount) || 0));
+  return String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+/**
+ * useWallet(initialCurrency)
+ * ----------------------------
+ * Owns currency + each shop item's discount/inflate price state.
+ * Instantiate ONCE in App.js (not inside GameplayScreen/StoreScreen —
+ * both of those remount/switch away regularly, which would wipe
+ * currency and the discount/inflate marks that are meant to persist
+ * between visits).
+ *
+ * Doesn't know what the items ARE — StoreScreen passes in itemId +
+ * basePrice per call, so this stays reusable without needing its own
+ * copy of the item list.
+ *
+ * Returned API:
+ *   currency                              live coin balance
+ *   addCurrency(amount)                   called from useScoreSystem's onCurrencyEarned
+ *   getEffectivePrice(itemId, basePrice)  basePrice adjusted for that item's discount/inflate state
+ *   canAfford(itemId, basePrice)
+ *   buyItem(itemId, basePrice, allItemIds)      -> { success, outcome: 'discount' | 'insufficient' }
+ *   declineOffer(allItemIds)                    -> { outcome: 'inflate' }
+ */
+export function useWallet(initialCurrency = 0) {
+  const [currency, setCurrency] = useState(initialCurrency);
+  const [priceStates, setPriceStates] = useState({}); // itemId -> 'discount' | 'inflated'
+
+  // Earning only: a zero/negative/NaN amount is ignored so this can never
+  // be used to spend. Spending goes through buyItem.
+  const addCurrency = useCallback((amount) => {
+    if (!(amount > 0)) return;
+    setCurrency((prev) => prev + amount);
+  }, []);
+
+  const getEffectivePrice = useCallback((itemId, basePrice) => {
+    const state = priceStates[itemId];
+    if (state === 'discount') return Math.round(basePrice * DISCOUNT_FACTOR);
+    if (state === 'inflated') return Math.round(basePrice * INFLATE_FACTOR);
+    return basePrice;
+  }, [priceStates]);
+
+  const canAfford = useCallback(
+    (itemId, basePrice) => currency >= getEffectivePrice(itemId, basePrice),
+    [currency, getEffectivePrice]
+  );
+
+  // Buying: pay the effective price, clear this item's own price state
+  // (its discount, if any, is used up), then mark a DIFFERENT random
+  // item on discount for next visit.
+  const buyItem = useCallback((itemId, basePrice, allItemIds) => {
+    const price = getEffectivePrice(itemId, basePrice);
+    if (currency < price) return { success: false, outcome: 'insufficient' };
+
+    setCurrency((prev) => prev - price);
+    setPriceStates((prev) => {
+      const next = { ...prev, [itemId]: undefined };
+      const others = allItemIds.filter((id) => id !== itemId);
+      const lucky = others[Math.floor(Math.random() * others.length)];
+      if (lucky) next[lucky] = 'discount';
+      return next;
+    });
+
+    return { success: true, outcome: 'discount' };
+  }, [currency, getEffectivePrice]);
+
+  // Declining: mark a random item price-increased for next visit.
+  const declineOffer = useCallback((allItemIds) => {
+    const target = allItemIds[Math.floor(Math.random() * allItemIds.length)];
+    setPriceStates((prev) => ({ ...prev, [target]: 'inflated' }));
+    return { outcome: 'inflate' };
+  }, []);
+
+  return useMemo(() => ({
+    currency,
+    addCurrency,
+    getEffectivePrice,
+    canAfford,
+    buyItem,
+    declineOffer,
+  }), [currency, addCurrency, getEffectivePrice, canAfford, buyItem, declineOffer]);
+}
+</file>
+
+<file path="components/CountdownSequence.js">
+import React, { useState, useEffect } from "react";
+import { View, StyleSheet } from 'react-native';
+import Text from './AppText';
+
+//Slideshow Sequence survives so the game won't crash. Functions like slideshow Sequence
+export default function CountdownSequence({ slides, onComplete, msPerSlide = 800 }) {
+  const [index, setIndex] = useState(0);
+  const isLastSlide = index === slides.length - 1;
+  const slide = slides[index];
+
+  // loop for each slide
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (isLastSlide) {
+        onComplete && onComplete();
+      } else {
+        setIndex((i) => i + 1);
+      }
+    }, msPerSlide);
+
+    // Safety net so it won't fire twice
+    return () => clearTimeout(timeoutId);
+  }, [index, isLastSlide, msPerSlide, onComplete]);
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.slideCard}>
+        <Text style={styles.slideLabelText}>{slide.label}</Text>
+        {slide.subLabel ? (
+          <Text style={styles.slideSubLabelText}>{slide.subLabel}</Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#f3e6cf",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 30,
+  },
+  slideCard: {
+    width: "100%",
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#8a5a30",
+    backgroundColor: "rgba(255,255,255,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+  slideLabelText: {
+    textAlign: "center",
+    color: "#5c3a21",
+    fontWeight: "800",
+    fontSize: 26,
+  },
+  slideSubLabelText: {
+    textAlign: "center",
+    color: "#8a5a30",
+    fontWeight: "600",
+    fontSize: 16,
+    marginTop: 10,
+  },
+});
+</file>
+
+<file path="components/PopupModal.js">
+import React from 'react';
+import { StyleSheet, View, Modal, TouchableOpacity } from 'react-native';
+import Text from './AppText';
+
+export default function PopupModal({
+  visible,
+  title,
+  message,
+  extraMessage,
+  score,
+  buttonText,
+  buttonColor = '#FFE194', // Default color
+  onPress,
+  // Optional second button — omit cancelText/onCancel to keep the
+  // original single-button behavior (every existing caller still works
+  // unchanged). Pass both to get a "Never mind" style second option.
+  cancelText,
+  onCancel,
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      onRequestClose={onCancel ?? onPress}
+    >
+      <View style={styles.overlay}>
+        <View style={styles.card}>
+
+          {/* Header Title */}
+          <Text style={styles.title}>{title}</Text>
+
+          {/* Divider Line */}
+          <View style={styles.divider} />
+
+          {/* Body Content */}
+          <View style={styles.body}>
+            {message && <Text style={styles.messageText}>{message}</Text>}
+          </View>
+          <View style={styles.body}>
+            {extraMessage && <Text style={styles.extraMessageText}>{extraMessage}</Text>}
+          </View>
+
+
+            {/* Styled Score Display */}
+          {score !== undefined && (
+              <View style={styles.scoreBox}>
+                <Text style={styles.scoreText}>SCORE: {score}</Text>
+               </View>
+            )}
+
+          {/* Action Button(s) */}
+          <View style={styles.buttonRow}>
+            {cancelText && onCancel ? (
+              <TouchableOpacity
+                style={[styles.button, styles.cancelButton]}
+                onPress={onCancel}
+              >
+                <Text style={styles.buttonText}>{cancelText}</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: buttonColor }]}
+              onPress={onPress}
+            >
+              <Text style={styles.buttonText}>{buttonText}</Text>
+            </TouchableOpacity>
+          </View>
+
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  card: {
+    width: '85%',
+    maxWidth: 320,
+    backgroundColor: '#FFF8E7',
+    borderWidth: 3,
+    borderColor: '#000',
+    borderRadius: 8,
+    padding: 20,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000',
+    textAlign: 'center',
+    lineHeight: 26,
+  },
+  divider: {
+    width: '100%',
+    height: 1.5,
+    backgroundColor: '#333',
+    marginVertical: 14,
+  },
+  body: {
+    alignItems: 'center',
+    marginBottom: 16,
+    width: '100%',
+  },
+  messageText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#000',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginTop: 10,
+  },
+  // Dedicated styling for the score display
+  scoreBox: {
+    marginTop: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  scoreText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#000',
+    letterSpacing: 1,
+  },
+  extraMessageText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#000',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  button: {
+    borderWidth: 2,
+    borderColor: '#000',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 24,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#E0E0E0',
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+});
+</file>
+
+<file path="components/VolumeSlider.js">
+import React from "react";
+import { View, StyleSheet } from 'react-native';
+import Text from './AppText';
+import Slider from "@react-native-community/slider";
+
+/**
+ * VolumeSlider
+ * ----------------------------------------------------------------------
+ * A single labeled row: "Label" above a slider. Used for Master Volume,
+ * Music Volume, and Sound Effects (SFX) in SettingsScreen, but generic
+ * enough to reuse for any other 0–1 value slider later on.
+ *
+ * Requires: @react-native-community/slider
+ *   npx expo install @react-native-community/slider
+ * ----------------------------------------------------------------------
+ */
+
+export default function VolumeSlider({ label, value, onValueChange, style }) {
+  return (
+    <View style={[styles.row, style]}>
+      <Text style={styles.label}>{label}</Text>
+      <Slider
+        style={styles.slider}
+        minimumValue={0}
+        maximumValue={1}
+        value={value}
+        onValueChange={onValueChange}
+        minimumTrackTintColor="#4caf50"
+        maximumTrackTintColor="#f0e6d2"
+        thumbTintColor="#ffffff"
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  row: {
+    width: "100%",
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#5c3a21",
+    marginBottom: 6,
+  },
+  slider: {
+    width: "100%",
+    height: 36,
+  },
+});
+</file>
+
+<file path="app.json">
+{
+  "expo": {
+    "name": "wormderya-beta",
+    "slug": "wormderya-beta",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}
+</file>
+
+<file path="components/gameplayReusables/ConveyorBelt/Animationsystem.js">
+import { useEffect, useRef } from 'react';
+import { Animated } from 'react-native';
+
+//States for Future levels
+export const LETTER_ANIM_STATES = {
+  SPAWNING: 'spawning',
+  IDLE: 'idle',
+  MOVING: 'moving',
+  SELECTED: 'selected',
+  DISAPPEARING: 'disappearing',
+};
+
+//reusable animation 
+export function useSpawnAnimation(animState) {
+  const scale = useRef(
+    new Animated.Value(animState === LETTER_ANIM_STATES.SPAWNING ? 0 : 1)
+  ).current;
+
+  useEffect(() => {
+    if (animState === LETTER_ANIM_STATES.SPAWNING) {
+      scale.setValue(0);
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 2, //2 shows best animation
+        useNativeDriver: true,
+      }).start();
+    } else if (animState === LETTER_ANIM_STATES.DISAPPEARING) {
+      Animated.timing(scale, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [animState, scale]);
+
+  return scale;
+}
+
+/**
+ * One-off helper for a fire-and-forget fade/scale animation outside the
+ * hook above (e.g. a future score popup or selected-letter pulse).
+ */
+export function playTimingAnimation(animatedValue, toValue, duration = 200) {
+  return new Promise((resolve) => {
+    Animated.timing(animatedValue, {
+      toValue,
+      duration,
+      useNativeDriver: true,
+    }).start(() => resolve());
+  });
+}
+</file>
+
+<file path="components/gameplayReusables/ConveyorBelt/Conveyorconfig.js">
+import { DEFAULT_LETTER_POOL } from './Letterpool';
+
+/**
+ * Central tuning knobs for a ConveyorBelt instance. Override any subset
+ * via the `config` prop:
+ *
+ *   <ConveyorBelt config={{ slotDurationMs: 900, maxLetters: 7 }} />
+ *
+ * Later this can grow into a per-level LevelConfig (wordDatabase,
+ * scoreMultiplier, levelRules, ...) without ConveyorBelt itself changing.
+ */
+export const DEFAULT_CONVEYOR_CONFIG = {
+  // Time (ms) for the belt to travel exactly one slot's width.
+  // Lower = faster belt.
+  slotDurationMs: 1400,
+
+  // Visual scroll direction, No way to access yet, Note to self/next programmer: find a way to access it.
+  direction: 'ltr', // 'ltr' | 'rtl'
+
+  // Characters the belt can spawn. Swap for the Tagalog word-database
+  // pool later — nothing else here needs to change.
+  letterPool: DEFAULT_LETTER_POOL,
+
+  // Optional vowel/consonant weighting for spawned letters — see
+  // Letterpool.js's createVowelWeightPicker for the accepted shapes.
+  // Defaults to 'balanced' so every belt is vowel-weighted; pass null
+  // explicitly for a uniform pick across letterPool.
+  letterDistribution: 'balanced',
+
+  // Minimum number of vowels that must be on the belt at any time. When the
+  // belt drops below this, the next spawned letter is forced to be a vowel.
+  // Fallback only: each belt row sets its own via LevelConfig `belts`.
+  minVisibleVowels: 1,
+
+  // Reserved width/height (px) per letter tile.
+  slotWidth: 70,
+  slotHeight: 50,
+
+  // How many letter slots are visible on the belt at once. (Internally
+  // ConveyorBelt tracks one extra buffer letter off-screen for a smooth
+  // wrap-around — that's an implementation detail, not configured here.)
+  maxLetters: 6,
+};
+</file>
+
+<file path="components/gameplayReusables/ConveyorBelt/index.js">
+export { default as ConveyorBelt } from './Conveyorbelt';
+export { default as Letter } from './Letter';
+export { DEFAULT_CONVEYOR_CONFIG } from './Conveyorconfig';
+export {
+  DEFAULT_LETTER_POOL,
+  VOWELS,
+  LETTER_DISTRIBUTION_PROFILES,
+  getVowelsInPool,
+  getConsonantsInPool,
+  pickRandomLetter,
+  createVowelWeightPicker,
+} from './Letterpool';
+export { LETTER_ANIM_STATES, useSpawnAnimation, playTimingAnimation } from './Animationsystem';
+export {
+  registerLetterSprite,
+  registerLetterSprites,
+  getLetterSprite,
+  registerLetterFrames,
+  getLetterFrames,
+} from './Spriteloader';
+</file>
+
+<file path="components/gameplayReusables/ConveyorBelt/Letterpool.js">
+/**
+ * Test letter pool for the conveyor prototype. Swap this out for the
+ * formal Tagalog letter set (or generate it from the word database) once
+ * the Word Input System and dictionary are in place — nothing else in
+ * the conveyor needs to change to support that swap, since ConveyorBelt
+ * only ever pulls from `config.letterPool`.
+ */
+export const DEFAULT_LETTER_POOL = [
+  'A', 'B', 'K', 'D', 'E', 'G', 'H', 'I', 'L',
+  'M', 'N', 'O', 'P', 'R', 'S', 'T', 'U', 'W', 'Y',
+];
+
+// Tagalog vowels. Fixed on purpose (not derived from the pool) so the
+// vowel/consonant split stays correct even if DEFAULT_LETTER_POOL grows.
+export const VOWELS = ['A', 'E', 'I', 'O', 'U'];
+
+export function getVowelsInPool(pool = DEFAULT_LETTER_POOL) {
+  return pool.filter((ch) => VOWELS.includes(ch));
+}
+
+export function getConsonantsInPool(pool = DEFAULT_LETTER_POOL) {
+  return pool.filter((ch) => !VOWELS.includes(ch));
+}
+
+/**
+ * Named vowel-weight profiles a level's `letterDistribution` can reference
+ * by name. Each is a [min, max] range — a random value inside it is drawn
+ * per pick (see createVowelWeightPicker) so consecutive letters don't all
+ * share the exact same weight and become predictable.
+ */
+export const LETTER_DISTRIBUTION_PROFILES = {
+  balanced: [0.15, 0.20],
+  vowelHeavy: [0.60, 0.72],
+  consonantHeavy: [0.05, 0.10],
+};
+
+function randomInRange([min, max]) {
+  return min + Math.random() * (max - min);
+}
+
+function weightForProfileName(name) {
+  const range = LETTER_DISTRIBUTION_PROFILES[name] ?? LETTER_DISTRIBUTION_PROFILES.balanced;
+  return randomInRange(range);
+}
+
+/**
+ * Turns a LevelConfig's `letterDistribution` into a `getVowelWeight()`
+ * function that ConveyorBelt calls once per spawned letter. This is the
+ * one place that decides how the profiles behave over time, so
+ * ConveyorBelt itself never needs to know what a "profile" is.
+ *
+ * Accepted `letterDistribution` shapes:
+ *   - null / undefined        -> uniform pick across the whole pool
+ *                                 (legacy behavior; returned getter yields null)
+ *   - a number (0-1)          -> fixed vowel weight, used every pick
+ *   - a profile name string   -> 'balanced' | 'vowelHeavy' | 'consonantHeavy';
+ *                                 a fresh weight is drawn from that profile's
+ *                                 range on every pick
+ *   - { profiles: [...names], minStreak?, maxStreak? }
+ *                              -> "mixed": one named profile is chosen at
+ *                                 random and held for a short run of
+ *                                 letters (minStreak–maxStreak, default 3–5)
+ *                                 before rerolling, so the belt produces
+ *                                 stretches that read as balanced, then
+ *                                 vowel-heavy, then consonant-heavy,
+ *                                 instead of shuffling every tile
+ */
+export function createVowelWeightPicker(letterDistribution) {
+  if (letterDistribution === undefined || letterDistribution === null) {
+    return () => null;
+  }
+
+  if (typeof letterDistribution === 'number') {
+    return () => letterDistribution;
+  }
+
+  if (typeof letterDistribution === 'string') {
+    return () => weightForProfileName(letterDistribution);
+  }
+
+  if (letterDistribution && Array.isArray(letterDistribution.profiles) && letterDistribution.profiles.length > 0) {
+    const { profiles, minStreak = 3, maxStreak = 5 } = letterDistribution;
+    let remaining = 0;
+    let currentName = profiles[0];
+    return () => {
+      if (remaining <= 0) {
+        currentName = profiles[Math.floor(Math.random() * profiles.length)];
+        remaining = minStreak + Math.floor(Math.random() * (maxStreak - minStreak + 1));
+      }
+      remaining -= 1;
+      return weightForProfileName(currentName);
+    };
+  }
+
+  return () => null;
+}
+
+/**
+ * Picks one letter from `pool`.
+ *
+ * `vowelWeight`:
+ *   - null/undefined -> uniform pick across the whole pool (original,
+ *     unweighted behavior — unchanged for any caller that doesn't pass it)
+ *   - a number 0-1 -> that fraction of picks are drawn from the pool's
+ *     vowels, the rest from its consonants
+ */
+export function pickRandomLetter(pool = DEFAULT_LETTER_POOL, vowelWeight = null) {
+  if (vowelWeight === null || vowelWeight === undefined) {
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  const vowels = getVowelsInPool(pool);
+  const consonants = getConsonantsInPool(pool);
+
+  let source;
+  if (vowels.length === 0) source = consonants;
+  else if (consonants.length === 0) source = vowels;
+  else source = Math.random() < vowelWeight ? vowels : consonants;
+
+  return source.length > 0
+    ? source[Math.floor(Math.random() * source.length)]
+    : pool[Math.floor(Math.random() * pool.length)];
+}
+</file>
+
+<file path="components/gameplayReusables/WordInput/LetterAnimations.js">
+import { useRef } from 'react';
+import { Animated } from 'react-native';
+
+/**
+ * Reusable animation primitives for the word-input UI.
+ *
+ * If you already have an AnimationSystem module (referenced in
+ * UseWordInput.js's comments for the conveyor's letter-removal
+ * animation), these hooks probably belong there instead — merge this
+ * file into it rather than keeping two animation modules around.
+ */
+
+// Pop-in for a single letter tile: scale + fade from 0 -> 1 on mount.
+export function useTileEntranceAnimation() {
+  const scale = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  const play = () => {
+    scale.setValue(0);
+    opacity.setValue(0);
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 5,
+        tension: 140,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  return { scale, opacity, play };
+}
+
+// Shake + color flash + ripple used when a submitted word is judged
+// valid/invalid. Same values/timings as the original CurrentWordDisplay,
+// just moved here so the component only has to call playValid/playInvalid.
+export function useResultFeedbackAnimation() {
+  const shakeX = useRef(new Animated.Value(0)).current;
+  const flashOpacity = useRef(new Animated.Value(0)).current;
+  const flashColor = useRef(new Animated.Value(0)).current; // 0 = invalid, 1 = valid
+  const rippleScale = useRef(new Animated.Value(0)).current;
+  const rippleOpacity = useRef(new Animated.Value(0)).current;
+
+  const playValid = () => {
+    flashColor.setValue(1);
+    flashOpacity.setValue(0.55);
+    rippleScale.setValue(0);
+    rippleOpacity.setValue(0.5);
+
+    Animated.parallel([
+      Animated.timing(flashOpacity, {
+        toValue: 0,
+        duration: 450,
+        useNativeDriver: false, // stays alongside the interpolated color below
+      }),
+      Animated.timing(rippleScale, {
+        toValue: 2.2,
+        duration: 450,
+        useNativeDriver: true,
+      }),
+      Animated.timing(rippleOpacity, {
+        toValue: 0,
+        duration: 450,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const playInvalid = () => {
+    flashColor.setValue(0);
+    flashOpacity.setValue(0.55);
+    shakeX.setValue(0);
+
+    Animated.timing(flashOpacity, {
+      toValue: 0,
+      duration: 400,
+      useNativeDriver: false,
+    }).start();
+
+    Animated.sequence([
+      Animated.timing(shakeX, { toValue: -8, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 8, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: -6, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 6, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 0, duration: 45, useNativeDriver: true }),
+    ]).start();
+  };
+
+  return {
+    shakeX,
+    flashOpacity,
+    flashColor,
+    rippleScale,
+    rippleOpacity,
+    playValid,
+    playInvalid,
+  };
+}
+</file>
+
+<file path="components/gameplayReusables/WordInput/ScoreSystem.js">
+/**
+ * ScoreSystem
+ * -----------
+ * Turns a validated word into a number.
+ * Multiplier can be set by developers from other js so it's
+ * not hardcoded
+ */
+export function baseScoreForWord(word) {
+  return word.length * 10;
+}
+
+export function calculateScore(word, multiplier = 1) {
+  return baseScoreForWord(word) * multiplier;
+}
+</file>
+
 <file path="components/gameplayReusables/Font.js">
 // Central font family names. Loaded in App.js via useFonts.
 export const FONT_REGULAR = 'PixelifySans_400Regular';
@@ -1365,6 +1548,25 @@ export const FONT_BOLD = 'PixelifySans_700Bold';
 
 // Kept so CurrentWordDisplay.js keeps working unchanged.
 export const FONT_WARNING = FONT_BOLD;
+</file>
+
+<file path="components/gameplayReusables/MrRattyDiscount.js">
+import React from 'react';
+import PopupModal from '../PopupModal';
+
+//Changed because it's redundant
+export default function MrRattyDiscount({ visible, onDismiss }) {
+  return (
+    <PopupModal
+      visible={visible}
+      title={`Mr. Ratty stops\nby to chat...`}
+      message="He looks like he's judging your cooking. Best get back to it."
+      buttonText="Get back to work"
+      buttonColor="#FFE194"
+      onPress={onDismiss}
+    />
+  );
+}
 </file>
 
 <file path="components/gameplayReusables/UseScoreSystem.js">
@@ -1730,57 +1932,78 @@ const styles = StyleSheet.create({
 export { DEFAULT_SIZE as LEVEL_BUTTON_DEFAULT_SIZE };
 </file>
 
-<file path="components/gameplayReusables/ConveyorBelt/Animationsystem.js">
-import { useEffect, useRef } from 'react';
-import { Animated } from 'react-native';
+<file path="screens/SplashScreen.js">
+import React, { useEffect } from "react";
+import { ImageBackground, StyleSheet, StatusBar } from "react-native";
 
-//States for Future levels
-export const LETTER_ANIM_STATES = {
-  SPAWNING: 'spawning',
-  IDLE: 'idle',
-  MOVING: 'moving',
-  SELECTED: 'selected',
-  DISAPPEARING: 'disappearing',
-};
+const DEFAULT_DURATION_MS = 2500;
 
-//reusable animation 
-export function useSpawnAnimation(animState) {
-  const scale = useRef(
-    new Animated.Value(animState === LETTER_ANIM_STATES.SPAWNING ? 0 : 1)
-  ).current;
-
+export default function SplashScreen({
+  onFinish,
+  duration = DEFAULT_DURATION_MS,
+}) {
   useEffect(() => {
-    if (animState === LETTER_ANIM_STATES.SPAWNING) {
-      scale.setValue(0);
-      Animated.spring(scale, {
-        toValue: 1,
-        friction: 2, //2 shows best animation
-        useNativeDriver: true,
-      }).start();
-    } else if (animState === LETTER_ANIM_STATES.DISAPPEARING) {
-      Animated.timing(scale, {
-        toValue: 0,
-        duration: 180,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [animState, scale]);
+    const timer = setTimeout(() => {
+      onFinish && onFinish();
+    }, duration);
 
-  return scale;
+    // Clean up if the component unmounts early (e.g. fast reloads).
+    return () => clearTimeout(timer);
+  }, [duration, onFinish]);
+
+  return (
+    <ImageBackground
+      // Later: swap for your final splash art if this changes.
+      source={require("../assets/Final/SplashScreen.png")}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <StatusBar barStyle="dark-content" />
+    </ImageBackground>
+  );
 }
 
-/**
- * One-off helper for a fire-and-forget fade/scale animation outside the
- * hook above (e.g. a future score popup or selected-letter pulse).
- */
-export function playTimingAnimation(animatedValue, toValue, duration = 200) {
-  return new Promise((resolve) => {
-    Animated.timing(animatedValue, {
-      toValue,
-      duration,
-      useNativeDriver: true,
-    }).start(() => resolve());
-  });
+const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    height: "100%",
+    width: "100%",
+    backgroundColor: "#f3e6cf",
+  },
+});
+</file>
+
+<file path="screens/StoryBackstoryScreen.js">
+import React from "react";
+import SlideshowSequence from "../components/SlideshowSequence";
+
+// One entry per slide. Add the real art later like:
+//   { id: '1', image: require('../../assets/story/backstory-1.png') }
+const BACKSTORY_SLIDES = [
+  {
+    id: "1",
+    image: require("../assets/Final/BackstoryScreens/Backstory-Panel-1.1.png"),
+  },
+  {
+    id: "2",
+    image: require("../assets/Final/BackstoryScreens/Backstory-Panel-1.2.png"),
+  },
+  {
+    id: "3",
+    image: require("../assets/Final/BackstoryScreens/Backstory-Panel-2.png"),
+  },
+  {
+    id: "4",
+    image: require("../assets/Final/BackstoryScreens/Backstory-Panel-3.png"),
+  },
+  {
+    id: "5",
+    image: require("../assets/Final/BackstoryScreens/Backstory-Panel-4.png"),
+  },
+];
+
+export default function StoryBackstoryScreen({ onFinish }) {
+  return <SlideshowSequence slides={BACKSTORY_SLIDES} onComplete={onFinish} />;
 }
 </file>
 
@@ -1863,112 +2086,6 @@ const styles = StyleSheet.create({
 });
 </file>
 
-<file path="components/gameplayReusables/WordInput/LetterAnimations.js">
-import { useRef } from 'react';
-import { Animated } from 'react-native';
-
-/**
- * Reusable animation primitives for the word-input UI.
- *
- * If you already have an AnimationSystem module (referenced in
- * UseWordInput.js's comments for the conveyor's letter-removal
- * animation), these hooks probably belong there instead — merge this
- * file into it rather than keeping two animation modules around.
- */
-
-// Pop-in for a single letter tile: scale + fade from 0 -> 1 on mount.
-export function useTileEntranceAnimation() {
-  const scale = useRef(new Animated.Value(0)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
-
-  const play = () => {
-    scale.setValue(0);
-    opacity.setValue(0);
-    Animated.parallel([
-      Animated.spring(scale, {
-        toValue: 1,
-        friction: 5,
-        tension: 140,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 120,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  return { scale, opacity, play };
-}
-
-// Shake + color flash + ripple used when a submitted word is judged
-// valid/invalid. Same values/timings as the original CurrentWordDisplay,
-// just moved here so the component only has to call playValid/playInvalid.
-export function useResultFeedbackAnimation() {
-  const shakeX = useRef(new Animated.Value(0)).current;
-  const flashOpacity = useRef(new Animated.Value(0)).current;
-  const flashColor = useRef(new Animated.Value(0)).current; // 0 = invalid, 1 = valid
-  const rippleScale = useRef(new Animated.Value(0)).current;
-  const rippleOpacity = useRef(new Animated.Value(0)).current;
-
-  const playValid = () => {
-    flashColor.setValue(1);
-    flashOpacity.setValue(0.55);
-    rippleScale.setValue(0);
-    rippleOpacity.setValue(0.5);
-
-    Animated.parallel([
-      Animated.timing(flashOpacity, {
-        toValue: 0,
-        duration: 450,
-        useNativeDriver: false, // stays alongside the interpolated color below
-      }),
-      Animated.timing(rippleScale, {
-        toValue: 2.2,
-        duration: 450,
-        useNativeDriver: true,
-      }),
-      Animated.timing(rippleOpacity, {
-        toValue: 0,
-        duration: 450,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  const playInvalid = () => {
-    flashColor.setValue(0);
-    flashOpacity.setValue(0.55);
-    shakeX.setValue(0);
-
-    Animated.timing(flashOpacity, {
-      toValue: 0,
-      duration: 400,
-      useNativeDriver: false,
-    }).start();
-
-    Animated.sequence([
-      Animated.timing(shakeX, { toValue: -8, duration: 45, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 8, duration: 45, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: -6, duration: 45, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 6, duration: 45, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 0, duration: 45, useNativeDriver: true }),
-    ]).start();
-  };
-
-  return {
-    shakeX,
-    flashOpacity,
-    flashColor,
-    rippleScale,
-    rippleOpacity,
-    playValid,
-    playInvalid,
-  };
-}
-</file>
-
 <file path="components/gameplayReusables/WordInput/LetterTile.js">
 import React, { useEffect, useRef } from 'react';
 import { Animated, ImageBackground, StyleSheet } from 'react-native';
@@ -2022,40 +2139,55 @@ const styles = StyleSheet.create({
 });
 </file>
 
-<file path="components/gameplayReusables/WordInput/ScoreSystem.js">
+<file path="components/gameplayReusables/WordInput/TagalogWordDatabase.js">
 /**
- * ScoreSystem
- * -----------
- * Turns a validated word into a number.
- * Multiplier can be set by developers from other js so it's
- * not hardcoded
+ * Test word list of formal Tagalog/Filipino vocabulary — no slang, no
+ * texting shorthand, no informal spellings. This is intentionally small
+ * for the prototype; swap or extend it freely, WordValidator only needs
+ * something that exposes `has(word)`.
+ *
+ * Every word here only uses letters currently in the test conveyor pool
+ * (A,B,K,D,E,G,H,I,L,M,N,O,P,R,S,T,U,W,Y) so they're actually buildable
+ * on the belt as it's configured today.
  */
-export function baseScoreForWord(word) {
-  return word.length * 10;
-}
+export const TAGALOG_WORD_LIST = [
+  'AKO',     // I
+  'IKAW',    // you
+  'TAYO',    // we (inclusive)
+  'KAMI',    // we (exclusive)
+  'BAHAY',   // house
+  'TUBIG',   // water
+  'ARAW',    // sun / day
+  'GABI',    // night
+  'BATA',    // child
+  'TAO',     // person
+  'MATA',    // eye
+  'PUSO',    // heart
+  'ISDA',    // fish
+  'BATO',    // rock / stone
+  'DAGAT',   // sea
+  'BUNDOK',  // mountain
+  'KAIN',    // eat
+  'LAKAD',   // walk
+  'BUHAY',   // life / alive
+  'LUPA',    // earth / land
+  'HANGIN',  // wind
+  'APOY',    // fire
+  'AKALA',   // belief / assumption
+  'BAGAY',   // thing / object
+  'BALIK',   // return
+  'BAWAT',   // each / every
+  'GABAY',   // guide
+  'GANDA',   // beauty
+  'KAMAY',   // hand
+  'PILIT',   // forced / insistence
+  'SULAT',   // letter / writing
+  'TAWAG',   // call
+];
 
-export function calculateScore(word, multiplier = 1) {
-  return baseScoreForWord(word) * multiplier;
-}
-</file>
-
-<file path="components/gameplayReusables/MrRattyDiscount.js">
-import React from 'react';
-import PopupModal from '../PopupModal';
-
-//Changed because it's redundant
-export default function MrRattyDiscount({ visible, onDismiss }) {
-  return (
-    <PopupModal
-      visible={visible}
-      title={`Mr. Ratty stops\nby to chat...`}
-      message="He looks like he's judging your cooking. Best get back to it."
-      buttonText="Get back to work"
-      buttonColor="#FFE194"
-      onPress={onDismiss}
-    />
-  );
-}
+export const TAGALOG_WORD_DATABASE = new Set(
+  TAGALOG_WORD_LIST.map((w) => w.toUpperCase())
+);
 </file>
 
 <file path="screens/LevelSelectScreen.js">
@@ -2324,47 +2456,6 @@ const styles = StyleSheet.create({
   backButton: {
     width: "100%",
     marginTop: "auto",
-  },
-});
-</file>
-
-<file path="screens/SplashScreen.js">
-import React, { useEffect } from "react";
-import { ImageBackground, StyleSheet, StatusBar } from "react-native";
-
-const DEFAULT_DURATION_MS = 2500;
-
-export default function SplashScreen({
-  onFinish,
-  duration = DEFAULT_DURATION_MS,
-}) {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onFinish && onFinish();
-    }, duration);
-
-    // Clean up if the component unmounts early (e.g. fast reloads).
-    return () => clearTimeout(timer);
-  }, [duration, onFinish]);
-
-  return (
-    <ImageBackground
-      // Later: swap for your final splash art if this changes.
-      source={require("../assets/Final/SplashScreen.png")}
-      style={styles.background}
-      resizeMode="cover"
-    >
-      <StatusBar barStyle="dark-content" />
-    </ImageBackground>
-  );
-}
-
-const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-    height: "100%",
-    width: "100%",
-    backgroundColor: "#f3e6cf",
   },
 });
 </file>
@@ -2726,91 +2817,6 @@ const styles = StyleSheet.create({
 });
 </file>
 
-<file path="screens/StoryBackstoryScreen.js">
-import React from "react";
-import SlideshowSequence from "../components/SlideshowSequence";
-
-// One entry per slide. Add the real art later like:
-//   { id: '1', image: require('../../assets/story/backstory-1.png') }
-const BACKSTORY_SLIDES = [
-  {
-    id: "1",
-    image: require("../assets/Final/BackstoryScreens/Backstory-Panel-1.1.png"),
-  },
-  {
-    id: "2",
-    image: require("../assets/Final/BackstoryScreens/Backstory-Panel-1.2.png"),
-  },
-  {
-    id: "3",
-    image: require("../assets/Final/BackstoryScreens/Backstory-Panel-2.png"),
-  },
-  {
-    id: "4",
-    image: require("../assets/Final/BackstoryScreens/Backstory-Panel-3.png"),
-  },
-  {
-    id: "5",
-    image: require("../assets/Final/BackstoryScreens/Backstory-Panel-4.png"),
-  },
-];
-
-export default function StoryBackstoryScreen({ onFinish }) {
-  return <SlideshowSequence slides={BACKSTORY_SLIDES} onComplete={onFinish} />;
-}
-</file>
-
-<file path="components/gameplayReusables/WordInput/TagalogWordDatabase.js">
-/**
- * Test word list of formal Tagalog/Filipino vocabulary — no slang, no
- * texting shorthand, no informal spellings. This is intentionally small
- * for the prototype; swap or extend it freely, WordValidator only needs
- * something that exposes `has(word)`.
- *
- * Every word here only uses letters currently in the test conveyor pool
- * (A,B,K,D,E,G,H,I,L,M,N,O,P,R,S,T,U,W,Y) so they're actually buildable
- * on the belt as it's configured today.
- */
-export const TAGALOG_WORD_LIST = [
-  'AKO',     // I
-  'IKAW',    // you
-  'TAYO',    // we (inclusive)
-  'KAMI',    // we (exclusive)
-  'BAHAY',   // house
-  'TUBIG',   // water
-  'ARAW',    // sun / day
-  'GABI',    // night
-  'BATA',    // child
-  'TAO',     // person
-  'MATA',    // eye
-  'PUSO',    // heart
-  'ISDA',    // fish
-  'BATO',    // rock / stone
-  'DAGAT',   // sea
-  'BUNDOK',  // mountain
-  'KAIN',    // eat
-  'LAKAD',   // walk
-  'BUHAY',   // life / alive
-  'LUPA',    // earth / land
-  'HANGIN',  // wind
-  'APOY',    // fire
-  'AKALA',   // belief / assumption
-  'BAGAY',   // thing / object
-  'BALIK',   // return
-  'BAWAT',   // each / every
-  'GABAY',   // guide
-  'GANDA',   // beauty
-  'KAMAY',   // hand
-  'PILIT',   // forced / insistence
-  'SULAT',   // letter / writing
-  'TAWAG',   // call
-];
-
-export const TAGALOG_WORD_DATABASE = new Set(
-  TAGALOG_WORD_LIST.map((w) => w.toUpperCase())
-);
-</file>
-
 <file path="components/SlideshowSequence.js">
 import React, { useState } from "react";
 import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
@@ -2963,417 +2969,6 @@ const styles = StyleSheet.create({
 });
 </file>
 
-<file path="levels/LevelConfig.js">
-/**
- * LevelConfig
- * -----------
- * Single source of truth for per-level settings. A plain factory (not a
- * hook), so configs can be created and passed around anywhere.
- *
- * Wider than WordInput/LevelConfig.js (scoreMultiplier + wordRules only);
- * GameplayScreen maps the relevant slice into useWordInput.
- *
- * Usage: createLevelConfig({ conveyorSpeed: 900, totalCustomers: 8 })
- * Anything not overridden falls back to LEVEL_CONFIG_DEFAULTS.
- */
-
-export const LEVEL_CONFIG_DEFAULTS = {
-  id: 'untitled-level',
-  title: 'Untitled Level',
-
-  // --- Conveyor / Word Input ---
-  conveyorSpeed: 1400,     // ms per slot -> ConveyorBelt slotDurationMs
-  maxLettersOnBelt: 6,     // -> ConveyorBelt maxLetters / useWordInput maxLetters
-  letterPool: null,        // -> ConveyorBelt letterPool; null = belt default
-  letterDistribution: null, // -> ConveyorBelt letterDistribution; null = uniform pick.
-                             // See ConveyorBelt/Letterpool.js createVowelWeightPicker
-                             // for accepted shapes (profile name, number, or
-                             // { profiles: [...] } for a mixed distribution).
-  wordDifficulty: {
-    minLength: 3,          // -> wordRules.minLength
-    maxLength: 8,          // -> wordRules.maxLength
-  },
-
-  // --- Scoring ---
-  scoreMultiplier: 1,      // -> useWordInput + addScoreFromWord
-  targetScore: 300,        // -> LevelTimer targetScore (win condition)
-
-  // --- Pacing ---
-  timeLimitSeconds: 60,    // -> LevelTimer initialTimeInSeconds
-  totalCustomers: 5,       // customers before the level completes
-  wordsPerCustomer: 3,     // correct words to serve a customer
-
-  // --- Mr. Ratty ---
-  rattySpawnRate: 0.15,        // chance (0-1) per check
-  rattyCheckIntervalMs: 15000, // ms between checks
-};
-
-export function createLevelConfig(overrides = {}) {
-  return {
-    ...LEVEL_CONFIG_DEFAULTS,
-    ...overrides,
-    // Merge nested objects too, so a partial wordDifficulty keeps the other field.
-    wordDifficulty: {
-      ...LEVEL_CONFIG_DEFAULTS.wordDifficulty,
-      ...(overrides.wordDifficulty || {}),
-    },
-  };
-}
-</file>
-
-<file path="components/gameplayReusables/WordInput/CurrentWordDisplay.js">
-import React, { useEffect, useRef } from 'react';
-import { Animated, Text, View, Image, StyleSheet } from 'react-native';
-import LetterTile, { TILE_SIZE, BLANK_RECTANGLE } from './LetterTile';
-import { useResultFeedbackAnimation } from './LetterAnimations';
-import { FONT_WARNING } from '../Font';
-import { DEFAULT_MAX_LETTERS } from './UseWordInput';
-
-const VALID_COLOR = '#2e7d32';
-const INVALID_COLOR = '#c62828';
-
-// "WORD — +score" line stays fully
-// visible before it fades out. Edit here for a global change, or pass a
-// different value as the resultFadeDelayMs prop to override per screen.
-export const DEFAULT_RESULT_FADE_DELAY_MS = 2000;
-const RESULT_FADE_DURATION_MS = 300;
-
-/**
- * Purely presentational — renders `maxLetters` fixed slots (Wordle-style):
- * filling rectangles. Reacts to `lastResult` through colors and shakes after resultFadeDelayMs. 
- * useWordInput() doesn't know or care that this exists; 
- * swap it for your own UI any time.
- */
-export default function CurrentWordDisplay({
-  currentWord,
-  lastResult,
-  maxLetters = DEFAULT_MAX_LETTERS,
-  resultFadeDelayMs = DEFAULT_RESULT_FADE_DELAY_MS,
-}) {
-  const {
-    shakeX,
-    flashOpacity,
-    flashColor,
-    rippleScale,
-    rippleOpacity,
-    playValid,
-    playInvalid,
-  } = useResultFeedbackAnimation();
-
-  const resultOpacity = useRef(new Animated.Value(0)).current;
-  const fadeTimeoutRef = useRef(null);
-
-  // Track the specific result object we've already animated for, so we
-  // only fire once per submit rather than on every re-render.
-  const animatedResultRef = useRef(null);
-
-  useEffect(() => {
-    if (!lastResult || lastResult === animatedResultRef.current) return;
-    animatedResultRef.current = lastResult;
-    if (lastResult.valid) {
-      playValid();
-    } else {
-      playInvalid();
-    }
-
-    // Show the result line fully, then fade it out after the configured
-    // delay so it doesn't just sit there forever.
-    if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
-    resultOpacity.setValue(1);
-    fadeTimeoutRef.current = setTimeout(() => {
-      Animated.timing(resultOpacity, {
-        toValue: 0,
-        duration: RESULT_FADE_DURATION_MS,
-        useNativeDriver: true,
-      }).start();
-    }, resultFadeDelayMs);
-  }, [lastResult, playValid, playInvalid, resultOpacity, resultFadeDelayMs]);
-
-  // Clear any pending fade if the component unmounts mid-timeout.
-  useEffect(() => () => {
-    if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
-  }, []);
-
-  const flashBackgroundColor = flashColor.interpolate({
-    inputRange: [0, 1],
-    outputRange: [INVALID_COLOR, VALID_COLOR],
-  });
-  const rippleBackgroundColor = lastResult && lastResult.valid ? VALID_COLOR : INVALID_COLOR;
-
-  // Fixed-length slot list: real letters first, then empty placeholders
-  // Doesn't require all slot filled to pass the word
-  const slots = Array.from({ length: maxLetters }, (_, i) => currentWord[i] || null);
-
-  return (
-    <View style={styles.wrapper}>
-      <Animated.View style={[styles.row, { transform: [{ translateX: shakeX }] }]}>
-        {slots.map((letter, i) =>
-          letter ? (
-            <LetterTile key={letter.id} character={letter.character} />
-          ) : (
-            <Image
-              key={`empty-${i}`}
-              source={BLANK_RECTANGLE}
-              style={styles.emptySlot}
-              resizeMode="stretch"
-            />
-          )
-        )}
-
-        {/* Flash — a color wash over the whole row, red or green. */}
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.overlay, { backgroundColor: flashBackgroundColor, opacity: flashOpacity }]}
-        />
-
-        {/* Ripple — only relevant/visible on a valid word; clipped by
-            the row's overflow:hidden*/}
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.ripple,
-            {
-              backgroundColor: rippleBackgroundColor,
-              opacity: rippleOpacity,
-              transform: [{ scale: rippleScale }],
-            },
-          ]}
-        />
-      </Animated.View>
-
-      {/* Result line — absolutely positioned directly on top of the tile
-          row (a sibling of `row`, not a child, so it isn't clipped by
-          row's overflow:hidden) stops the tiles from shifting up/down every
-          time this text fades in or out. */}
-      {lastResult ? (
-        <Animated.Text
-          pointerEvents="none"
-          style={[
-            styles.resultText,
-            lastResult.valid ? styles.validText : styles.invalidText,
-            { opacity: resultOpacity },
-          ]}
-        >
-          {lastResult.valid
-            ? `${lastResult.word} — +${lastResult.score}`
-            : `${lastResult.word || '(empty)'} — Not a word/No Letters`}
-        </Animated.Text>
-      ) : null}
-    </View>
-  );
-}
-
-const ROW_MIN_HEIGHT = 46;
-
-const styles = StyleSheet.create({
-  wrapper: {
-    alignItems: 'center',
-    paddingVertical: 4,
-    width: '100%',
-    zIndex: 3, // table (GameplayScreen) sits at zIndex: 2 and overlaps this via negative marginTop
-    elevation: 3, // Android needs elevation in addition to zIndex for stacking order
-  },
-  row: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: ROW_MIN_HEIGHT,
-    minWidth: ROW_MIN_HEIGHT, // guarantees a visible frame even before any tiles mount
-    maxWidth: '90%',
-    borderRadius: 12,
-    paddingHorizontal: 6,
-    alignSelf: 'center',
-    overflow: 'hidden', // keeps tiles, the flash, and the ripple all clipped to the row
-    position: 'relative',
-  },
-  emptySlot: {
-    width: TILE_SIZE,
-    height: TILE_SIZE,
-    marginHorizontal: 3,
-    opacity: 0.5,
-  },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  ripple: {
-    position: 'absolute',
-    width: ROW_MIN_HEIGHT,
-    height: ROW_MIN_HEIGHT,
-    borderRadius: ROW_MIN_HEIGHT / 2,
-    top: 0,
-    left: 0,
-  },
-  resultText: {
-    position: 'absolute',
-    top: 4, // matches wrapper's paddingVertical, so it lines up over the row
-    left: 0,
-    right: 0,
-    height: ROW_MIN_HEIGHT,
-    lineHeight: ROW_MIN_HEIGHT, // vertically centers the single line of text over the row
-    textAlign: 'center',
-    fontFamily: FONT_WARNING,
-    fontSize: 12,
-    zIndex: 4, // above the row's own flash/ripple overlays
-    // Faint backdrop so the text stays legible over whatever tiles/blanks
-    // it's overlapping, without fully hiding them.
-    backgroundColor: 'rgba(255,255,255,0.85)',
-  },
-  validText: {
-    color: VALID_COLOR,
-  },
-  invalidText: {
-    color: INVALID_COLOR,
-  },
-});
-</file>
-
-<file path="components/gameplayReusables/WordInput/UseWordInput.js">
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform } from 'react-native';
-import { isValidWord } from './WordValidator';
-import { calculateScore } from './ScoreSystem';
-import { DEFAULT_LEVEL_CONFIG } from './LevelConfig';
-/* global __DEV__ */ 
-
-// How many letters can be used before being ignored
-// Edit this to change the default everywhere, or pass a
-// different value as useWordInput's third argument to override it for
-// one screen/level without touching this file.
-export const DEFAULT_MAX_LETTERS = 5;
-
-/**`onSubmit(result)` — This is the ONE place a submit can happen, so wiring
- * scoring/patience off this callback instead of off a manual
- * submitWord() call means an auto-submitted word scores and restores
- * patience exactly the same as a manually-served one.
- */
-export function useWordInput(   //Constuctor
-  conveyorRefs,
-  levelConfig = DEFAULT_LEVEL_CONFIG,
-  maxLetters = DEFAULT_MAX_LETTERS,
-  onSubmit
-) {
-  const [currentWord, setCurrentWord] = useState([]); // [{ id, character }]
-  const [lastResult, setLastResult] = useState(null); // { word, valid, score }
-
-  //guard against double-selecting the same letter id 
-  const selectedIdsRef = useRef(new Set());
-
-  const selectLetter = useCallback(
-    (letter, beltIndex) => {
-      if (!letter || !letter.active) return;
-      if (selectedIdsRef.current.has(letter.id)) return;
-      if (currentWord.length >= maxLetters) return; // at the cap — ignore further taps/keys until submit/reset
-
-      selectedIdsRef.current.add(letter.id);
-      setCurrentWord((prev) => [...prev, { id: letter.id, character: letter.character }]);
-
-      if (__DEV__) {
-        console.log(`[WordInput] letter selected: "${letter.character}" (belt ${beltIndex}, id ${letter.id})`);
-      }
-
-      // Animation for removing letter once tapped
-      const belt = conveyorRefs[beltIndex]?.current;
-      belt?.removeLetterById(letter.id);  //Return back letter
-    },
-    [conveyorRefs, currentWord.length, maxLetters]
-  );
-
-  const handleKeyPress = useCallback(
-    (rawChar) => {
-      const char = (rawChar || '').toUpperCase();
-      if (!/^[A-Z]$/.test(char)) return false; // not a single letter key
-      if (currentWord.length >= maxLetters) return false; // at the cap
-
-      // Selection rule: first matching, available letter, scanning belts
-      // in the order they were passed in. Easy to change later (e.g. to
-      // "closest to center") without touching anything else here.
-      for (let i = 0; i < conveyorRefs.length; i++) {
-        const belt = conveyorRefs[i]?.current;
-        if (!belt) continue;
-        const match = belt
-          .getLetters() //read what's currently available
-          .find((l) => l.active && l.character === char && !selectedIdsRef.current.has(l.id));
-        if (match) {
-          selectLetter(match, i);
-          return true;
-        }
-      }
-      return false; // requested letter isn't available right now
-    },
-    [conveyorRefs, selectLetter, currentWord.length, maxLetters]
-  );
-
-  // Keyboard input for web test
-  useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    const onKeyDown = (e) => {
-      if (e.key && e.key.length === 1) handleKeyPress(e.key);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleKeyPress]);
-
-  const resetWord = useCallback(() => {   //clear the whole current word without submitting
-    setCurrentWord([]);
-    selectedIdsRef.current.clear();
-    // Note: this only clears the input system's own state. Letters
-    // already removed from the conveyor stay removed
-  }, []);
-
-  // Undo just the last selected letter 
-  const removeLastLetter = useCallback(() => {
-    setCurrentWord((prev) => {
-      if (prev.length === 0) return prev;
-      const last = prev[prev.length - 1];
-      selectedIdsRef.current.delete(last.id);
-      return prev.slice(0, -1);
-    });
-  }, []);
-
-  const submitWord = useCallback(() => {
-    const word = currentWord.map((l) => l.character).join('');
-    const valid = isValidWord(word);
-    const score = valid ? calculateScore(word, levelConfig.scoreMultiplier) : 0;
-    const result = { word, valid, score };
-
-    if (__DEV__) {
-      console.log(`[WordInput] submit: "${word}" -> ${valid ? `VALID (+${score})` : 'INVALID'}`);
-    }
-
-    setLastResult(result);
-    resetWord();
-    onSubmit?.(result); // <-- notifies the caller (e.g. GameplayScreen's handleWordSubmit)
-    return result;
-  }, [currentWord, levelConfig, resetWord, onSubmit]);
-
-  // Auto-submit the moment the player fills every slot. This reuses
-  // submitWord as-is. no separate "wrong animation" path
-  // to keep in sync and a full word that is valid gets scored the
-  // same way a manual submit would.
-  useEffect(() => {
-    if (maxLetters > 0 && currentWord.length >= maxLetters) {
-      submitWord();
-    }
-  }, [currentWord.length, maxLetters, submitWord]);
-
-  return {
-    currentWord,  //[{ id, character }]  in selection order
-    lastResult,   //{ word, valid, score } | null   result of the last submit
-    selectLetter,  //call from a belt's onLetterPress
-    handleKeyPress,  //call from a keyboard listener
-    submitWord,     //validate + score + reset
-    resetWord,
-    removeLastLetter,
-    maxLetters,
-  };
-}
-</file>
-
 <file path="levels/IntroEndSequence.js">
 import React from 'react';
 import SlideshowSequence from '../components/SlideshowSequence';
@@ -3422,122 +3017,104 @@ export function LevelEndSequence({ levelConfig, won, finalScore, onComplete }) {
 }
 </file>
 
-<file path="levels/levelPresets.js">
+<file path="levels/LevelConfig.js">
 /**
- * levelPresets
- * ------------
- * One LevelConfig per stage. To add a level, create LEVEL_N_CONFIG and add
- * it to LEVEL_PRESETS.
+ * LevelConfig
+ * -----------
+ * Single source of truth for per-level settings. A plain factory (not a
+ * hook), so configs can be created and passed around anywhere.
  *
- * Flow: LevelSelectScreen -> App (levelId) -> GameplayScreen ->
- * getLevelConfigById(levelId).
+ * Wider than WordInput/LevelConfig.js (scoreMultiplier + wordRules only);
+ * GameplayScreen maps the relevant slice into useWordInput.
  *
- * A preset's `id` is 'level-N', N being the number LevelSelectScreen uses.
+ * Two counts that are deliberately INDEPENDENT (never derive one from the other):
+ *   maxLettersOnBelt  letters on each conveyor belt. Level-wide default;
+ *                     a single belt overrides it via belts[i].maxLettersOnBelt.
+ *   inputBoxCount     player input boxes = the most letters a word can hold
+ *                     (also the auto-submit threshold).
+ *
+ * Usage: createLevelConfig({ conveyorSpeed: 900, totalCustomers: 8 })
+ * Anything not overridden falls back to LEVEL_CONFIG_DEFAULTS.
  */
-import { createLevelConfig } from './LevelConfig';
 
-export const LEVEL_1_CONFIG = createLevelConfig({
-  id: 'level-1',
-  title: 'Level 1 — Warm Up',
-  conveyorSpeed: 1000, // Testing; original: 1300
-  targetScore: 50,// Testing; original: 150
-  timeLimitSeconds: 60, // Testing; original: 180 (3 min)
-  totalCustomers: 1,// Testing; original: 3
-  wordsPerCustomer: 1,// Testing; original: 2
-  scoreMultiplier: 1,
-  rattySpawnRate: 0.0,
-  wordDifficulty: { minLength: 3, maxLength: 5 },
-  // Balanced belt: consonants still more common than vowels, but vowels
-  // come up regularly enough to build words with.
-  letterDistribution: 'balanced',
-});
+// Belt 1: normal mix | Belt 2: vowel-rich | Belt 3: drifts between styles.
+// Each entry may also set `maxLettersOnBelt` to give that belt its own letter
+// count; omit it to inherit the level-wide maxLettersOnBelt below.
+export const DEFAULT_BELTS = [
+  { letterDistribution: 'balanced', minVisibleVowels: 1 },
+  { letterDistribution: 'vowelHeavy', minVisibleVowels: 3 },
+  {
+    letterDistribution: {
+      profiles: ['balanced', 'vowelHeavy', 'consonantHeavy'],
+      minStreak: 5,
+      maxStreak: 9,
+    },
+    minVisibleVowels: 1,
+  },
+];
 
-export const LEVEL_2_CONFIG = createLevelConfig({
-  id: 'level-2',
-  title: 'Level 2 — Getting Busy',
-  conveyorSpeed: 1300,
-  targetScore: 350,
-  timeLimitSeconds: 60,
-  totalCustomers: 5,
-  wordsPerCustomer: 3,
-  scoreMultiplier: 1.5,
-  rattySpawnRate: 0.15,
-  wordDifficulty: { minLength: 3, maxLength: 6 },
-  // Noticeably more vowels than Level 1, to make words easier to build.
-  letterDistribution: 'vowelHeavy',
-});
+export const LEVEL_CONFIG_DEFAULTS = {
+  id: 'untitled-level',
+  title: 'Untitled Level',
 
-export const LEVEL_3_CONFIG = createLevelConfig({
-  id: 'level-3',
-  title: 'Level 3 — Rush Hour',
-  conveyorSpeed: 1000,
-  targetScore: 500,
-  timeLimitSeconds: 75,
-  totalCustomers: 8,
-  wordsPerCustomer: 3,
-  scoreMultiplier: 2,
-  rattySpawnRate: 0.25,
-  wordDifficulty: { minLength: 4, maxLength: 8 },
-  // Mixed: the belt drifts between balanced, vowel-heavy, and
-  // consonant-heavy stretches instead of holding one weight throughout.
-  letterDistribution: { profiles: ['balanced', 'vowelHeavy', 'consonantHeavy'] },
-});
+  // --- Conveyor / Word Input ---
+  conveyorSpeed: 1400,     // ms per slot -> ConveyorBelt slotDurationMs
+  maxLettersOnBelt: 6,     // -> ConveyorBelt maxLetters (letters per belt). Default for every belt; NOT the input box count.
+  inputBoxCount: 6,        // -> useWordInput inputBoxCount + CurrentWordDisplay boxes. Independent of maxLettersOnBelt.
+  letterPool: null,        // -> ConveyorBelt letterPool; null = belt default
+  // One entry per conveyor row (index 0 = belt 1, top to bottom). Every
+  // level gets the same belt "personalities" unless it overrides an entry.
+  // letterDistribution accepts a profile name, a 0-1 number, or
+  // { profiles: [...], minStreak, maxStreak } (see Letterpool.js).
+  belts: DEFAULT_BELTS,
+  wordDifficulty: {
+    minLength: 3,          // -> wordRules.minLength
+    maxLength: 8,          // -> wordRules.maxLength
+  },
 
-export const LEVEL_PRESETS = [LEVEL_1_CONFIG, LEVEL_2_CONFIG, LEVEL_3_CONFIG];
+  // --- Scoring ---
+  scoreMultiplier: 1,      // -> useWordInput + addScoreFromWord
+  targetScore: 300,        // -> LevelTimer targetScore (win condition)
 
-/** 1, '2' or 'level-3' -> preset id ('level-N'); anything else -> null. */
-export function toLevelId(levelRef) {
-  if (typeof levelRef === 'number' && Number.isInteger(levelRef)) {
-    return `level-${levelRef}`;
-  }
-  if (typeof levelRef === 'string' && levelRef.length > 0) {
-    return /^\d+$/.test(levelRef) ? `level-${levelRef}` : levelRef;
-  }
-  return null;
-}
+  // --- Pacing ---
+  timeLimitSeconds: 60,    // -> LevelTimer initialTimeInSeconds
+  totalCustomers: 5,       // customers before the level completes
+  wordsPerCustomer: 3,     // correct words to serve a customer
 
-function findPreset(levelRef) {
-  const id = toLevelId(levelRef);
-  return id === null ? undefined : LEVEL_PRESETS.find((lvl) => lvl.id === id);
-}
+  // --- Mr. Ratty ---
+  rattySpawnRate: 0.15,        // chance (0-1) per check
+  rattyCheckIntervalMs: 15000, // ms between checks
+};
 
-/** 'level-3', 3 or '3' -> 3; null if not a level id. */
-export function getLevelNumber(levelRef) {
-  const match = /^level-(\d+)$/.exec(toLevelId(levelRef) ?? '');
-  return match ? Number(match[1]) : null;
-}
-
-/** Numbers of every level that has a preset, e.g. [1, 2, 3]. */
-export function getAllLevelIds() {
-  return LEVEL_PRESETS.map((lvl) => getLevelNumber(lvl.id)).filter((n) => n !== null);
-}
-
-/** Number of the next level, or null if it has no preset (drives unlocking). */
-export function getNextLevelId(levelRef) {
-  const current = getLevelNumber(levelRef);
-  if (current === null) return null;
-  return hasLevelPreset(current + 1) ? current + 1 : null;
-}
-
-/** True if a preset exists for this level. */
-export function hasLevelPreset(levelRef) {
-  return findPreset(levelRef) !== undefined;
+export function createLevelConfig(overrides = {}) {
+  return {
+    ...LEVEL_CONFIG_DEFAULTS,
+    ...overrides,
+    // Merge nested objects too, so a partial wordDifficulty keeps the other field.
+    wordDifficulty: {
+      ...LEVEL_CONFIG_DEFAULTS.wordDifficulty,
+      ...(overrides.wordDifficulty || {}),
+    },
+    // Per-belt merge: override only belts[1] and belts 0 and 2 keep defaults.
+    belts: DEFAULT_BELTS.map((base, i) => ({
+      ...base,
+      ...((overrides.belts || [])[i] || {}),
+    })),
+  };
 }
 
 /**
- * Returns the preset for 1, '1' or 'level-1'. Unknown levels fall back to
- * Level 1 and warn in dev.
+ * Settings for ONE conveyor row, shaped for ConveyorBelt's `config` prop.
+ * Belt capacity and letter distribution are both per-belt; the level-wide
+ * maxLettersOnBelt is only the fallback. Never touches inputBoxCount.
  */
-export function getLevelConfigById(levelRef) {
-  const preset = findPreset(levelRef);
-  if (!preset) {
-    // eslint-disable-next-line no-undef
-    if (typeof __DEV__ !== 'undefined' && __DEV__) {
-      console.warn(`[levelPresets] No preset for level "${levelRef}" — falling back to ${LEVEL_1_CONFIG.id}.`);
-    }
-    return LEVEL_1_CONFIG;
-  }
-  return preset;
+export function getBeltConfig(levelConfig, row) {
+  const belt = levelConfig.belts?.[row] ?? {};
+  return {
+    maxLetters: belt.maxLettersOnBelt ?? levelConfig.maxLettersOnBelt,
+    ...(belt.letterDistribution ? { letterDistribution: belt.letterDistribution } : {}),
+    ...(belt.minVisibleVowels !== undefined ? { minVisibleVowels: belt.minVisibleVowels } : {}),
+  };
 }
 </file>
 
@@ -3849,6 +3426,530 @@ const styles = StyleSheet.create({
 });
 </file>
 
+<file path="components/gameplayReusables/WordInput/CurrentWordDisplay.js">
+import React, { useEffect, useRef } from 'react';
+import { Animated, Text, View, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import LetterTile, { TILE_SIZE, BLANK_RECTANGLE } from './LetterTile';
+import { useResultFeedbackAnimation } from './LetterAnimations';
+import { FONT_WARNING } from '../Font';
+import { DEFAULT_INPUT_BOX_COUNT } from './UseWordInput';
+
+const VALID_COLOR = '#2e7d32';
+const INVALID_COLOR = '#c62828';
+
+// "WORD — +score" line stays fully
+// visible before it fades out. Edit here for a global change, or pass a
+// different value as the resultFadeDelayMs prop to override per screen.
+export const DEFAULT_RESULT_FADE_DELAY_MS = 2000;
+const RESULT_FADE_DURATION_MS = 300;
+
+/**
+ * Purely presentational — renders `inputBoxCount` fixed slots (Wordle-style):
+ * filling rectangles. Reacts to `lastResult` through colors and shakes after resultFadeDelayMs. 
+ * useWordInput() doesn't know or care that this exists; 
+ * swap it for your own UI any time.
+ */
+export default function CurrentWordDisplay({
+  currentWord,
+  slots: slotsProp, // fixed-length box list from useWordInput (preferred; keeps gaps)
+  onSlotPress, // (boxIndex) => void — tapping an OCCUPIED box; empty boxes ignore taps
+  lastResult,
+  inputBoxCount = DEFAULT_INPUT_BOX_COUNT,
+  resultFadeDelayMs = DEFAULT_RESULT_FADE_DELAY_MS,
+}) {
+  const {
+    shakeX,
+    flashOpacity,
+    flashColor,
+    rippleScale,
+    rippleOpacity,
+    playValid,
+    playInvalid,
+  } = useResultFeedbackAnimation();
+
+  const resultOpacity = useRef(new Animated.Value(0)).current;
+  const fadeTimeoutRef = useRef(null);
+
+  // Track the specific result object we've already animated for, so we
+  // only fire once per submit rather than on every re-render.
+  const animatedResultRef = useRef(null);
+
+  useEffect(() => {
+    if (!lastResult || lastResult === animatedResultRef.current) return;
+    animatedResultRef.current = lastResult;
+    if (lastResult.valid) {
+      playValid();
+    } else {
+      playInvalid();
+    }
+
+    // Show the result line fully, then fade it out after the configured
+    // delay so it doesn't just sit there forever.
+    if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
+    resultOpacity.setValue(1);
+    fadeTimeoutRef.current = setTimeout(() => {
+      Animated.timing(resultOpacity, {
+        toValue: 0,
+        duration: RESULT_FADE_DURATION_MS,
+        useNativeDriver: true,
+      }).start();
+    }, resultFadeDelayMs);
+  }, [lastResult, playValid, playInvalid, resultOpacity, resultFadeDelayMs]);
+
+  // Clear any pending fade if the component unmounts mid-timeout.
+  useEffect(() => () => {
+    if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
+  }, []);
+
+  const flashBackgroundColor = flashColor.interpolate({
+    inputRange: [0, 1],
+    outputRange: [INVALID_COLOR, VALID_COLOR],
+  });
+  const rippleBackgroundColor = lastResult && lastResult.valid ? VALID_COLOR : INVALID_COLOR;
+
+  // Fixed-length slot list: real letters first, then empty placeholders
+  // Doesn't require all slot filled to pass the word
+  const slots = slotsProp ?? Array.from({ length: inputBoxCount }, (_, i) => (currentWord || [])[i] || null);
+
+  return (
+    <View style={styles.wrapper}>
+      <Animated.View style={[styles.row, { transform: [{ translateX: shakeX }] }]}>
+        {slots.map((letter, i) =>
+          letter ? (
+            // Whole box is the touch target, not just the glyph.
+            <TouchableOpacity
+              key={letter.id}
+              activeOpacity={0.7}
+              onPress={() => onSlotPress?.(i)}
+            >
+              <LetterTile character={letter.character} />
+            </TouchableOpacity>
+          ) : (
+            <Image
+              key={`empty-${i}`}
+              source={BLANK_RECTANGLE}
+              style={styles.emptySlot}
+              resizeMode="stretch"
+            />
+          )
+        )}
+
+        {/* Flash — a color wash over the whole row, red or green. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.overlay, { backgroundColor: flashBackgroundColor, opacity: flashOpacity }]}
+        />
+
+        {/* Ripple — only relevant/visible on a valid word; clipped by
+            the row's overflow:hidden*/}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.ripple,
+            {
+              backgroundColor: rippleBackgroundColor,
+              opacity: rippleOpacity,
+              transform: [{ scale: rippleScale }],
+            },
+          ]}
+        />
+      </Animated.View>
+
+      {/* Result line — absolutely positioned directly on top of the tile
+          row (a sibling of `row`, not a child, so it isn't clipped by
+          row's overflow:hidden) stops the tiles from shifting up/down every
+          time this text fades in or out. */}
+      {lastResult ? (
+        <Animated.Text
+          pointerEvents="none"
+          style={[
+            styles.resultText,
+            lastResult.valid ? styles.validText : styles.invalidText,
+            { opacity: resultOpacity },
+          ]}
+        >
+          {lastResult.valid
+            ? `${lastResult.word} — +${lastResult.score}`
+            : `${lastResult.word || '(empty)'} — Not a word/No Letters`}
+        </Animated.Text>
+      ) : null}
+    </View>
+  );
+}
+
+const ROW_MIN_HEIGHT = 46;
+
+const styles = StyleSheet.create({
+  wrapper: {
+    alignItems: 'center',
+    paddingVertical: 4,
+    width: '100%',
+    zIndex: 3, // table (GameplayScreen) sits at zIndex: 2 and overlaps this via negative marginTop
+    elevation: 3, // Android needs elevation in addition to zIndex for stacking order
+  },
+  row: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: ROW_MIN_HEIGHT,
+    minWidth: ROW_MIN_HEIGHT, // guarantees a visible frame even before any tiles mount
+    maxWidth: '90%',
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    alignSelf: 'center',
+    overflow: 'hidden', // keeps tiles, the flash, and the ripple all clipped to the row
+    position: 'relative',
+  },
+  emptySlot: {
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+    marginHorizontal: 3,
+    opacity: 0.5,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  ripple: {
+    position: 'absolute',
+    width: ROW_MIN_HEIGHT,
+    height: ROW_MIN_HEIGHT,
+    borderRadius: ROW_MIN_HEIGHT / 2,
+    top: 0,
+    left: 0,
+  },
+  resultText: {
+    position: 'absolute',
+    top: 4, // matches wrapper's paddingVertical, so it lines up over the row
+    left: 0,
+    right: 0,
+    height: ROW_MIN_HEIGHT,
+    lineHeight: ROW_MIN_HEIGHT, // vertically centers the single line of text over the row
+    textAlign: 'center',
+    fontFamily: FONT_WARNING,
+    fontSize: 12,
+    zIndex: 4, // above the row's own flash/ripple overlays
+    // Faint backdrop so the text stays legible over whatever tiles/blanks
+    // it's overlapping, without fully hiding them.
+    backgroundColor: 'rgba(255,255,255,0.85)',
+  },
+  validText: {
+    color: VALID_COLOR,
+  },
+  invalidText: {
+    color: INVALID_COLOR,
+  },
+});
+</file>
+
+<file path="components/gameplayReusables/WordInput/UseWordInput.js">
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
+import { isValidWord } from './WordValidator';
+import { calculateScore } from './ScoreSystem';
+import { DEFAULT_LEVEL_CONFIG } from './LevelConfig';
+/* global __DEV__ */ 
+
+// Number of player input boxes: how many letters the word being built can
+// hold before extra taps are ignored (and it auto-submits). Independent of
+// how many letters a conveyor belt holds. Edit this to change the default
+// everywhere, or pass a different value as useWordInput's third argument
+// (LevelConfig `inputBoxCount`) to override it for one screen/level.
+export const DEFAULT_INPUT_BOX_COUNT = 5;
+
+/**`onSubmit(result)` — This is the ONE place a submit can happen, so wiring
+ * scoring/patience off this callback instead of off a manual
+ * submitWord() call means an auto-submitted word scores and restores
+ * patience exactly the same as a manually-served one.
+ */
+// The input boxes are a fixed-length list of slots: null (empty) or
+// { id, character, beltIndex }. `id` is the conveyor letter's own id, so a
+// tapped-back slot returns that exact letter instance, never a lookalike.
+const fitSlots = (slots, n) => Array.from({ length: n }, (_, i) => slots[i] ?? null);
+
+export function useWordInput(   //Constuctor
+  conveyorRefs,
+  levelConfig = DEFAULT_LEVEL_CONFIG,
+  inputBoxCount = DEFAULT_INPUT_BOX_COUNT,
+  onSubmit
+) {
+  // slotsRef mirrors state so rapid taps in one frame always see the latest boxes.
+  const slotsRef = useRef(fitSlots([], inputBoxCount));
+  const [slotState, setSlotState] = useState(slotsRef.current);
+  const slots = useMemo(() => fitSlots(slotState, inputBoxCount), [slotState, inputBoxCount]);
+  // Filled letters only, in box order (gaps skipped) -> what gets validated/scored.
+  const currentWord = useMemo(() => slots.filter(Boolean), [slots]); // [{ id, character, beltIndex }]
+  const [lastResult, setLastResult] = useState(null); // { word, valid, score }
+
+  const commitSlots = useCallback((next) => {
+    slotsRef.current = next;
+    setSlotState(next);
+  }, []);
+
+  //guard against double-selecting the same letter id 
+  const selectedIdsRef = useRef(new Set());
+
+  const selectLetter = useCallback(
+    (letter, beltIndex) => {
+      if (!letter || !letter.active) return;
+      if (selectedIdsRef.current.has(letter.id)) return;
+      const current = fitSlots(slotsRef.current, inputBoxCount);
+      const emptyIndex = current.indexOf(null);
+      if (emptyIndex === -1) return; // every box is full — ignore further taps/keys until submit/reset
+
+      selectedIdsRef.current.add(letter.id);
+      // Fill the first empty box (a box freed by tapping it is reused; others don't shift).
+      const next = current.slice();
+      next[emptyIndex] = { id: letter.id, character: letter.character, beltIndex };
+      commitSlots(next);
+
+      if (__DEV__) {
+        console.log(`[WordInput] letter selected: "${letter.character}" (belt ${beltIndex}, id ${letter.id})`);
+      }
+
+      // Animation for removing letter once tapped
+      const belt = conveyorRefs[beltIndex]?.current;
+      belt?.removeLetterById(letter.id);  //Return back letter
+    },
+    [conveyorRefs, commitSlots, inputBoxCount]
+  );
+
+  const handleKeyPress = useCallback(
+    (rawChar) => {
+      const char = (rawChar || '').toUpperCase();
+      if (!/^[A-Z]$/.test(char)) return false; // not a single letter key
+      if (!fitSlots(slotsRef.current, inputBoxCount).includes(null)) return false; // every box is full
+
+      // Selection rule: first matching, available letter, scanning belts
+      // in the order they were passed in. Easy to change later (e.g. to
+      // "closest to center") without touching anything else here.
+      for (let i = 0; i < conveyorRefs.length; i++) {
+        const belt = conveyorRefs[i]?.current;
+        if (!belt) continue;
+        const match = belt
+          .getLetters() //read what's currently available
+          .find((l) => l.active && l.character === char && !selectedIdsRef.current.has(l.id));
+        if (match) {
+          selectLetter(match, i);
+          return true;
+        }
+      }
+      return false; // requested letter isn't available right now
+    },
+    [conveyorRefs, selectLetter, inputBoxCount]
+  );
+
+  // Keyboard input for web test
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const onKeyDown = (e) => {
+      if (e.key && e.key.length === 1) handleKeyPress(e.key);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleKeyPress]);
+
+  const resetWord = useCallback(() => {   //clear the whole current word without submitting
+    commitSlots(fitSlots([], inputBoxCount));
+    selectedIdsRef.current.clear();
+    // Note: this only clears the input system's own state. Letters
+    // already removed from the conveyor stay removed (they were consumed by
+    // the submit). To give ONE letter back, use returnLetterFromSlot.
+  }, [commitSlots, inputBoxCount]);
+
+  // Tap an occupied input box to undo that pick: the box empties and the SAME
+  // conveyor letter (matched by id, not character) goes back onto its belt.
+  // Empty box -> no-op. Never submits, validates, scores, or penalises.
+  const returnLetterFromSlot = useCallback(
+    (slotIndex) => {
+      const current = fitSlots(slotsRef.current, inputBoxCount);
+      const entry = current[slotIndex];
+      if (!entry) return false;
+
+      const next = current.slice();
+      next[slotIndex] = null;
+      commitSlots(next);
+      selectedIdsRef.current.delete(entry.id); // selectable again
+
+      conveyorRefs[entry.beltIndex]?.current?.restoreLetter({ id: entry.id, character: entry.character });
+
+      if (__DEV__) {
+        console.log(`[WordInput] letter returned: "${entry.character}" (box ${slotIndex}, belt ${entry.beltIndex}, id ${entry.id})`);
+      }
+      return true;
+    },
+    [conveyorRefs, commitSlots, inputBoxCount]
+  );
+
+  // Undo just the last selected letter (returns it to its belt)
+  const removeLastLetter = useCallback(() => {
+    const current = fitSlots(slotsRef.current, inputBoxCount);
+    for (let i = current.length - 1; i >= 0; i--) {
+      if (current[i]) return returnLetterFromSlot(i);
+    }
+    return false;
+  }, [inputBoxCount, returnLetterFromSlot]);
+
+  const submitWord = useCallback(() => {
+    const word = currentWord.map((l) => l.character).join('');
+    const valid = isValidWord(word);
+    const score = valid ? calculateScore(word, levelConfig.scoreMultiplier) : 0;
+    const result = { word, valid, score };
+
+    if (__DEV__) {
+      console.log(`[WordInput] submit: "${word}" -> ${valid ? `VALID (+${score})` : 'INVALID'}`);
+    }
+
+    setLastResult(result);
+    resetWord();
+    onSubmit?.(result); // <-- notifies the caller (e.g. GameplayScreen's handleWordSubmit)
+    return result;
+  }, [currentWord, levelConfig, resetWord, onSubmit]);
+
+  // Auto-submit the moment the player fills every slot. This reuses
+  // submitWord as-is. no separate "wrong animation" path
+  // to keep in sync and a full word that is valid gets scored the
+  // same way a manual submit would.
+  useEffect(() => {
+    if (inputBoxCount > 0 && currentWord.length >= inputBoxCount) {
+      submitWord();
+    }
+  }, [currentWord.length, inputBoxCount, submitWord]);
+
+  return {
+    slots,        //fixed-length [null | { id, character, beltIndex }]  one entry per input box
+    currentWord,  //[{ id, character, beltIndex }]  filled boxes only, in box order
+    returnLetterFromSlot, //(boxIndex) tap an occupied box to send its letter back to the belt
+    lastResult,   //{ word, valid, score } | null   result of the last submit
+    selectLetter,  //call from a belt's onLetterPress
+    handleKeyPress,  //call from a keyboard listener
+    submitWord,     //validate + score + reset
+    resetWord,
+    removeLastLetter,
+    inputBoxCount,
+  };
+}
+</file>
+
+<file path="levels/levelPresets.js">
+/**
+ * levelPresets
+ * ------------
+ * One LevelConfig per stage. To add a level, create LEVEL_N_CONFIG and add
+ * it to LEVEL_PRESETS.
+ *
+ * Flow: LevelSelectScreen -> App (levelId) -> GameplayScreen ->
+ * getLevelConfigById(levelId).
+ *
+ * A preset's `id` is 'level-N', N being the number LevelSelectScreen uses.
+ *
+ * Letter distribution is per conveyor belt, not per level (see `belts` in
+ * LevelConfig.js). To tweak one belt in one level, pass e.g.
+ *   belts: [null, { minVisibleVowels: 4 }, null]
+ */
+import { createLevelConfig } from './LevelConfig';
+
+export const LEVEL_1_CONFIG = createLevelConfig({
+  id: 'level-1',
+  title: 'Level 1 — Warm Up',
+  conveyorSpeed: 1000, // Testing; original: 1300
+  targetScore: 50,// Testing; original: 150
+  timeLimitSeconds: 60, // Testing; original: 180 (3 min)
+  totalCustomers: 1,// Testing; original: 3
+  wordsPerCustomer: 1,// Testing; original: 2
+  scoreMultiplier: 1,
+  rattySpawnRate: 0.0,
+  wordDifficulty: { minLength: 3, maxLength: 5 },
+});
+
+export const LEVEL_2_CONFIG = createLevelConfig({
+  id: 'level-2',
+  title: 'Level 2 — Getting Busy',
+  conveyorSpeed: 1300,
+  targetScore: 350,
+  timeLimitSeconds: 60,
+  totalCustomers: 5,
+  wordsPerCustomer: 3,
+  scoreMultiplier: 1.5,
+  rattySpawnRate: 0.15,
+  wordDifficulty: { minLength: 3, maxLength: 6 },
+});
+
+export const LEVEL_3_CONFIG = createLevelConfig({
+  id: 'level-3',
+  title: 'Level 3 — Rush Hour',
+  conveyorSpeed: 1000,
+  targetScore: 500,
+  timeLimitSeconds: 75,
+  totalCustomers: 8,
+  wordsPerCustomer: 3,
+  scoreMultiplier: 2,
+  rattySpawnRate: 0.25,
+  wordDifficulty: { minLength: 4, maxLength: 8 },
+});
+
+export const LEVEL_PRESETS = [LEVEL_1_CONFIG, LEVEL_2_CONFIG, LEVEL_3_CONFIG];
+
+/** 1, '2' or 'level-3' -> preset id ('level-N'); anything else -> null. */
+export function toLevelId(levelRef) {
+  if (typeof levelRef === 'number' && Number.isInteger(levelRef)) {
+    return `level-${levelRef}`;
+  }
+  if (typeof levelRef === 'string' && levelRef.length > 0) {
+    return /^\d+$/.test(levelRef) ? `level-${levelRef}` : levelRef;
+  }
+  return null;
+}
+
+function findPreset(levelRef) {
+  const id = toLevelId(levelRef);
+  return id === null ? undefined : LEVEL_PRESETS.find((lvl) => lvl.id === id);
+}
+
+/** 'level-3', 3 or '3' -> 3; null if not a level id. */
+export function getLevelNumber(levelRef) {
+  const match = /^level-(\d+)$/.exec(toLevelId(levelRef) ?? '');
+  return match ? Number(match[1]) : null;
+}
+
+/** Numbers of every level that has a preset, e.g. [1, 2, 3]. */
+export function getAllLevelIds() {
+  return LEVEL_PRESETS.map((lvl) => getLevelNumber(lvl.id)).filter((n) => n !== null);
+}
+
+/** Number of the next level, or null if it has no preset (drives unlocking). */
+export function getNextLevelId(levelRef) {
+  const current = getLevelNumber(levelRef);
+  if (current === null) return null;
+  return hasLevelPreset(current + 1) ? current + 1 : null;
+}
+
+/** True if a preset exists for this level. */
+export function hasLevelPreset(levelRef) {
+  return findPreset(levelRef) !== undefined;
+}
+
+/**
+ * Returns the preset for 1, '1' or 'level-1'. Unknown levels fall back to
+ * Level 1 and warn in dev.
+ */
+export function getLevelConfigById(levelRef) {
+  const preset = findPreset(levelRef);
+  if (!preset) {
+    // eslint-disable-next-line no-undef
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.warn(`[levelPresets] No preset for level "${levelRef}" — falling back to ${LEVEL_1_CONFIG.id}.`);
+    }
+    return LEVEL_1_CONFIG;
+  }
+  return preset;
+}
+</file>
+
 <file path="components/gameplayReusables/ConveyorBelt/Conveyorbelt.js">
 import React, {
   useCallback,
@@ -3862,16 +3963,23 @@ import React, {
 import { Animated, View, StyleSheet, Easing } from 'react-native';
 import Letter from './Letter';
 import { DEFAULT_CONVEYOR_CONFIG } from './Conveyorconfig';
-import { pickRandomLetter, createVowelWeightPicker } from './Letterpool';
+import { pickRandomLetter, createVowelWeightPicker, getVowelsInPool, VOWELS } from './Letterpool';
 import { LETTER_ANIM_STATES } from './Animationsystem';
 
 let nextLetterId = 1;
 // `getVowelWeight` is the per-belt picker from createVowelWeightPicker
 // (or undefined for the original uniform behavior).
-function makeLetter(pool, getVowelWeight) {
+// `forceVowel` guarantees a vowel (used by the minVisibleVowels floor).
+function makeLetter(pool, getVowelWeight, forceVowel = false) {
+  const vowels = getVowelsInPool(pool);
+  const character =
+    forceVowel && vowels.length > 0
+      ? vowels[Math.floor(Math.random() * vowels.length)]
+      : pickRandomLetter(pool, getVowelWeight ? getVowelWeight() : null);
+
   return {
     id: `letter-${nextLetterId++}`,
-    character: pickRandomLetter(pool, getVowelWeight ? getVowelWeight() : null),
+    character,
     active: true,
     animState: LETTER_ANIM_STATES.IDLE,
   };
@@ -3890,7 +3998,10 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
   ref
 ) {
   const config = { ...DEFAULT_CONVEYOR_CONFIG, ...configOverride };
-  const { slotDurationMs, slotWidth, slotHeight, maxLetters, letterPool, letterDistribution, direction } = config;
+  const {
+    slotDurationMs, slotWidth, slotHeight, maxLetters, letterPool,
+    letterDistribution, direction, minVisibleVowels,
+  } = config;
   const totalSlots = maxLetters + 1; // +1 off-screen buffer letter
 
   // One picker per mounted belt so a "mixed" distribution's streaks (see
@@ -3902,9 +4013,16 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [letterDistribution]);
 
-  const [letters, setLetters] = useState(() =>
-    Array.from({ length: totalSlots }, () => makeLetter(letterPool, vowelWeightPickerRef.current))
-  );
+  // Initial fill also respects the vowel floor so the first screen isn't vowel-starved.
+  const [letters, setLetters] = useState(() => {
+    const list = [];
+    for (let i = 0; i < totalSlots; i++) {
+      const have = list.filter((l) => VOWELS.includes(l.character)).length;
+      const need = (minVisibleVowels ?? 0) - have;
+      list.push(makeLetter(letterPool, vowelWeightPickerRef.current, need >= totalSlots - i));
+    }
+    return list;
+  });
 
   const translateX = useRef(new Animated.Value(0)).current;
   const runningRef = useRef(true);
@@ -3913,9 +4031,13 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
   const rotateLetters = useCallback(() => {
     setLetters((prev) => {
       const [, ...rest] = prev;
-      return [...rest, makeLetter(letterPool, vowelWeightPickerRef.current)];
+      const activeVowels = rest.filter(
+        (l) => l.active && VOWELS.includes(l.character)
+      ).length;
+      const needsVowel = activeVowels < (minVisibleVowels ?? 0);
+      return [...rest, makeLetter(letterPool, vowelWeightPickerRef.current, needsVowel)];
     });
-  }, [letterPool]);
+  }, [letterPool, minVisibleVowels]);
 
   useEffect(() => {
     // While paused: make sure any in-flight tween is stopped (freezing
@@ -3971,8 +4093,31 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
     );
   }, []);
 
+  // Gives a picked letter back to the belt. The SAME letter (matched by id) returns:
+  //  - still on the belt (as a blank slot): reactivated in place;
+  //  - already scrolled off the left: re-enters through the off-screen buffer
+  //    slot on the right, replacing the not-yet-visible spawn, so the belt's
+  //    slot count never grows and nothing is duplicated.
+  // SPAWNING replays the pop-in (a disappeared tile's scale is stuck at 0).
+  const restoreLetter = useCallback((returned) => {
+    setLetters((prev) => {
+      const index = prev.findIndex((l) => l.id === returned.id);
+      if (index !== -1) {
+        if (prev[index].active) return prev; // already here — never duplicate
+        return prev.map((l, i) =>
+          i === index ? { ...l, active: true, animState: LETTER_ANIM_STATES.SPAWNING } : l
+        );
+      }
+      return [
+        ...prev.slice(0, -1),
+        { id: returned.id, character: returned.character, active: true, animState: LETTER_ANIM_STATES.SPAWNING },
+      ];
+    });
+  }, []);
+
   useImperativeHandle(ref, () => ({
     removeLetterById,
+    restoreLetter,
     getLetters: () => letters.slice(0, maxLetters), //Visible letters chosen
   }));
 
@@ -4061,11 +4206,13 @@ import AppButton from '../components/AppButton'; // why is this unused?
 
 
 import { getLevelConfigById } from '../levels/levelPresets';
+import { getBeltConfig } from '../levels/LevelConfig';
 import { useLevelMaker } from '../levels/useLevelMaker';
 import { LevelIntroSequence, LevelEndSequence } from '../levels/IntroEndSequence';
 
 const BELT_ROWS = [0, 1, 2]; // belt rows
 const CONVEYOR_ROW_GAP = 10; // gap between rows
+
 
 /**
  * GameplayScreen
@@ -4168,7 +4315,7 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComple
         maxLength: levelConfig.wordDifficulty.maxLength,
       },
     },
-    levelConfig.maxLettersOnBelt,
+    levelConfig.inputBoxCount, // player input boxes: independent of any belt's letter count
     handleWordSubmit,
   );
 
@@ -4304,8 +4451,10 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComple
 
         <CurrentWordDisplay
           currentWord={wordInput.currentWord}
+          slots={wordInput.slots}
+          onSlotPress={wordInput.returnLetterFromSlot}
           lastResult={wordInput.lastResult}
-          maxLetters={wordInput.maxLetters}
+          inputBoxCount={wordInput.inputBoxCount}
         />
 
         {/* 3. Table / plate — serves the current word */}
@@ -4343,13 +4492,12 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComple
                 ref={conveyorRefs[row]}
                 style={styles.conveyorBelt}
                 config={{
-                  maxLetters: levelConfig.maxLettersOnBelt,
                   slotDurationMs: levelConfig.conveyorSpeed,
                   slotWidth: 70,
                   slotHeight: 60,
                   // Only set when a level has one (null would override the default).
                   ...(levelConfig.letterPool ? { letterPool: levelConfig.letterPool } : {}),
-                  ...(levelConfig.letterDistribution ? { letterDistribution: levelConfig.letterDistribution } : {}),
+                  ...getBeltConfig(levelConfig, row), // this belt's letter count + letterDistribution
                 }}
                 onLetterPress={(letter) => wordInput.selectLetter(letter, row)}
               />

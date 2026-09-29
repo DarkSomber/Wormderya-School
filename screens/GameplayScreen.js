@@ -19,6 +19,7 @@ import { getLevelConfigById } from '../levels/levelPresets';
 import { getBeltConfig } from '../levels/LevelConfig';
 import { useLevelMaker } from '../levels/useLevelMaker';
 import { LevelIntroSequence, LevelEndSequence } from '../levels/IntroEndSequence';
+import { getRushHourLevelConfig, getRushHourStageForWords } from '../levels/RushHourConfig';
 
 const BELT_ROWS = [0, 1, 2]; // belt rows
 const CONVEYOR_ROW_GAP = 10; // gap between rows
@@ -35,6 +36,10 @@ const CONVEYOR_ROW_GAP = 10; // gap between rows
  * Props:
  *   levelId          number | string  preset to load (default 1)
  *   levelConfig      optional; a ready-made LevelConfig, wins over levelId
+ *   mode             'normal' (default) | 'rushHour'. rushHour ignores levelId /
+ *                    levelConfig and runs endless: stages come from
+ *                    levels/rushHourConfig.js, the clock is restored by correct
+ *                    words, and onLevelComplete is never called.
  *   onLevelComplete  optional; called once when the level is won
  *   wallet           the useWallet() instance from App.js (single shared balance)
  */
@@ -47,12 +52,18 @@ export default function GameplayScreen({
   levelConfig: levelConfigOverride,
   wallet,
   achievements,
+  mode = 'normal',
 }) {
   const [sessionId, setSessionId] = useState(0);
 
+  // Normal: the chosen level. Rush Hour: stage 1 as the starting config (its id is
+  // constant, so the session key below only changes on retry). LevelSession then
+  // derives the live per-stage config itself.
   const levelConfig = useMemo(
-    () => levelConfigOverride ?? getLevelConfigById(levelId),
-    [levelConfigOverride, levelId],
+    () => (mode === 'rushHour'
+      ? getRushHourLevelConfig(1)
+      : levelConfigOverride ?? getLevelConfigById(levelId)),
+    [mode, levelConfigOverride, levelId],
   );
 
   const handleRetry = useCallback(() => {
@@ -60,6 +71,7 @@ export default function GameplayScreen({
   }, []);
 
   return (
+    <>
     <LevelSession
       key={`${levelConfig.id}:${sessionId}`}
       levelConfig={levelConfig}
@@ -70,7 +82,15 @@ export default function GameplayScreen({
       isStoreOpen={isStoreOpen}
       wallet={wallet}
       achievements={achievements}
+      mode={mode}
     />
+    <AchievementModal   //Positioned here so it doesn't unmount when there's something on top
+        visible={achievements.currentAchievement !== null}
+        achievement={achievements.currentAchievement}
+        onDismiss={achievements.dismissAchievement}
+      />
+    </>
+    
   );
 }
 
@@ -84,8 +104,22 @@ export default function GameplayScreen({
  *   -> useScoreSystem, CustomerMood, LevelTimer
  *   -> LevelEndSequence (score/stars; calls onRetry or onOpenStore)
  */
-function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComplete, isStoreOpen, wallet, achievements}) {
+function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack, onRetry, onLevelComplete, isStoreOpen, wallet, achievements }) {
   const [phase, setPhase] = useState('intro'); // 'intro' | 'playing' | 'end'
+
+  // --- Rush Hour session state (all reset by the remount on retry) ---
+  // Lives here, not in App: it never touches currentLevelId / unlockedLevels.
+  const isRushHour = mode === 'rushHour';
+  const [rushHourStage, setRushHourStage] = useState(1);
+  const [timeBonus, setTimeBonus] = useState(null); // { id, seconds } -> LevelTimer
+  const rushHourWordsRef = useRef(0);
+
+  // The config the rest of this component reads. Normal: the level as given.
+  // Rush Hour: rebuilt as the stage advances (same shape, same fields).
+  const levelConfig = useMemo(
+    () => (isRushHour ? getRushHourLevelConfig(rushHourStage) : baseLevelConfig),
+    [isRushHour, rushHourStage, baseLevelConfig],
+  );
 
   // One ref per conveyor row.
   const beltRef0 = useRef(null);
@@ -110,12 +144,20 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComple
         customerRef.current?.restorePatience(100);
         levelMaker.registerServedWord();
         achievements.unlockAchievement(ACHIEVEMENTS.FIRST_WORD); //Achievement trigger
+
+        if (isRushHour) {
+          // Restore some time (LevelTimer applies it once per id and caps it),
+          // then advance the stage every wordsPerStage correct words.
+          setTimeBonus((prev) => ({ id: (prev ? prev.id : 0) + 1, seconds: levelConfig.timeBonusSeconds }));
+          rushHourWordsRef.current += 1;
+          setRushHourStage(getRushHourStageForWords(rushHourWordsRef.current));
+        }
       } else if (result.word.length > 0) {
         // Wrong word: patience penalty only. Score never decreases.
         customerRef.current?.applyWrongWordPenalty();
       }
     },
-    [addScoreFromWord, levelConfig.scoreMultiplier, levelMaker, achievements],
+    [addScoreFromWord, levelConfig.scoreMultiplier, levelConfig.timeBonusSeconds, levelMaker, achievements, isRushHour],
   );
 
   // Map LevelConfig to the narrow shape useWordInput/ConveyorBelt expect.
@@ -154,11 +196,12 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComple
   // Report a win once (ref guards against callback identity changes).
   const completionReportedRef = useRef(false);
   useEffect(() => {
-    if (levelResult === "win" && !completionReportedRef.current) {
+    // Rush Hour never reports completion: it must not unlock normal levels.
+    if (!isRushHour && levelResult === "win" && !completionReportedRef.current) {
       completionReportedRef.current = true;
       onLevelComplete?.(levelConfig.id);
     }
-  }, [levelResult, onLevelComplete, levelConfig.id]);
+  }, [levelResult, onLevelComplete, levelConfig.id, isRushHour]);
 
   useEffect(() => {
     if (isStoreOpen) levelMaker.dismissRattyEvent();
@@ -175,8 +218,8 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComple
   const handleIntroComplete = () => setPhase("playing");
 
   const handleEndComplete = () => {
-    if (levelResult === "lose") {
-      onRetry(); // remounts LevelSession, resetting all state
+    if (isRushHour || levelResult === "lose") {
+      onRetry(); // remounts LevelSession, resetting all state (a Rush Hour run has no "next level")
     } else {
       //onOpenStore?.(); // swap for next-level navigation later (!Remember to remove this.)
       levelMaker.dismissRattyEvent();
@@ -206,6 +249,7 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComple
         levelConfig={levelConfig}
         won={levelResult === "win"}
         finalScore={score}
+        rushHourStage={isRushHour ? rushHourStage : null}
         onComplete={handleEndComplete}
       />
     );
@@ -239,13 +283,19 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComple
         </ImageBackground>
 
         {/* Timer — paused during any popups or after the level ends. */}
+        {/* Timer — paused during Ratty's popup or after the level ends.
+            Rush Hour: endless (time-out = run over), restored by correct words, capped. */}
         <LevelTimer
           targetScore={levelConfig.targetScore}
           currentScore={score}
           initialTimeInSeconds={levelConfig.timeLimitSeconds}
           isPaused={levelResult !== null || levelMaker.showRattyEvent || achievements.currentAchievement !== null} //Added Achievements popup pause
           onLevelEnd={handleLevelEnd}
+          endless={isRushHour}
+          timeBonus={isRushHour ? timeBonus : null}
+          maxTimeInSeconds={isRushHour ? levelConfig.maxTimeSeconds : undefined}
         />
+        {isRushHour && <Text style={styles.stageText}>Stage {rushHourStage}</Text>}
 
         {/* 2. Customer + patience meter. Keyed on customerIndex so patience
             resets for each new customer. */}
@@ -258,6 +308,7 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComple
             key={`customer-${levelMaker.customerIndex}`}
             ref={customerRef}
             onCustomerLeft={handleCustomerLeft}
+            decayRateMs={levelConfig.patienceDecayMs}
             style={styles.patienceMeter}
           />
         </View>
@@ -326,12 +377,6 @@ function LevelSession({ levelConfig, onOpenStore, onBack, onRetry, onLevelComple
         visible={levelMaker.showRattyEvent}
         onDismiss={levelMaker.dismissRattyEvent}
       />
-      {/* Achievement popup modal like mr ratty */}
-      <AchievementModal
-        visible={achievements.currentAchievement !== null}
-        achievement={achievements.currentAchievement}
-        onDismiss={achievements.dismissAchievement}
-      />
     </View>
   );
 }
@@ -354,10 +399,12 @@ const styles = StyleSheet.create({
   },
   quitWrapper: { width: 90, height: 55, left: 20, alignItems: 'center',},
   quitButton: {...StyleSheet.absoluteFillObject, width: '100%', height: '100%', resizeMode: 'contain',},
-  quitText: {color: 'red', fontSize: 20, textAlign: 'center', bottom: 40}, //Brute forced yung bottom para di bumaba
+  quitText: {color: 'red', fontSize: 20, textAlign: 'center', top: 14}, //Brute forced yung top since out of bound
   coinDisplay: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 1, maxWidth: 170, gap: 10 },
   coinText: { flexShrink: 1, fontSize: 22, fontWeight: 'bold', color: '#fff', textShadowColor: '#000', textShadowRadius: 2, textShadowOffset: { width: 1, height: 1 } },
   moneyIcon: { width: 40, height: 40, resizeMode: 'contain' },
+
+  stageText: { fontSize: 18, fontWeight: 'bold', color: '#fff', textShadowColor: '#000', textShadowRadius: 2, textShadowOffset: { width: 1, height: 1 } },
 
   /* 2 Customer Area*/
   customerBox: { flex: 150, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 15, paddingHorizontal: 15 },

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import ShopOutcomeModal from './ShopOutcomeModal.js';
 import { formatCurrency } from '../components/gameplayReusables/UseWallet';
+import AchievementModal from '../components/gameplayReusables/AchievementModal';
+import { ACHIEVEMENTS } from '../components/gameplayReusables/Achievements.js';
 import { StyleSheet, View, Image, ImageBackground, TouchableOpacity } from 'react-native';
 import Text from '../components/AppText';
 
@@ -38,7 +40,7 @@ const ALL_ITEM_IDS = SHOP_ITEMS.map((item) => item.id);
  * unmounted/remounted on every trip to/from Gameplay, and currency +
  * discount/inflate marks need to survive that.
  */
-export default function StoreScreen({ onBack, wallet, onGoToLevelSelect}) {
+export default function StoreScreen({ onBack, wallet, achievements, onGoToLevelSelect}) {
   // null = hidden | 'inflate' = price rise | 'discount' = price drop
   const [rattyOutcome, setRattyOutcome] = useState(null);
 
@@ -52,6 +54,7 @@ export default function StoreScreen({ onBack, wallet, onGoToLevelSelect}) {
   const handleBuy = () => {
     const result = wallet.buyItem(selectedItem.id, selectedItem.basePrice, ALL_ITEM_IDS);
     if (result.success) setRattyOutcome('discount');
+    achievements.unlockAchievement(ACHIEVEMENTS.FIRST_PURCHASE); //Connected to the achievement modal
     // insufficient funds: Buy is disabled below when !affordable, so
     // this branch shouldn't actually fire in normal use.
   };
@@ -176,6 +179,12 @@ export default function StoreScreen({ onBack, wallet, onGoToLevelSelect}) {
         onDismiss={() => {setRattyOutcome(null);
           onGoToLevelSelect();
         }}
+      />
+      {/* Trigger achievement modal */}
+      <AchievementModal 
+        visible={achievements.currentAchievement !== null}
+        achievement={achievements.currentAchievement}
+        onDismiss={achievements.dismissAchievement}
       />
     </View>
   );

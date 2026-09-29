@@ -1,13 +1,11 @@
 /**
  * Achievements.js
  * ---------------
- * The list of achievements that exist in the game. Purely data — no
- * logic about WHEN one unlocks. That's decided at the call site
- * (GameplayScreen, useLevelMaker, wherever the condition is actually
- * known) by calling achievements.unlockAchievement(ACHIEVEMENTS.FIRST_WORD).
+ * The list of achievements that exist in the game. 
+ * calling achievements.unlockAchievement(ACHIEVEMENTS.FIRST_WORD) 
+ * as a syntax to make it work
  *
- * Add a new achievement by adding a new entry here — same idea as
- * adding a new level to levels/levelPresets.js.
+ * Functions like levels/levelPresets.js. Just create the achievements through here
  */
  
 export const ACHIEVEMENTS = {
@@ -17,11 +15,12 @@ export const ACHIEVEMENTS = {
     description: 'Served your very first word.',
     coinReward: 10,
   },
-  NO_MISSES: {
-    id: 'no-misses',
-    title: 'Perfect Plate',
-    description: 'Finished a level without a single wrong word.',
-    coinReward: 25,
+  FIRST_PURCHASE: {
+    id: 'first-purchase',
+    title: 'Big Spender',
+    description: 'Bought your first item from Mr. Ratty.',
+    coinReward: 15,
   },
+
 };
  

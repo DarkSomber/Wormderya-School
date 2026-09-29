@@ -81,6 +81,9 @@ function ScreenSwitcher() {
 
   // Use SCREEN.PLACEHOLDER_GAMEPLAY to show the placeholder screen
   const [showRushHour, setShowRushHour] = useState(false);
+  // 'normal' | 'rushHour'. Separate from currentLevelId / unlockedLevels, which
+  // Rush Hour never reads or writes.
+  const [gameMode, setGameMode] = useState('normal');
   const [showQuit, setShowQuit] = useState(false);
 
   // Global currency
@@ -95,11 +98,14 @@ function ScreenSwitcher() {
     case SCREENS.MODE_SELECT:
       return (
         <ModeSelectScreen
-          onSelectStoryMode={() => setScreen(SCREENS.LEVEL_SELECT)}
+          onSelectStoryMode={() => {
+            setGameMode('normal');
+            setScreen(SCREENS.LEVEL_SELECT);
+          }}
           onSelectRushHour={() => {
-            // TODO: navigate into Rush Hour Mode gameplay
-            setShowRushHour(true)
-            console.log("Rush Hour Mode selected");
+            // Show the Rush Hour intro popup; dismissing it starts the run.
+            setGameMode('rushHour');
+            setShowRushHour(true);
           }}
           onBack={() => setScreen(SCREENS.HOME)}
         />
@@ -120,6 +126,7 @@ function ScreenSwitcher() {
                 console.log(`Level ${levelId} selected but has no preset yet`);
                 return;
               }
+              setGameMode('normal');
               setCurrentLevelId(levelId);
               if (levelId === 1) {
                 // Level 1 plays its backstory first.
@@ -144,9 +151,10 @@ function ScreenSwitcher() {
       case SCREENS.GAMEPLAY:
         return (
           <GameplayScreen
+            mode={gameMode}
             levelId={currentLevelId}
             onLevelComplete={handleLevelComplete}
-            onBack={() => setScreen(SCREENS.LEVEL_SELECT)}
+            onBack={() => setScreen(gameMode === 'rushHour' ? SCREENS.MODE_SELECT : SCREENS.LEVEL_SELECT)}
             onOpenStore={openStore}
             isStoreOpen={showStore}
             wallet={wallet}
@@ -180,7 +188,11 @@ function ScreenSwitcher() {
         {showStore && (
           <Modal>
             <View style={styles.overlay}>
-              <StoreScreen onBack={closeStore} wallet={wallet} onGoToLevelSelect={() => {closeStore(); setScreen(SCREENS.LEVEL_SELECT);}} />
+              <StoreScreen 
+                onBack={closeStore} 
+                wallet={wallet} 
+                achievements={achievements}
+                onGoToLevelSelect={() => {closeStore(); setScreen(SCREENS.LEVEL_SELECT);}} />
             </View>
           </Modal>
         )}
@@ -188,14 +200,17 @@ function ScreenSwitcher() {
       {/* 3. Global modals */}
       <RushHourModal
         visible={showRushHour}
-        onDismiss={() => setShowRushHour(false)}
+        onDismiss={() => {
+          setShowRushHour(false);
+          setScreen(SCREENS.GAMEPLAY); // gameMode is already 'rushHour'
+        }}
       />
 
       <QuitModal visible={showQuit} onQuit={() => setShowQuit(false)} />
 
       {/* Level-unlocked warning */}
-      <PopupModal
-        visible={unlockNotice !== null}
+      <PopupModal  //Now requires achievements to be dismissed before appearing
+        visible={unlockNotice !== null && achievements.currentAchievement === null}
         title="NEW LEVEL UNLOCKED!"
         message={unlockNotice !== null ? getLevelConfigById(unlockNotice).title : ""}
         extraMessage="You can play it from the Level Select screen."
