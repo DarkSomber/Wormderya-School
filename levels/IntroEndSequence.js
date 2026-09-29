@@ -21,19 +21,28 @@ export function LevelIntroSequence({ levelConfig, onComplete }) {
 }
 
 //Generics for level end sequence screen
-export function LevelEndSequence({ levelConfig, won, finalScore, onComplete }) { //Dynamic Props Generics
+// `rushHourStage` (number) switches to the endless-run summary; null = a normal level.
+export function LevelEndSequence({ levelConfig, won, finalScore, onComplete, rushHourStage = null }) { //Dynamic Props Generics
   const stars = computeStars(finalScore, levelConfig.targetScore); //Display results of ScoreHandler()
   const starText = won ? '⭐'.repeat(stars) || '☆' : '';
 
-  const slides = [
-    {
-      id: 'result',
-      label: won ? 'LEVEL CLEARED!' : 'OUT OF TIME',
-      subLabel: won
-        ? `${levelConfig.title}\nScore: ${finalScore}   ${starText}`
-        : `${levelConfig.title}\nScore: ${finalScore} / ${levelConfig.targetScore}`,
-    },
-  ];
+  const slides = rushHourStage !== null
+    ? [
+        {
+          id: 'result',
+          label: "TIME'S UP!",
+          subLabel: `${levelConfig.title}\nStage reached: ${rushHourStage}\nScore: ${finalScore}`,
+        },
+      ]
+    : [
+        {
+          id: 'result',
+          label: won ? 'LEVEL CLEARED!' : 'OUT OF TIME',
+          subLabel: won
+            ? `${levelConfig.title}\nScore: ${finalScore}   ${starText}`
+            : `${levelConfig.title}\nScore: ${finalScore} / ${levelConfig.targetScore}`,
+        },
+      ];
 
   return (
     <SlideshowSequence

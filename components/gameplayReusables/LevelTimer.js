@@ -13,6 +13,16 @@ import Text from '../AppText';
  * @param {(won: boolean, finalScore: number) => void} onLevelEnd - called
  *   exactly once when time runs out, so the parent screen can show the
  *   Win Screen or Lose Screen from the storyboard.
+ *
+ * Rush Hour options (all optional; leaving them out keeps normal-level behavior):
+ * @param {boolean} endless - running out of time is always a loss (there is no
+ *   score target to reach), reported as onLevelEnd(false, score)
+ * @param {{ id: number, seconds: number } | null} timeBonus - restore signal.
+ *   Each NEW `id` adds `seconds` to the clock once (the id is what makes it
+ *   fire once, so re-renders with the same object do nothing). The clock keeps
+ *   draining; this only adds to whatever is left.
+ * @param {number} maxTimeInSeconds - a bonus can never lift the clock above
+ *   this. A bonus never lowers the clock either.
  */
 const LevelTimer = ({
   targetScore,
@@ -20,9 +30,13 @@ const LevelTimer = ({
   initialTimeInSeconds = 60,
   isPaused = false,
   onLevelEnd,
+  endless = false,
+  timeBonus = null,
+  maxTimeInSeconds,
 }) => {
   const [timeLeft, setTimeLeft] = useState(initialTimeInSeconds);
   const [isGameOver, setIsGameOver] = useState(false);
+  const [bonusFlash, setBonusFlash] = useState(null); // bonus seconds just awarded (display only; the cap may trim what is applied)
 
   // Keep the latest score in a ref instead of a dependency, so the
   // countdown interval doesn't get torn down and recreated every time
@@ -35,6 +49,8 @@ const LevelTimer = ({
   }, [currentScore]);
 
   // Countdown interval — only restarts if paused state or game-over state changes.
+  // Time restoration below uses the same functional state update, so it never
+  // touches this interval: the clock keeps draining while bonuses land.
   useEffect(() => {
     if (isPaused || isGameOver) return undefined;
 
@@ -51,15 +67,40 @@ const LevelTimer = ({
     return () => clearInterval(timerId);
   }, [isPaused, isGameOver]);
 
+  // Rush Hour time restoration: applied once per new bonus id.
+  const lastBonusIdRef = useRef(timeBonus ? timeBonus.id : 0);
+  const flashTimeoutRef = useRef(null);
+  useEffect(() => {
+    if (!timeBonus || timeBonus.id === lastBonusIdRef.current) return;
+    lastBonusIdRef.current = timeBonus.id;
+    if (isGameOver) return;
+
+    const cap = typeof maxTimeInSeconds === 'number' ? maxTimeInSeconds : Infinity;
+    const seconds = timeBonus.seconds;
+    setTimeLeft((prev) => {
+      if (prev <= 0) return prev; // already out of time: no revival
+      // Never above the cap, and never lower than what the player already has.
+      return Math.max(prev, Math.min(cap, prev + seconds));
+    });
+
+    setBonusFlash(seconds);
+    if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+    flashTimeoutRef.current = setTimeout(() => setBonusFlash(null), 900);
+  }, [timeBonus, isGameOver, maxTimeInSeconds]);
+
+  useEffect(() => () => {
+    if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+  }, []);
+
   // Determine win/loss exactly once, the moment the clock actually hits 0.
   useEffect(() => {
     if (timeLeft === 0 && !isGameOver) {
       setIsGameOver(true);
       const finalScore = scoreRef.current;
-      const won = finalScore >= targetScore;
+      const won = endless ? false : finalScore >= targetScore;
       onLevelEnd?.(won, finalScore);
     }
-  }, [timeLeft, isGameOver, targetScore, onLevelEnd]);
+  }, [timeLeft, isGameOver, targetScore, onLevelEnd, endless]);
 
   // Format seconds to MM:SS
   const formatTime = (seconds) => {
@@ -69,10 +110,15 @@ const LevelTimer = ({
   };
 
   return (
-    <View>
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       <Text style={{ fontSize: 24, fontWeight: 'bold' }}>
         Time: {formatTime(timeLeft)}
       </Text>
+      {bonusFlash !== null && (
+        <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#2e9e3f', marginLeft: 8 }}>
+          +{bonusFlash}s
+        </Text>
+      )}
     </View>
   );
 };
