@@ -1,8 +1,15 @@
 import React from "react";
-import { View, StyleSheet, ScrollView, StatusBar, ImageBackground } from 'react-native';
-import Text from '../components/AppText';
+import {
+  View,
+  Image,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  ImageBackground,
+  TouchableOpacity,
+} from "react-native";
+import Text from "../components/AppText";
 import LevelButton from "../components/LevelButton";
-import AppButton from "../components/AppButton";
 import { hasLevelPreset } from "../levels/levelPresets";
 import DebugButton from "../components/tests/DebugButton"; // [TEST/DEBUG]
 
@@ -18,31 +25,30 @@ const LEVELS = [
   {
     id: 1,
     align: "flex-start",
-    size: 100,
-    image: require("../assets/Final/levels/Level-1-Logo.png"),
+    size: 230,
+    image: require("../assets/Final/levels/Level_1_Sinangag.png"),
   },
   {
     id: 2,
     align: "flex-end",
-    width: 165,
-    height: 105,
-    image: require("../assets/Final/levels/Level-2-Logo.png"),
+    size: 230,
+    image: require("../assets/Final/levels/Level_2_Adobo.png"),
   },
   {
     id: 3,
     align: "flex-start",
-    width: 135,
-    height: 95,
-    image: require("../assets/Final/levels/Level-3-Logo.png"),
+    size: 300,
+    image: require("../assets/Final/levels/Level_3_Sinigang-na-Bangus.png"),
   },
   {
     id: 4,
     align: "flex-end",
-    width: 190,
-    height: 150,
-    image: require("../assets/Final/levels/Level-4-Logo.png"),
+    size: 325,
+    image: require("../assets/Final/levels/Level_4_Boss_kare-kare.png"),
   }, // e.g. a bigger "boss" node
 ];
+
+const NODE_SPACING = 50;
 
 export default function LevelSelectScreen({
   onSelectLevel,
@@ -54,50 +60,54 @@ export default function LevelSelectScreen({
 }) {
   return (
     <ImageBackground
-      source={require("../assets/Final/BackgroundColor.png")}
+      source={require("../assets/Final/LevelSelectionMainBG.png")}
       style={styles.background}
       resizeMode="cover"
     >
       <StatusBar barStyle="dark-content" />
 
-      {/* ---------- HEADER BANNER ---------- */}
-      <View style={styles.header}>
-        <Text style={styles.headerText}>LEVEL SELECT</Text>
+      {/* ---------- TOP BAR: back button + title pill ---------- */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={onBack}
+          style={styles.titlePill}
+        >
+          <Image
+            source={require("../assets/Final/buttons/buttonLevelSelectBack.png")}
+          />
+        </TouchableOpacity>
+
+        {/* Spacer so the title pill stays visually centered against the back button */}
+        <View />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {LEVELS.map((lvl) => (
-          <View
-            key={lvl.id}
-            style={[styles.nodeRow, { justifyContent: lvl.align }]}
-          >
+      {/* ---------- SCROLLABLE LEVEL ROW ---------- */}
+      <View style={styles.rowWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          decelerationRate="fast"
+          contentContainerStyle={styles.rowContent}
+        >
+          {LEVELS.map((lvl) => (
             <LevelButton
-              width={lvl.width}
-              height={lvl.height}
+              key={lvl.id}
+              width={lvl.width ?? lvl.size}
+              height={lvl.height ?? lvl.size}
               locked={isLevelLocked(lvl, unlockedLevels, lockedLevels)}
               onPress={() => onSelectLevel && onSelectLevel(lvl.id)}
               backgroundImage={lvl.image}
+              style={styles.nodeSpacing}
             />
-          </View>
-        ))}
-      </ScrollView>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* [TEST/DEBUG] unlock-all / reset toggle; remove for release */}
       {onDebugToggle && (
         <DebugButton allUnlocked={debugAllUnlocked} onPress={onDebugToggle} />
       )}
-
-      {/* ---------- BACK BUTTON ---------- */}
-      <View style={styles.footer}>
-        <AppButton
-          onPress={onBack}
-          style={styles.buttonSpacing}
-          backgroundImage={require("../assets/Final/buttons/buttonBack.png")}
-        />
-      </View>
     </ImageBackground>
   );
 }
@@ -105,39 +115,38 @@ export default function LevelSelectScreen({
 const styles = StyleSheet.create({
   background: {
     flex: 1,
+    height: "100%",
+    width: "100%",
     // Fallback if the image fails to load
     backgroundColor: "#ffebbd",
   },
-  header: {
-    paddingTop: 24,
-    paddingBottom: 16,
-    alignItems: "center",
-    // Placeholder color; swap for a banner image
-    backgroundColor: "#f2b988",
-    borderBottomWidth: 2,
-    borderBottomColor: "#2a2a2a",
-  },
-  headerText: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#2a2a2a",
-    letterSpacing: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingVertical: 30,
-  },
-  nodeRow: {
+  topBar: {
+    width: "100%",
     flexDirection: "row",
-    marginBottom: 40,
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: 20,
+    paddingHorizontal: 16,
+    bottom: 20,
+    right: 15,
   },
-  footer: {
-    paddingHorizontal: 20,
-    paddingBottom: 50,
+  rowWrapper: {
+    marginLeft: 25,
+    marginTop: 400,
+    flex: 1,
+    justifyContent: "center",
+  },
+  titlePill: {
+    marginTop: 10,
+    marginRight: 500,
+    flexDirection: "row",
     alignItems: "center",
   },
-  backButton: {
-    width: 140,
-    height: 44,
+  rowContent: {
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  nodeSpacing: {
+    marginRight: NODE_SPACING,
   },
 });
