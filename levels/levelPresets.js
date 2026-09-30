@@ -20,8 +20,8 @@ export const LEVEL_1_CONFIG = createLevelConfig({
   title: 'Level 1 — Warm Up',
   conveyorSpeed: 1000, // Testing; original: 1300
   targetScore: 50,// Testing; original: 150
-  timeLimitSeconds: 60, // Testing; original: 180 (3 min)
-  totalCustomers: 1,// Testing; original: 3
+  timeLimitSeconds: 180, // Testing; original: 180 (3 min)
+  totalCustomers: 2,// Testing; original: 3
   wordsPerCustomer: 1,// Testing; original: 2
   scoreMultiplier: 1,
   rattySpawnRate: 0.0,

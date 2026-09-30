@@ -23,7 +23,13 @@ import { LevelIntroSequence, LevelEndSequence } from '../levels/IntroEndSequence
 import { getRushHourLevelConfig, getRushHourStageForWords } from '../levels/RushHourConfig';
 
 const BELT_ROWS = [0, 1, 2]; // belt rows
-const ART_RATIO = 512 / 1088;
+
+//Customer swapper sprites (HARDCODED FOR SECOND CUSTOMER)
+const CUSTOMER_SPRITES = [
+  {source: require("../assets/Final/Customers/SampleCustomer_1.png" ), bottom: 0},
+  {source: require("../assets/Final/Customers/CustomerPicky.png"), bottom: -10}
+];
+
 
 /**
  * GameplayScreen
@@ -107,8 +113,8 @@ export default function GameplayScreen({
 function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack, onRetry, onLevelComplete, isStoreOpen, wallet, achievements }) {
   const [phase, setPhase] = useState('intro'); // 'intro' | 'playing' | 'end'
   const { width: winW, height: winH } = useWindowDimensions();
-  const boxW = Math.min(winW, winH * ART_RATIO);
-  const boxH = boxW / ART_RATIO;
+  const boxW = winW;
+  const boxH = winH;
 
   // --- Rush Hour session state (all reset by the remount on retry) ---
   // Lives here, not in App: it never touches currentLevelId / unlockedLevels.
@@ -264,7 +270,9 @@ function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack,
       source={require("../assets/Final/GameplayUI/GameplayScreen.png")}
       style={[styles.container, { width: boxW, height: boxH }]}
       resizeMode="stretch">
-        {/* 1. HEADER BANNER */}
+        {/* 1. HEADER BANNER — flex now, same as every row below it, so it
+            scales DOWN proportionally on shorter screens instead of eating
+            a fixed chunk of space no matter what boxH ends up being. */}
         <View
           style={styles.headerBackground}
         >
@@ -274,8 +282,10 @@ function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack,
             <Image source={require('../assets/Final/GameplayUI/quit-sign.png')} style={styles.quitButton}/>
           </TouchableOpacity>
 
-          {/* Live wallet balance: [ NUMBER ] [ COIN ] */}
-          <ImageBackground source={require('../assets/Final/GameplayUI/CoinPatience.png')} style={styles.coinDisplay} resizeMode='stretch'>
+          {/* Live wallet balance: [ NUMBER ] [ COIN ]. Sized to actually fit
+              inside headerBackground now — it was taller than its own
+              container before, which guaranteed overflow on every screen. */}
+          <ImageBackground source={require('../assets/Final/GameplayUI/CoinPatience.png')} style={styles.patienceCoinBoard} resizeMode='stretch'>
             <Text style={styles.coinText} numberOfLines={1} adjustsFontSizeToFit>
               {formatCurrency(currency)}
             </Text>
@@ -300,9 +310,10 @@ function LevelSession({ levelConfig: baseLevelConfig, mode, onOpenStore, onBack,
         {/* 2. Customer + patience meter. Keyed on customerIndex so patience
             resets for each new customer. */}
         <View style={styles.customerBox}>
-          <Image
-            source={require("../assets/Placeholder/SampleCustomer_1.png")}
-            style={styles.characterDog}
+          <Image  //Uses bottom to change height of different customers
+          source={CUSTOMER_SPRITES[levelMaker.customerIndex % CUSTOMER_SPRITES.length].source}
+          style={[styles.characterDog, { bottom: CUSTOMER_SPRITES[levelMaker.customerIndex % CUSTOMER_SPRITES.length].bottom },
+          ]}
           />
           <CustomerMood
             key={`customer-${levelMaker.customerIndex}`}
@@ -386,23 +397,36 @@ const styles = StyleSheet.create({
 },
   headerBackground: {
     width: '100%',
+    flex: 130,                  // BUG 2 FIX: was a fixed height:150 — now scales with everything else
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',   // anchor children to the TOP, so the overflow hangs downward like the mockup
-    height: 150,                 // the header bar's own visual height stays modest
   },
   quitWrapper: { alignItems: 'center', justifyContent: 'center' },
-  quitButton: { width: 160, height: 125, resizeMode: 'stretch'},
-  coinDisplay: { width: 165, height: 240, alignItems: 'center', justifyContent: 'center'},
-  coinText: { flexShrink: 1, fontSize: 30, fontWeight: 'bold', color: '#fff', textShadowColor: '#000', textShadowRadius: 2, textShadowOffset: { width: 1, height: 1 },
-  paddingBottom: 151, paddingLeft: 40 },
+  quitButton: { width: 130, height: 100, resizeMode: 'contain' },
+  // BUG 1 FIX: was 165x240 — taller than headerBackground could ever provide.
+  // Sized to actually fit within a flex:130 header, with room to spare.
+  patienceCoinBoard: { width: 130, height: 200, alignItems: 'center', justifyContent: 'center' },
+  coinText: {
+    flexShrink: 1,
+    fontSize: 40,
+    fontWeight: 'bold',
+    color: '#fff',
+    textShadowColor: '#000',
+    textShadowRadius: 2,
+    textShadowOffset: { width: 1, height: 1 },
+    marginTop: -125,
+    marginLeft: 50,
+    // padding hacks removed — box is now sized correctly, so plain
+    // centering (via coinDisplay's alignItems/justifyContent) is enough.
+  },
 
   stageText: { fontSize: 18, fontWeight: 'bold', color: '#fff', textShadowColor: '#000', textShadowRadius: 2, textShadowOffset: { width: 1, height: 1 } },
 
   /* 2 Customer Area*/
   customerBox: { flex: 150, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 15, paddingHorizontal: 15 },
-  characterDog: { width: 160, height: 160, resizeMode: 'contain', marginBottom: 85, right: 25},
-  patienceMeter: { width: 104, height: 130, marginTop: -165, marginLeft: 50, resizeMode: 'contain' },
+  characterDog: { width: 160, height: 160, resizeMode: 'contain', marginTop: -70},
+  patienceMeter: { width: 104, height: 130, marginTop: -120, marginLeft: 75, resizeMode: 'contain' },
 
   table: {
     width: "100%",
@@ -412,14 +436,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  plate: { width: 120, height: 60, marginTop: 25, resizeMode: 'stretch' },
+  plate: { width: 120, height: 60, marginTop: 60, resizeMode: 'stretch' },
 
   /* 4 Chef Bar*/
   chefBar: { flex: 130, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 15,  },
   characterChef: { width: 115, height: 115, resizeMode: 'contain', left: 125, bottom: 60 },
 
   /* 5 Conveyor area */
-  conveyorGroup: { width: '100%', flex: 240, flexDirection: 'column', bottom: 75, },
-  conveyorRow: { justifyContent: 'center', alignItems: 'center', bottom: 17}, 
-  conveyorBelt: {marginTop: 45},
+  conveyorGroup: { width: '100%', height: '150%', flex: 240, flexDirection: 'column', bottom: 75, },
+  conveyorRow: { justifyContent: 'center', alignItems: 'center', bottom: 20}, 
+  conveyorBelt: {marginTop: 42},
 });
