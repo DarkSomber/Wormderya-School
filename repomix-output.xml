@@ -59,6 +59,15 @@ assets/
       buttonSettings.png
       buttonStart1.png
       buttonStorymode.png
+    Customers/
+      CustomerPicky.png
+      SampleCustomer_1.png
+    GameplayUI/
+      CoinPatience.png
+      conveyors.png
+      GameplayScreen.png
+      quit-sign.png
+      serve-button.png
     levels/
       Level_1_Sinangag.png
       Level_2_Adobo.png
@@ -69,6 +78,8 @@ assets/
       Level-3-Logo.png
       Level-4-Logo.png
     BackgroundColor.png
+    Customer1.png
+    CustomerPicky.png
     LevelSelectionMainBG.png
     MainBackground.png
     MainCharacter.png
@@ -95,7 +106,6 @@ assets/
     pixel_coins.png
     Plate.png
     QuitButton.png
-    SampleCustomer_1.png
     SampleCustomer_2.png
     SampleCustomer_3.png
     SatisfactionBoost.png
@@ -139,6 +149,7 @@ components/
     MrRattyDiscount.js
     MrRattyInflate.js
     ShopOutcomeModal.js
+    UpgradeHUD.js
     UpgradeToast.js
     UseAchievements.js
     UseScoreSystem.js
@@ -149,6 +160,7 @@ components/
   AppButton.js
   AppText.js
   CountdownSequence.js
+  GameSave.js
   LevelButton.js
   PauseModal.js
   PopupModal.js
@@ -182,6 +194,131 @@ package.json
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="components/gameplayReusables/AchievementModal.js">
+import React from 'react';
+import PopupModal from '../PopupModal';
+
+export default function AchievementModal({ visible, achievement, onDismiss }) {
+  if (!achievement) return null;
+
+  //Generic popup modal to be passed with arguments
+  return (
+    <PopupModal
+      visible={visible}
+      title="Achievement Unlocked!"
+      message={achievement.title}
+      extraMessage={achievement.description}
+      buttonText="Nice!"
+      buttonColor="#FFE194"
+      onPress={onDismiss}
+    />
+  );
+}
+</file>
+
+<file path="components/gameplayReusables/MrRattyInflate.js">
+import React from 'react';
+import PopupModal from '../PopupModal';
+
+export default function MrRattyInflate({ visible, onDismiss }) {
+  return (
+      <PopupModal
+      visible={visible}
+      title={`Mr. Ratty will\nremember you`}
+      message="The next time Mr. Ratty will appear, prices will have a chance to inflate."
+      buttonText="uh..."
+      buttonColor="#FFE194" // Yellow
+      onPress={onDismiss}
+      />
+    );
+}
+</file>
+
+<file path="components/gameplayReusables/ShopOutcomeModal.js">
+import React from 'react';
+import PopupModal from '../PopupModal';
+
+export default function ShopOutcomeModal({ visible, outcome, onDismiss }) {
+  const isInflate = outcome === 'inflate';
+
+  return (
+    <PopupModal
+      visible={visible}
+      title={isInflate ? "Mr. Ratty will\nremember you" : "Thank you for\nyour patronage!"}
+      message={
+        isInflate 
+          ? "The next time Mr. Ratty will appear, prices will have a chance to inflate."
+          : "The next time Mr. Ratty will appear, prices will have a chance to get a discount."
+      }
+      buttonText={isInflate ? "uh..." : "Thank you!"}
+      buttonColor="#FFE194"
+      onPress={onDismiss}
+    />
+  );
+}
+</file>
+
+<file path="components/gameplayReusables/UpgradeHUD.js">
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
+import Text from '../AppText';
+
+// Small bar under the header showing currently active power-ups.
+export default function UpgradeHUD({ activeList }) {
+  if (!activeList || activeList.length === 0) return null;
+
+  return (
+    <View style={styles.wrap} pointerEvents="none">
+      {activeList.map((u) => (
+        <View key={u.id} style={styles.chip}>
+          <Text style={styles.name} numberOfLines={1}>
+            {u.name}
+          </Text>
+          {u.remainingMs !== null && (
+            <Text style={styles.time}>
+              {Math.ceil(u.remainingMs / 1000)}s
+            </Text>
+          )}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    backgroundColor: '#FFE194',
+    borderWidth: 2,
+    borderColor: '#7A2E2E',
+    borderRadius: 6,
+  },
+  name: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#3B1F0B',
+    maxWidth: 140,
+  },
+  time: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#7A2E2E',
+  },
+});
+</file>
 
 <file path="components/gameplayReusables/UpgradeToast.js">
 import React, { useEffect, useRef } from 'react';
@@ -268,10 +405,8 @@ const styles = StyleSheet.create({
 </file>
 
 <file path="components/gameplayReusables/UseUpgrades.js">
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 
-// Upgrade definitions. Permanent: bought once, always on.
-// Temporary: activates for one round, expires on its own timer.
 export const UPGRADES = {
   TEKA_LANG: {
     id: 'teka-lang',
@@ -280,7 +415,7 @@ export const UPGRADES = {
     price: 20,
     type: 'temporary',
     durationMs: 10000,
-    patienceDrainMultiplier: 0.5, // < 1 = slower drain
+    patienceDrainMultiplier: 0.5,
   },
   DOBLENG_MAHAL: {
     id: 'dobleng-mahal',
@@ -314,15 +449,27 @@ export const UPGRADES = {
 export const UPGRADE_LIST = Object.values(UPGRADES);
 
 /**
- * Owns upgrade ownership + active temporary effects.
- * Instantiate ONCE in App.js — persists across GameplayScreen remounts.
+ * useUpgrades(wallet, { initialState, onChange })
+ *
+ * - initialState: { owned: [ids], consumables: { id: count } } from save
+ * - onChange(snapshot): App persists owned + consumables only
+ *
+ * Temporary power-ups bought in the Store are QUEUED for the next round.
+ * They activate when the round actually starts (GameplayScreen calls
+ * startNewRound on mount). This matches the Store-flow: buy -> next
+ * round begins -> effect fires for its full duration.
  */
-export function useUpgrades(wallet) {
-  const [ownedPermanent, setOwnedPermanent] = useState(() => new Set());
+export function useUpgrades(wallet, { initialState, onChange } = {}) {
+  const [ownedPermanent, setOwnedPermanent] = useState(
+    () => new Set(initialState?.owned ?? [])
+  );
+  // Temporary upgrade ids waiting to activate on the next round start.
+  const [queuedTemporary, setQueuedTemporary] = useState([]);
+  // Currently-running temporaries: { [id]: { expiresAt } }.
   const [activeTemporary, setActiveTemporary] = useState({});
-  const [consumables, setConsumables] = useState({});
+  const [consumables, setConsumables] = useState(initialState?.consumables ?? {});
 
-  // Tick to force re-render when a temporary effect expires.
+  // Tick so the HUD / multipliers re-evaluate as timers expire.
   const [, forceTick] = useState(0);
   useEffect(() => {
     const hasTimed = Object.values(activeTemporary).some(
@@ -333,6 +480,19 @@ export function useUpgrades(wallet) {
     return () => clearInterval(id);
   }, [activeTemporary]);
 
+  // Persist only permanent + consumable state. Temporary state is round-local.
+  const notify = useCallback(() => {
+    if (!onChange) return;
+    onChange({
+      owned: Array.from(ownedPermanent),
+      consumables: { ...consumables },
+    });
+  }, [onChange, ownedPermanent, consumables]);
+
+  useEffect(() => {
+    notify();
+  }, [ownedPermanent, consumables, notify]);
+
   const buyUpgrade = useCallback(
     (upgrade) => {
       if (!upgrade) return { success: false, reason: 'unknown' };
@@ -342,7 +502,6 @@ export function useUpgrades(wallet) {
       if (!wallet.canAfford(upgrade.id, upgrade.price)) {
         return { success: false, reason: 'insufficient' };
       }
-      // Deduct via the existing wallet — one currency path.
       const spend = wallet.buyItem(upgrade.id, upgrade.price, [upgrade.id]);
       if (!spend.success) return { success: false, reason: 'insufficient' };
 
@@ -353,12 +512,11 @@ export function useUpgrades(wallet) {
           return next;
         });
       } else if (upgrade.type === 'temporary') {
-        setActiveTemporary((prev) => ({
-          ...prev,
-          [upgrade.id]: { expiresAt: Date.now() + upgrade.durationMs },
-        }));
+        // Queue for the next round. Multiple buys of the same temp
+        // are allowed (they'll stack in the queue and just refresh the
+        // timer when the round starts — one activation per round).
+        setQueuedTemporary((prev) => [...prev, upgrade.id]);
       } else {
-        // consumable
         setConsumables((prev) => ({
           ...prev,
           [upgrade.id]: (prev[upgrade.id] || 0) + 1,
@@ -379,8 +537,7 @@ export function useUpgrades(wallet) {
     [activeTemporary]
   );
 
-  // Same property from different upgrades multiplies.
-  // Same upgrade never stacks with itself (keyed by id).
+  // Combined reward multiplier: permanent + currently-active temps.
   const rewardMultiplier = useMemo(() => {
     let m = 1;
     if (ownedPermanent.has(UPGRADES.YOLO.id)) m *= UPGRADES.YOLO.rewardMultiplier;
@@ -388,6 +545,8 @@ export function useUpgrades(wallet) {
     return m;
   }, [ownedPermanent, isActive]);
 
+  // Combined patience drain multiplier: permanent + active temps.
+  // Teka (<1) slows drain; Dobleng / YOLO (>1) speed it up.
   const patienceDrainMultiplier = useMemo(() => {
     let m = 1;
     if (ownedPermanent.has(UPGRADES.YOLO.id)) m *= UPGRADES.YOLO.patienceDrainMultiplier;
@@ -406,21 +565,55 @@ export function useUpgrades(wallet) {
     });
   }, []);
 
-  // Called once when a new round starts — drops expired timers only.
+  /**
+   * Called ONCE at the start of each round (GameplayScreen mount).
+   * - Drops any already-expired actives.
+   * - Activates everything in the queued temporary list with a fresh timer.
+   * - Clears the queue so a mid-round re-render never re-triggers it.
+   */
   const startNewRound = useCallback(() => {
+    const now = Date.now();
+
     setActiveTemporary((prev) => {
-      const now = Date.now();
       const next = {};
+      // Keep actives that haven't expired yet.
       for (const [k, v] of Object.entries(prev)) {
         if (v.expiresAt !== null && v.expiresAt > now) next[k] = v;
       }
+      // Activate queued temps with a fresh timer. Same id re-bought
+      // just refreshes the timer — no duplication.
+      setQueuedTemporary((queue) => {
+        for (const id of queue) {
+          const def = UPGRADE_LIST.find((u) => u.id === id);
+          if (!def || !def.durationMs) continue;
+          next[id] = { expiresAt: now + def.durationMs };
+        }
+        return [];
+      });
       return next;
     });
   }, []);
 
+  // What's currently live — used by the HUD.
+  const activeList = useMemo(() => {
+    const now = Date.now();
+    return Object.entries(activeTemporary)
+      .filter(([, v]) => v.expiresAt === null || v.expiresAt > now)
+      .map(([id, v]) => {
+        const def = UPGRADE_LIST.find((u) => u.id === id);
+        const remainingMs = v.expiresAt === null ? null : Math.max(0, v.expiresAt - now);
+        return {
+          id,
+          name: def?.name ?? id,
+          remainingMs,
+        };
+      });
+  }, [activeTemporary]);
+
   return {
     ownedPermanent,
     activeTemporary,
+    activeList,
     isActive,
     rewardMultiplier,
     patienceDrainMultiplier,
@@ -430,114 +623,6 @@ export function useUpgrades(wallet) {
     startNewRound,
   };
 }
-</file>
-
-<file path="components/gameplayReusables/AchievementModal.js">
-import React from 'react';
-import PopupModal from '../PopupModal';
-
-export default function AchievementModal({ visible, achievement, onDismiss }) {
-  if (!achievement) return null;
-
-  //Generic popup modal to be passed with arguments
-  return (
-    <PopupModal
-      visible={visible}
-      title="Achievement Unlocked!"
-      message={achievement.title}
-      extraMessage={achievement.description}
-      buttonText="Nice!"
-      buttonColor="#FFE194"
-      onPress={onDismiss}
-    />
-  );
-}
-</file>
-
-<file path="components/gameplayReusables/MrRattyInflate.js">
-import React from 'react';
-import PopupModal from '../PopupModal';
-
-export default function MrRattyInflate({ visible, onDismiss }) {
-  return (
-      <PopupModal
-      visible={visible}
-      title={`Mr. Ratty will\nremember you`}
-      message="The next time Mr. Ratty will appear, prices will have a chance to inflate."
-      buttonText="uh..."
-      buttonColor="#FFE194" // Yellow
-      onPress={onDismiss}
-      />
-    );
-}
-</file>
-
-<file path="components/gameplayReusables/ShopOutcomeModal.js">
-import React from 'react';
-import PopupModal from '../PopupModal';
-
-export default function ShopOutcomeModal({ visible, outcome, onDismiss }) {
-  const isInflate = outcome === 'inflate';
-
-  return (
-    <PopupModal
-      visible={visible}
-      title={isInflate ? "Mr. Ratty will\nremember you" : "Thank you for\nyour patronage!"}
-      message={
-        isInflate 
-          ? "The next time Mr. Ratty will appear, prices will have a chance to inflate."
-          : "The next time Mr. Ratty will appear, prices will have a chance to get a discount."
-      }
-      buttonText={isInflate ? "uh..." : "Thank you!"}
-      buttonColor="#FFE194"
-      onPress={onDismiss}
-    />
-  );
-}
-</file>
-
-<file path="components/tests/DebugButton.js">
-import React from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
-import Text from '../AppText';
-
-/**
- * [TEST/DEBUG ONLY] Toggles level progression:
- *   not all unlocked -> unlock every level
- *   all unlocked     -> reset to Level 1
- *
- * To remove for release: delete this file, its usage in LevelSelectScreen,
- * and the DEBUG_LEVEL_TOGGLE parts of App.js (or set that flag to false).
- */
-export default function DebugButton({ allUnlocked, onPress }) {
-  return (
-    <TouchableOpacity
-      testID="debug-unlock-toggle"
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={styles.button}
-    >
-      <Text style={styles.label}>
-        {allUnlocked ? '[TEST] Reset to Level 1' : '[TEST] Unlock all levels'}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-const styles = StyleSheet.create({
-  button: {
-    alignSelf: 'center',
-    marginBottom: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: '#c0392b',
-    borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.85)',
-  },
-  label: { color: '#c0392b', fontWeight: '700', fontSize: 13 },
-});
 </file>
 
 <file path="components/AppText.js">
@@ -568,6 +653,93 @@ const AppText = React.forwardRef(function AppText({ style, ...rest }, ref) {
 });
 
 export default AppText;
+</file>
+
+<file path="components/GameSave.js">
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const SAVE_KEY = '@wormderya/save-v1';
+const SAVE_VERSION = 1;
+
+export const DEFAULT_SAVE = {
+  version: SAVE_VERSION,
+  unlockedLevels: [1],
+  currentLevelId: 1,
+  wallet: { currency: 0, priceStates: {} },
+  upgrades: { owned: [], consumables: {} },
+  achievements: { unlocked: [] },
+};
+
+function safeClone(obj) {
+  try {
+    return JSON.parse(JSON.stringify(obj));
+  } catch {
+    return { ...DEFAULT_SAVE };
+  }
+}
+
+export async function loadGameData() {
+  try {
+    const raw = await AsyncStorage.getItem(SAVE_KEY);
+    if (!raw) return safeClone(DEFAULT_SAVE);
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return safeClone(DEFAULT_SAVE);
+    return mergeWithDefaults(parsed);
+  } catch (err) {
+    if (__DEV__) console.warn('[GameSave] load failed, using defaults:', err?.message);
+    return safeClone(DEFAULT_SAVE);
+  }
+}
+
+export async function saveGameData(data) {
+  try {
+    const payload = { ...data, version: SAVE_VERSION };
+    await AsyncStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+    return true;
+  } catch (err) {
+    if (__DEV__) console.warn('[GameSave] save failed:', err?.message);
+    return false;
+  }
+}
+
+export async function clearGameData() {
+  try {
+    await AsyncStorage.removeItem(SAVE_KEY);
+    return true;
+  } catch (err) {
+    if (__DEV__) console.warn('[GameSave] clear failed:', err?.message);
+    return false;
+  }
+}
+
+// Merge in-memory state over defaults so missing fields don't crash.
+function mergeWithDefaults(saved) {
+  const base = safeClone(DEFAULT_SAVE);
+  return {
+    version: SAVE_VERSION,
+    unlockedLevels: Array.isArray(saved.unlockedLevels) && saved.unlockedLevels.length
+      ? saved.unlockedLevels.filter((n) => Number.isInteger(n))
+      : base.unlockedLevels,
+    currentLevelId: Number.isInteger(saved.currentLevelId) ? saved.currentLevelId : base.currentLevelId,
+    wallet: {
+      currency: Number.isFinite(saved.wallet?.currency) ? saved.wallet.currency : base.wallet.currency,
+      priceStates: saved.wallet?.priceStates && typeof saved.wallet.priceStates === 'object'
+        ? saved.wallet.priceStates
+        : base.wallet.priceStates,
+    },
+    upgrades: {
+      owned: Array.isArray(saved.upgrades?.owned) ? saved.upgrades.owned.filter((s) => typeof s === 'string') : base.upgrades.owned,
+      consumables: saved.upgrades?.consumables && typeof saved.upgrades.consumables === 'object'
+        ? saved.upgrades.consumables
+        : base.upgrades.consumables,
+    },
+    achievements: {
+      unlocked: Array.isArray(saved.achievements?.unlocked)
+        ? saved.achievements.unlocked.filter((s) => typeof s === 'string')
+        : base.achievements.unlocked,
+    },
+  };
+}
 </file>
 
 <file path="components/PauseModal.js">
@@ -661,50 +833,6 @@ export default function ShopOutcomeModal({ visible, outcome, onDismiss }) {
     />
   );
 }
-</file>
-
-<file path=".gitignore">
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
-node_modules/
-
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
-
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-# generated native folders
-/ios
-/android
 </file>
 
 <file path="index.js">
@@ -886,272 +1014,64 @@ export const ACHIEVEMENTS = {
 };
 </file>
 
-<file path="components/gameplayReusables/CustomerMood.js">
-import React, { forwardRef, useState, useEffect, useRef, useImperativeHandle } from 'react';
-import { Image, StyleSheet } from 'react-native';
+<file path="components/tests/DebugButton.js">
+import React from 'react';
+import { TouchableOpacity, StyleSheet, View } from 'react-native';
+import Text from '../AppText';
 
-const MOOD_HAPPY = require('../../assets/Placeholder/CustomerPatienceBar_Happy.png');
-const MOOD_IMPATIENT = require('../../assets/Placeholder/CustomerPatienceBar_Impatient.png');
-const MOOD_ANGRY = require('../../assets/Placeholder/CustomerPatienceBar_Angry.png');
-
-function getMoodImageSource(patience) {
-  if (patience > 70) return MOOD_HAPPY;
-  if (patience > 30) return MOOD_IMPATIENT;
-  return MOOD_ANGRY;
-}
-
-const CustomerMood = forwardRef(({
-  maxPatience = 100,
-  decayRateMs = 4000,
-  drainMultiplier = 1, // <1 slower drain, >1 faster. Applied to decayRateMs.
-  onCustomerLeft,
-  onPatienceChange,
-  style,
-}, ref) => {
-  const [patience, setPatience] = useState(maxPatience);
-  const hasLeftRef = useRef(false);
-
-  // Read multiplier through a ref so mid-customer changes take effect
-  // without resetting the interval (which would "heal" the customer).
-  const drainRef = useRef(drainMultiplier);
-  drainRef.current = drainMultiplier;
-
-  // Passive decay. Reschedules on every tick so a live multiplier change
-  // is honored without remounting the customer.
-  useEffect(() => {
-    let intervalId;
-    let cancelled = false;
-
-    const schedule = () => {
-      if (cancelled) return;
-      const mult = drainRef.current || 1;
-      const base = Math.max(100, decayRateMs / mult);
-      intervalId = setInterval(() => {
-        setPatience((prev) => {
-          if (prev <= 0) return prev;
-          return Math.max(0, prev - 10);
-        });
-        clearInterval(intervalId);
-        schedule();
-      }, base);
-    };
-    schedule();
-    return () => {
-      cancelled = true;
-      clearInterval(intervalId);
-    };
-  }, [decayRateMs]);
-
-  useEffect(() => {
-    if (patience <= 0 && !hasLeftRef.current) {
-      hasLeftRef.current = true;
-      onCustomerLeft?.();
-    }
-  }, [patience, onCustomerLeft]);
-
-  useEffect(() => {
-    onPatienceChange?.(patience);
-  }, [patience, onPatienceChange]);
-
-  const applyWrongWordPenalty = (penaltyAmount = 15) => {
-    if (hasLeftRef.current) return;
-    setPatience((prev) => Math.max(0, prev - penaltyAmount));
-  };
-
-  const restorePatience = (restoreAmount = 20) => {
-    if (hasLeftRef.current) return;
-    setPatience((prev) => Math.min(maxPatience, prev + restoreAmount));
-  };
-
-  const getPatience = () => patience;
-
-  useImperativeHandle(ref, () => ({
-    applyWrongWordPenalty,
-    restorePatience,
-    getPatience,
-  }));
-
+/**
+ * [TEST/DEBUG ONLY] Level-select debug controls.
+ *   - unlock toggle (existing)
+ *   - wipe local save and reset to a fresh game
+ */
+export default function DebugButton({ allUnlocked, onPress, onResetSave }) {
   return (
-    <Image
-      source={getMoodImageSource(patience)}
-      style={[styles.patienceMeter, style]}
-      resizeMode="contain"
-    />
-  );
-});
+    <View style={styles.row}>
+      <TouchableOpacity
+        testID="debug-unlock-toggle"
+        onPress={onPress}
+        activeOpacity={0.7}
+        style={styles.button}
+      >
+        <Text style={styles.label}>
+          {allUnlocked ? '[TEST] Reset to Level 1' : '[TEST] Unlock all levels'}
+        </Text>
+      </TouchableOpacity>
 
-export default CustomerMood;
+      {onResetSave && (
+        <TouchableOpacity
+          testID="debug-wipe-save"
+          onPress={onResetSave}
+          activeOpacity={0.7}
+          style={[styles.button, styles.danger]}
+        >
+          <Text style={[styles.label, styles.dangerLabel]}>[TEST] Wipe save</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-  patienceMeter: {
-    width: 94,
-    height: 130,
-    marginTop: -80,
+  row: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
   },
+  button: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#c0392b',
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+  },
+  label: { color: '#c0392b', fontWeight: '700', fontSize: 13 },
+  danger: { borderColor: '#7a1010' },
+  dangerLabel: { color: '#7a1010' },
 });
-</file>
-
-<file path="components/gameplayReusables/UseAchievements.js">
-import { useState, useCallback, useRef, useMemo } from 'react';
-
-/**
- * Checks achievements already completed.
- * unlocking an achievement can hand out its coin reward via wallet.addCurrency.
- *
- * Instantiate ONCE in App.js to not lose progress
- *
- * `queue` Checks two achievements going together
- *
- * Returned API:
- *   unlockedIds               Set of achievement ids already earned
- *   currentAchievement        the achievement object currently shown as
- *                             a popup, or null if none is up
- *   unlockAchievement(ach)    call when a condition is met; no-ops if
- *                             that achievement id was already earned
- *   dismissAchievement()      call when the popup's button is pressed
- */
-export function useAchievements(wallet) {
-  const [unlockedIds, setUnlockedIds] = useState(new Set());
-  const [queue, setQueue] = useState([]);
-
-  // setUnlockedIds is async, so reading `unlockedIds` directly inside
-  // unlockAchievement could see a stale value if two unlocks land in
-  // the same tick. Ref checks latest.
-  const unlockedRef = useRef(unlockedIds);
-  unlockedRef.current = unlockedIds;
-
-  const unlockAchievement = useCallback((achievement) => {
-    if (!achievement || unlockedRef.current.has(achievement.id)) return;
-
-    setUnlockedIds((prev) => {
-      const next = new Set(prev);
-      next.add(achievement.id);
-      return next;
-    });
-    setQueue((prev) => [...prev, achievement]);
-
-    if (achievement.coinReward) {
-      wallet.addCurrency(achievement.coinReward);
-    }
-  }, [wallet]);
-
-  const dismissAchievement = useCallback(() => {
-    setQueue((prev) => prev.slice(1));
-  }, []);
-
-  return useMemo(() => ({
-    unlockedIds,
-    currentAchievement: queue[0] ?? null,
-    unlockAchievement,
-    dismissAchievement,
-  }), [unlockedIds, queue, unlockAchievement, dismissAchievement]);
-}
-</file>
-
-<file path="components/gameplayReusables/UseWallet.js">
-import { useState, useCallback, useMemo } from 'react';
-
-const DISCOUNT_FACTOR = 0.5;
-const INFLATE_FACTOR = 1.5;
-
-// Currency per correctly-served word — kept FLAT and separate from
-// score/scoreMultiplier on purpose, so the shop's economy doesn't shift
-// every time a level's multiplier changes. Tuned against the Store's
-// static prices (10 / 20 / 50): ~2 words for the cheapest item, ~4 for
-// the middle one, ~10 for the priciest — was 1 word for all three
-// before, since currency used to just mirror the flat +50/word score.
-export const CURRENCY_PER_WORD = 5;
-
-/**
- * formatCurrency(amount)
- * ----------------------
- * "1234567" -> "1,234,567". Hand-rolled instead of toLocaleString so it
- * behaves the same on every JS engine (Hermes, JSC, web).
- */
-export function formatCurrency(amount) {
-  const whole = Math.max(0, Math.floor(Number(amount) || 0));
-  return String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
-
-/**
- * useWallet(initialCurrency)
- * ----------------------------
- * Owns currency + each shop item's discount/inflate price state.
- * Instantiate ONCE in App.js (not inside GameplayScreen/StoreScreen —
- * both of those remount/switch away regularly, which would wipe
- * currency and the discount/inflate marks that are meant to persist
- * between visits).
- *
- * Doesn't know what the items ARE — StoreScreen passes in itemId +
- * basePrice per call, so this stays reusable without needing its own
- * copy of the item list.
- *
- * Returned API:
- *   currency                              live coin balance
- *   addCurrency(amount)                   called from useScoreSystem's onCurrencyEarned
- *   getEffectivePrice(itemId, basePrice)  basePrice adjusted for that item's discount/inflate state
- *   canAfford(itemId, basePrice)
- *   buyItem(itemId, basePrice, allItemIds)      -> { success, outcome: 'discount' | 'insufficient' }
- *   declineOffer(allItemIds)                    -> { outcome: 'inflate' }
- */
-export function useWallet(initialCurrency = 0) {
-  const [currency, setCurrency] = useState(initialCurrency);
-  const [priceStates, setPriceStates] = useState({}); // itemId -> 'discount' | 'inflated'
-
-  // Earning only: a zero/negative/NaN amount is ignored so this can never
-  // be used to spend. Spending goes through buyItem.
-  const addCurrency = useCallback((amount) => {
-    if (!(amount > 0)) return;
-    setCurrency((prev) => prev + amount);
-  }, []);
-
-  const getEffectivePrice = useCallback((itemId, basePrice) => {
-    const state = priceStates[itemId];
-    if (state === 'discount') return Math.round(basePrice * DISCOUNT_FACTOR);
-    if (state === 'inflated') return Math.round(basePrice * INFLATE_FACTOR);
-    return basePrice;
-  }, [priceStates]);
-
-  const canAfford = useCallback(
-    (itemId, basePrice) => currency >= getEffectivePrice(itemId, basePrice),
-    [currency, getEffectivePrice]
-  );
-
-  // Buying: pay the effective price, clear this item's own price state
-  // (its discount, if any, is used up), then mark a DIFFERENT random
-  // item on discount for next visit.
-  const buyItem = useCallback((itemId, basePrice, allItemIds) => {
-    const price = getEffectivePrice(itemId, basePrice);
-    if (currency < price) return { success: false, outcome: 'insufficient' };
-
-    setCurrency((prev) => prev - price);
-    setPriceStates((prev) => {
-      const next = { ...prev, [itemId]: undefined };
-      const others = allItemIds.filter((id) => id !== itemId);
-      const lucky = others[Math.floor(Math.random() * others.length)];
-      if (lucky) next[lucky] = 'discount';
-      return next;
-    });
-
-    return { success: true, outcome: 'discount' };
-  }, [currency, getEffectivePrice]);
-
-  // Declining: mark a random item price-increased for next visit.
-  const declineOffer = useCallback((allItemIds) => {
-    const target = allItemIds[Math.floor(Math.random() * allItemIds.length)];
-    setPriceStates((prev) => ({ ...prev, [target]: 'inflated' }));
-    return { outcome: 'inflate' };
-  }, []);
-
-  return useMemo(() => ({
-    currency,
-    addCurrency,
-    getEffectivePrice,
-    canAfford,
-    buyItem,
-    declineOffer,
-  }), [currency, addCurrency, getEffectivePrice, canAfford, buyItem, declineOffer]);
-}
 </file>
 
 <file path="components/CountdownSequence.js">
@@ -1392,61 +1312,6 @@ const styles = StyleSheet.create({
 });
 </file>
 
-<file path="components/VolumeSlider.js">
-import React from "react";
-import { View, StyleSheet } from 'react-native';
-import Text from './AppText';
-import Slider from "@react-native-community/slider";
-
-/**
- * VolumeSlider
- * ----------------------------------------------------------------------
- * A single labeled row: "Label" above a slider. Used for Master Volume,
- * Music Volume, and Sound Effects (SFX) in SettingsScreen, but generic
- * enough to reuse for any other 0–1 value slider later on.
- *
- * Requires: @react-native-community/slider
- *   npx expo install @react-native-community/slider
- * ----------------------------------------------------------------------
- */
-
-export default function VolumeSlider({ label, value, onValueChange, style }) {
-  return (
-    <View style={[styles.row, style]}>
-      <Text style={styles.label}>{label}</Text>
-      <Slider
-        style={styles.slider}
-        minimumValue={0}
-        maximumValue={1}
-        value={value}
-        onValueChange={onValueChange}
-        minimumTrackTintColor="#4caf50"
-        maximumTrackTintColor="#f0e6d2"
-        thumbTintColor="#ffffff"
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  row: {
-    width: "100%",
-  },
-  label: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#5c3a21",
-    marginBottom: 10,
-  },
-  slider: {
-    width: "80%",
-    height: 40,
-    alignSelf: "center",
-    transform: [{ scale: 1.25 }],
-  },
-});
-</file>
-
 <file path="levels/RushHourConfig.js">
 /**
  * rushHourConfig
@@ -1601,6 +1466,53 @@ export function getRushHourLevelConfig(stage = 1) {
     rattyCooldownMs: s.rattyCooldownMs,
   });
 }
+</file>
+
+<file path=".gitignore">
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+
+# Repomix
+repomix-output.xml
 </file>
 
 <file path="app.json">
@@ -2005,6 +1917,111 @@ export function calculateScore(word, multiplier = 1) {
 }
 </file>
 
+<file path="components/gameplayReusables/CustomerMood.js">
+import React, { forwardRef, useState, useEffect, useRef, useImperativeHandle } from 'react';
+import { Image, StyleSheet } from 'react-native';
+
+const MOOD_HAPPY = require('../../assets/Placeholder/CustomerPatienceBar_Happy.png');
+const MOOD_IMPATIENT = require('../../assets/Placeholder/CustomerPatienceBar_Impatient.png');
+const MOOD_ANGRY = require('../../assets/Placeholder/CustomerPatienceBar_Angry.png');
+
+function getMoodImageSource(patience) {
+  if (patience > 70) return MOOD_HAPPY;
+  if (patience > 30) return MOOD_IMPATIENT;
+  return MOOD_ANGRY;
+}
+
+const CustomerMood = forwardRef(({
+  maxPatience = 100,
+  decayRateMs = 4000,
+  drainMultiplier = 1, // <1 slower drain, >1 faster. Applied to decayRateMs.
+  onCustomerLeft,
+  onPatienceChange,
+  style,
+}, ref) => {
+  const [patience, setPatience] = useState(maxPatience);
+  const hasLeftRef = useRef(false);
+
+  // Read multiplier through a ref so mid-customer changes take effect
+  // without resetting the interval (which would "heal" the customer).
+  const drainRef = useRef(drainMultiplier);
+  drainRef.current = drainMultiplier;
+
+  // Passive decay. Reschedules on every tick so a live multiplier change
+  // is honored without remounting the customer.
+  useEffect(() => {
+    let intervalId;
+    let cancelled = false;
+
+    const schedule = () => {
+      if (cancelled) return;
+      const mult = drainRef.current || 1;
+      const base = Math.max(100, decayRateMs / mult);
+      intervalId = setInterval(() => {
+        setPatience((prev) => {
+          if (prev <= 0) return prev;
+          return Math.max(0, prev - 10);
+        });
+        clearInterval(intervalId);
+        schedule();
+      }, base);
+    };
+    schedule();
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [decayRateMs]);
+
+  useEffect(() => {
+    if (patience <= 0 && !hasLeftRef.current) {
+      hasLeftRef.current = true;
+      onCustomerLeft?.();
+    }
+  }, [patience, onCustomerLeft]);
+
+  useEffect(() => {
+    onPatienceChange?.(patience);
+  }, [patience, onPatienceChange]);
+
+  const applyWrongWordPenalty = (penaltyAmount = 15) => {
+    if (hasLeftRef.current) return;
+    setPatience((prev) => Math.max(0, prev - penaltyAmount));
+  };
+
+  const restorePatience = (restoreAmount = 20) => {
+    if (hasLeftRef.current) return;
+    setPatience((prev) => Math.min(maxPatience, prev + restoreAmount));
+  };
+
+  const getPatience = () => patience;
+
+  useImperativeHandle(ref, () => ({
+    applyWrongWordPenalty,
+    restorePatience,
+    getPatience,
+  }));
+
+  return (
+    <Image
+      source={getMoodImageSource(patience)}
+      style={[styles.patienceMeter, style]}
+      resizeMode="contain"
+    />
+  );
+});
+
+export default CustomerMood;
+
+const styles = StyleSheet.create({
+  patienceMeter: {
+    width: 94,
+    height: 130,
+    marginTop: -80,
+  },
+});
+</file>
+
 <file path="components/gameplayReusables/Font.js">
 // Central font family names. Loaded in App.js via useFonts.
 export const FONT_REGULAR = 'PixelifySans_400Regular';
@@ -2035,49 +2052,163 @@ export default function MrRattyDiscount({ visible, onDismiss }) {
 }
 </file>
 
-<file path="components/gameplayReusables/UseScoreSystem.js">
-import { useState, useCallback } from 'react';
+<file path="components/gameplayReusables/UseAchievements.js">
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 
-export function computeStars(finalScore, targetScore) {
-  if (!targetScore || finalScore < targetScore) return 0;
-  if (finalScore >= targetScore * 2) return 3;
-  if (finalScore >= targetScore * 1.5) return 2;
-  return 1;
+/**
+ * useAchievements(wallet, { initialState, onChange })
+ * - initialState: { unlocked: [ids] } loaded from save
+ * - onChange(snapshot): fired on change; App persists it
+ */
+export function useAchievements(wallet, { initialState, onChange } = {}) {
+  const [unlockedIds, setUnlockedIds] = useState(
+    () => new Set(initialState?.unlocked ?? [])
+  );
+  const [queue, setQueue] = useState([]);
+
+  const unlockedRef = useRef(unlockedIds);
+  unlockedRef.current = unlockedIds;
+
+  // Notify with a plain array — Set isn't JSON-safe.
+  const notify = useCallback(() => {
+    if (!onChange) return;
+    onChange({ unlocked: Array.from(unlockedRef.current) });
+  }, [onChange]);
+
+  useEffect(() => {
+    notify();
+  }, [unlockedIds, notify]);
+
+  const unlockAchievement = useCallback(
+    (achievement) => {
+      if (!achievement || unlockedRef.current.has(achievement.id)) return;
+
+      setUnlockedIds((prev) => {
+        const next = new Set(prev);
+        next.add(achievement.id);
+        return next;
+      });
+      setQueue((prev) => [...prev, achievement]);
+
+      if (achievement.coinReward) {
+        wallet.addCurrency(achievement.coinReward);
+      }
+    },
+    [wallet]
+  );
+
+  const dismissAchievement = useCallback(() => {
+    setQueue((prev) => prev.slice(1));
+  }, []);
+
+  return useMemo(
+    () => ({
+      unlockedIds,
+      currentAchievement: queue[0] ?? null,
+      unlockAchievement,
+      dismissAchievement,
+    }),
+    [unlockedIds, queue, unlockAchievement, dismissAchievement]
+  );
+}
+</file>
+
+<file path="components/gameplayReusables/UseWallet.js">
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+
+const DISCOUNT_FACTOR = 0.5;
+const INFLATE_FACTOR = 1.5;
+
+export const CURRENCY_PER_WORD = 5;
+
+export function formatCurrency(amount) {
+  const whole = Math.max(0, Math.floor(Number(amount) || 0));
+  return String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
 /**
- * useScoreSystem({ onCurrencyEarned, getRewardMultiplier })
- * Owns in-level SCORE only (can only go up). Currency lives in useWallet.
- * `getRewardMultiplier` is called fresh per word so live upgrade
- * multipliers apply without re-creating addScoreFromWord.
+ * useWallet(initialCurrency, { initialState, onChange })
+ * - initialState: { currency, priceStates } loaded from save
+ * - onChange(snapshot): fired after any change; App persists it
  */
-export const useScoreSystem = ({ onCurrencyEarned, getRewardMultiplier } = {}) => {
-  const [score, setScore] = useState(0);
+export function useWallet(initialCurrency = 0, { initialState, onChange } = {}) {
+  const [currency, setCurrency] = useState(
+    initialState?.currency ?? initialCurrency
+  );
+  const [priceStates, setPriceStates] = useState(initialState?.priceStates ?? {});
 
-  const addScoreFromWord = useCallback(
-    (word, timeBonus = 1, activeMultiplier = 1) => {
-      if (!word || word.length < 3) return 0;
-      const basePoints = 50;
-      const upgradeMult = getRewardMultiplier ? getRewardMultiplier() : 1;
-      const earnedPoints = Math.round(
-        basePoints * timeBonus * activeMultiplier * upgradeMult
-      );
-      if (!(earnedPoints > 0)) return 0;
+  // Snapshot refs so onChange always sees latest without re-subscribing.
+  const snapRef = useRef({ currency, priceStates });
+  snapRef.current = { currency, priceStates };
 
-      setScore((prev) => prev + earnedPoints);
-      onCurrencyEarned?.(earnedPoints);
-      return earnedPoints;
+  const notify = useCallback(() => {
+    if (!onChange) return;
+    const { currency: c, priceStates: p } = snapRef.current;
+    onChange({ currency: c, priceStates: p });
+  }, [onChange]);
+
+  // Fire only on real value changes.
+  useEffect(() => {
+    notify();
+  }, [currency, priceStates, notify]);
+
+  const addCurrency = useCallback((amount) => {
+    if (!(amount > 0)) return;
+    setCurrency((prev) => prev + amount);
+  }, []);
+
+  const getEffectivePrice = useCallback(
+    (itemId, basePrice) => {
+      const state = priceStates[itemId];
+      if (state === 'discount') return Math.round(basePrice * DISCOUNT_FACTOR);
+      if (state === 'inflated') return Math.round(basePrice * INFLATE_FACTOR);
+      return basePrice;
     },
-    [onCurrencyEarned, getRewardMultiplier]
+    [priceStates]
   );
 
-  const getStarRating = useCallback(
-    (targetScore) => computeStars(score, targetScore),
-    [score]
+  const canAfford = useCallback(
+    (itemId, basePrice) => currency >= getEffectivePrice(itemId, basePrice),
+    [currency, getEffectivePrice]
   );
 
-  return { score, addScoreFromWord, getStarRating };
-};
+  const buyItem = useCallback(
+    (itemId, basePrice, allItemIds) => {
+      const price = getEffectivePrice(itemId, basePrice);
+      if (currency < price) return { success: false, outcome: 'insufficient' };
+
+      setCurrency((prev) => prev - price);
+      setPriceStates((prev) => {
+        const next = { ...prev, [itemId]: undefined };
+        const others = allItemIds.filter((id) => id !== itemId);
+        const lucky = others[Math.floor(Math.random() * others.length)];
+        if (lucky) next[lucky] = 'discount';
+        return next;
+      });
+
+      return { success: true, outcome: 'discount' };
+    },
+    [currency, getEffectivePrice]
+  );
+
+  const declineOffer = useCallback((allItemIds) => {
+    const target = allItemIds[Math.floor(Math.random() * allItemIds.length)];
+    setPriceStates((prev) => ({ ...prev, [target]: 'inflated' }));
+    return { outcome: 'inflate' };
+  }, []);
+
+  return useMemo(
+    () => ({
+      currency,
+      addCurrency,
+      getEffectivePrice,
+      canAfford,
+      buyItem,
+      declineOffer,
+    }),
+    [currency, addCurrency, getEffectivePrice, canAfford, buyItem, declineOffer]
+  );
+}
 </file>
 
 <file path="components/AppButton.js">
@@ -2358,6 +2489,61 @@ const styles = StyleSheet.create({
 });
 
 export { DEFAULT_SIZE as LEVEL_BUTTON_DEFAULT_SIZE };
+</file>
+
+<file path="components/VolumeSlider.js">
+import React from "react";
+import { View, StyleSheet } from 'react-native';
+import Text from './AppText';
+import Slider from "@react-native-community/slider";
+
+/**
+ * VolumeSlider
+ * ----------------------------------------------------------------------
+ * A single labeled row: "Label" above a slider. Used for Master Volume,
+ * Music Volume, and Sound Effects (SFX) in SettingsScreen, but generic
+ * enough to reuse for any other 0–1 value slider later on.
+ *
+ * Requires: @react-native-community/slider
+ *   npx expo install @react-native-community/slider
+ * ----------------------------------------------------------------------
+ */
+
+export default function VolumeSlider({ label, value, onValueChange, style }) {
+  return (
+    <View style={[styles.row, style]}>
+      <Text style={styles.label}>{label}</Text>
+      <Slider
+        style={styles.slider}
+        minimumValue={0}
+        maximumValue={1}
+        value={value}
+        onValueChange={onValueChange}
+        minimumTrackTintColor="#4caf50"
+        maximumTrackTintColor="#f0e6d2"
+        thumbTintColor="#ffffff"
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  row: {
+    width: "100%",
+  },
+  label: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#5c3a21",
+    marginBottom: 10,
+  },
+  slider: {
+    width: "80%",
+    height: 40,
+    alignSelf: "center",
+    transform: [{ scale: 1.25 }],
+  },
+});
 </file>
 
 <file path="screens/SplashScreen.js">
@@ -2747,6 +2933,51 @@ const LevelTimer = ({
 export default LevelTimer;
 </file>
 
+<file path="components/gameplayReusables/UseScoreSystem.js">
+import { useState, useCallback } from 'react';
+
+export function computeStars(finalScore, targetScore) {
+  if (!targetScore || finalScore < targetScore) return 0;
+  if (finalScore >= targetScore * 2) return 3;
+  if (finalScore >= targetScore * 1.5) return 2;
+  return 1;
+}
+
+/**
+ * useScoreSystem({ onCurrencyEarned, getRewardMultiplier })
+ * Owns in-level SCORE only (can only go up). Currency lives in useWallet.
+ * `getRewardMultiplier` is called fresh per word so live upgrade
+ * multipliers apply without re-creating addScoreFromWord.
+ */
+export const useScoreSystem = ({ onCurrencyEarned, getRewardMultiplier } = {}) => {
+  const [score, setScore] = useState(0);
+
+  const addScoreFromWord = useCallback(
+    (word, timeBonus = 1, activeMultiplier = 1) => {
+      if (!word || word.length < 3) return 0;
+      const basePoints = 50;
+      const upgradeMult = getRewardMultiplier ? getRewardMultiplier() : 1;
+      const earnedPoints = Math.round(
+        basePoints * timeBonus * activeMultiplier * upgradeMult
+      );
+      if (!(earnedPoints > 0)) return 0;
+
+      setScore((prev) => prev + earnedPoints);
+      onCurrencyEarned?.(earnedPoints);
+      return earnedPoints;
+    },
+    [onCurrencyEarned, getRewardMultiplier]
+  );
+
+  const getStarRating = useCallback(
+    (targetScore) => computeStars(score, targetScore),
+    [score]
+  );
+
+  return { score, addScoreFromWord, getStarRating };
+};
+</file>
+
 <file path="components/SlideshowSequence.js">
 import React, { useState } from "react";
 import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
@@ -3011,237 +3242,6 @@ const styles = StyleSheet.create({
 });
 </file>
 
-<file path="screens/LevelSelectScreen.js">
-import React, { useRef, useState } from "react";
-import {
-  View,
-  Image,
-  StyleSheet,
-  ScrollView,
-  StatusBar,
-  ImageBackground,
-  TouchableOpacity,
-  Platform,
-  useWindowDimensions,
-} from "react-native";
-import { hasLevelPreset } from "../levels/levelPresets";
-import DebugButton from "../components/tests/DebugButton"; // [TEST/DEBUG]
-
-const isLevelLocked = (lvl, unlockedLevels, lockedLevels) =>
-  !hasLevelPreset(lvl.id) ||
-  lockedLevels.includes(lvl.id) ||
-  !unlockedLevels.includes(lvl.id);
-
-const LEVELS = [
-  { id: 1, image: require("../assets/Final/levels/Level_1_Sinangag.png") },
-  { id: 2, image: require("../assets/Final/levels/Level_2_Adobo.png") },
-  { id: 3, image: require("../assets/Final/levels/Level_3_Sinigang-na-Bangus.png") },
-  { id: 4, image: require("../assets/Final/levels/Level_4_Boss_kare-kare.png") },
-];
-
-
-const IMAGE_WIDTH_RATIO = 0.70;
-const IMAGE_HEIGHT_RATIO = 0.38;
-const BOTTOM_OFFSET_RATIO = 0.10;
-const IMAGE_DROP_RATIO = 0.03;
-
-
-//  DEBUG BUTTON TOGGLE 
-
-const ENABLE_DEBUG_BUTTON = true;
-
-
-// [TEST/DEBUG] V
-const DEBUG_TOP_RATIO = 0.17;
-
-
-const SHOW_DEBUG_BUTTON = ENABLE_DEBUG_BUTTON && __DEV__;
-
-function LevelImage({ level, locked, onPlay, width, height, drop }) {
-  return (
-    <TouchableOpacity
-      activeOpacity={0.85}
-      disabled={locked}
-      onPress={onPlay}
-      style={{
-        width,
-        height,
-        opacity: locked ? 0.5 : 1,
-        transform: [{ translateY: drop }],
-      }}
-    >
-      <Image source={level.image} style={styles.levelImage} resizeMode="contain" />
-    </TouchableOpacity>
-  );
-}
-
-export default function LevelSelectScreen({
-  onSelectLevel,
-  onBack,
-  unlockedLevels = [1],
-  lockedLevels = [],
-  onDebugToggle, // [TEST/DEBUG]
-  debugAllUnlocked = false, // [TEST/DEBUG]
-}) {
-  const { width, height } = useWindowDimensions();
-
-  const pageWidth = width;
-  const imageWidth = Math.round(width * IMAGE_WIDTH_RATIO);
-  const imageHeight = Math.round(height * IMAGE_HEIGHT_RATIO);
-  const imageDrop = Math.round(height * IMAGE_DROP_RATIO);
-
-  const backSize = Math.round(Math.min(width * 0.65, 56));
-  const topInset =
-    (Platform.OS === "android" ? StatusBar.currentHeight ?? 24 : 44) + 8;
-
-  const debugTop = Math.round(height * DEBUG_TOP_RATIO);
-
-  const scrollRef = useRef(null);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-
-  const snapOffsets = LEVELS.map((_, i) => i * pageWidth);
-
-  const indexFromOffset = (x) =>
-    Math.min(LEVELS.length - 1, Math.max(0, Math.round(x / pageWidth)));
-
-  const handleMomentumEnd = (e) => {
-    setSelectedIndex(indexFromOffset(e.nativeEvent.contentOffset.x));
-  };
-
-  const handleDragEnd = (e) => {
-    const { contentOffset, velocity } = e.nativeEvent;
-    const vx = velocity ? Math.abs(velocity.x) : 0;
-    if (vx < 0.1) {
-      const i = indexFromOffset(contentOffset.x);
-      setSelectedIndex(i);
-      scrollRef.current?.scrollTo({ x: i * pageWidth, animated: true });
-    }
-  };
-
-  const playLevel = (lvl) => {
-    if (isLevelLocked(lvl, unlockedLevels, lockedLevels)) return;
-    onSelectLevel && onSelectLevel(lvl.id);
-  };
-
-  return (
-    <ImageBackground
-      source={require("../assets/Final/LevelSelectionMainBG.png")}
-      style={styles.background}
-      resizeMode="cover"
-    >
-      <StatusBar barStyle="dark-content" />
-
-      <TouchableOpacity
-        activeOpacity={0.75}
-        onPress={onBack}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        style={[styles.backButton, { top: topInset, left: width * 0.04 }]}
-      >
-        <Image
-          source={require("../assets/Final/buttons/buttonLevelSelectBack.png")}
-          style={{ width: backSize, height: backSize }}
-          resizeMode="contain"
-        />
-      </TouchableOpacity>
-
-      <View
-        style={[
-          styles.carousel,
-          {
-            height: imageHeight,
-            bottom: Math.round(height * BOTTOM_OFFSET_RATIO),
-          },
-        ]}
-      >
-        <ScrollView
-          ref={scrollRef}
-          style={{ width: pageWidth, height: imageHeight }}
-          contentContainerStyle={{ alignItems: "center" }}
-          showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
-          horizontal
-          bounces={false}
-          overScrollMode="never"
-          nestedScrollEnabled
-          snapToOffsets={snapOffsets}
-          snapToEnd={false}
-          decelerationRate="fast"
-          disableIntervalMomentum
-          scrollEventThrottle={16}
-          onMomentumScrollEnd={handleMomentumEnd}
-          onScrollEndDrag={handleDragEnd}
-        >
-          {LEVELS.map((lvl) => (
-            <View
-              key={lvl.id}
-              style={[styles.page, { width: pageWidth, height: imageHeight }]}
-            >
-              <LevelImage
-                level={lvl}
-                locked={isLevelLocked(lvl, unlockedLevels, lockedLevels)}
-                onPlay={() => playLevel(lvl)}
-                width={imageWidth}
-                height={imageHeight}
-                drop={imageDrop}
-              />
-            </View>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* [TEST/DEBUG]*/}
-      {SHOW_DEBUG_BUTTON && onDebugToggle && (
-        <View
-          style={[styles.debugWrap, { top: debugTop }]}
-          pointerEvents="box-none"
-        >
-          <DebugButton allUnlocked={debugAllUnlocked} onPress={onDebugToggle} />
-        </View>
-      )}
-    </ImageBackground>
-  );
-}
-
-const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#ffebbd",
-    overflow: "hidden",
-  },
-
-  backButton: { position: "absolute", zIndex: 10 },
-
-  carousel: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    overflow: "hidden",
-    top: 560,
-  },
-  page: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  levelImage: {
-    width: "100%",
-    height: "100%",
-  },
-
-  // [TEST/DEBUG] 
-  debugWrap: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    marginTop: 40,
-    alignItems: "center",
-    zIndex: 20,
-  },
-});
-</file>
-
 <file path="screens/ModeSelectScreen.js">
 import React from "react";
 import {
@@ -3342,6 +3342,415 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
 });
+</file>
+
+<file path="components/gameplayReusables/WordInput/CurrentWordDisplay.js">
+import React, { useEffect, useRef } from 'react';
+import { Animated, Text, View, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import LetterTile, { TILE_SIZE, BLANK_RECTANGLE } from './LetterTile';
+import { useResultFeedbackAnimation } from './LetterAnimations';
+import { FONT_WARNING } from '../Font';
+import { DEFAULT_INPUT_BOX_COUNT } from './UseWordInput';
+
+const VALID_COLOR = '#2e7d32';
+const INVALID_COLOR = '#c62828';
+
+// "WORD — +score" line stays fully
+// visible before it fades out. Edit here for a global change, or pass a
+// different value as the resultFadeDelayMs prop to override per screen.
+export const DEFAULT_RESULT_FADE_DELAY_MS = 2000;
+const RESULT_FADE_DURATION_MS = 300;
+
+/**
+ * Purely presentational — renders `inputBoxCount` fixed slots (Wordle-style):
+ * filling rectangles. Reacts to `lastResult` through colors and shakes after resultFadeDelayMs. 
+ * useWordInput() doesn't know or care that this exists; 
+ * swap it for your own UI any time.
+ */
+export default function CurrentWordDisplay({
+  currentWord,
+  slots: slotsProp, // fixed-length box list from useWordInput (preferred; keeps gaps)
+  onSlotPress, // (boxIndex) => void — tapping an OCCUPIED box; empty boxes ignore taps
+  lastResult,
+  inputBoxCount = DEFAULT_INPUT_BOX_COUNT,
+  resultFadeDelayMs = DEFAULT_RESULT_FADE_DELAY_MS,
+}) {
+  const {
+    shakeX,
+    flashOpacity,
+    flashColor,
+    rippleScale,
+    rippleOpacity,
+    playValid,
+    playInvalid,
+  } = useResultFeedbackAnimation();
+
+  const resultOpacity = useRef(new Animated.Value(0)).current;
+  const fadeTimeoutRef = useRef(null);
+
+  // Track the specific result object we've already animated for, so we
+  // only fire once per submit rather than on every re-render.
+  const animatedResultRef = useRef(null);
+
+  useEffect(() => {
+    if (!lastResult || lastResult === animatedResultRef.current) return;
+    animatedResultRef.current = lastResult;
+    if (lastResult.valid) {
+      playValid();
+    } else {
+      playInvalid();
+    }
+
+    // Show the result line fully, then fade it out after the configured
+    // delay so it doesn't just sit there forever.
+    if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
+    resultOpacity.setValue(1);
+    fadeTimeoutRef.current = setTimeout(() => {
+      Animated.timing(resultOpacity, {
+        toValue: 0,
+        duration: RESULT_FADE_DURATION_MS,
+        useNativeDriver: true,
+      }).start();
+    }, resultFadeDelayMs);
+  }, [lastResult, playValid, playInvalid, resultOpacity, resultFadeDelayMs]);
+
+  // Clear any pending fade if the component unmounts mid-timeout.
+  useEffect(() => () => {
+    if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
+  }, []);
+
+  const flashBackgroundColor = flashColor.interpolate({
+    inputRange: [0, 1],
+    outputRange: [INVALID_COLOR, VALID_COLOR],
+  });
+  const rippleBackgroundColor = lastResult && lastResult.valid ? VALID_COLOR : INVALID_COLOR;
+
+  // Fixed-length slot list: real letters first, then empty placeholders
+  // Doesn't require all slot filled to pass the word
+  const slots = slotsProp ?? Array.from({ length: inputBoxCount }, (_, i) => (currentWord || [])[i] || null);
+
+  return (
+    <View style={styles.wrapper}>
+      <Animated.View style={[styles.row, { transform: [{ translateX: shakeX }] }]}>
+        {slots.map((letter, i) =>
+          letter ? (
+            // Whole box is the touch target, not just the glyph.
+            <TouchableOpacity
+              key={letter.id}
+              activeOpacity={0.7}
+              onPress={() => onSlotPress?.(i)}
+            >
+              <LetterTile character={letter.character} />
+            </TouchableOpacity>
+          ) : (
+            <Image
+              key={`empty-${i}`}
+              source={BLANK_RECTANGLE}
+              style={styles.emptySlot}
+              resizeMode="stretch"
+            />
+          )
+        )}
+
+        {/* Flash — a color wash over the whole row, red or green. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.overlay, { backgroundColor: flashBackgroundColor, opacity: flashOpacity }]}
+        />
+
+        {/* Ripple — only relevant/visible on a valid word; clipped by
+            the row's overflow:hidden*/}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.ripple,
+            {
+              backgroundColor: rippleBackgroundColor,
+              opacity: rippleOpacity,
+              transform: [{ scale: rippleScale }],
+            },
+          ]}
+        />
+      </Animated.View>
+
+      {/* Result line — absolutely positioned directly on top of the tile
+          row (a sibling of `row`, not a child, so it isn't clipped by
+          row's overflow:hidden) stops the tiles from shifting up/down every
+          time this text fades in or out. */}
+      {lastResult ? (
+        <Animated.Text
+          pointerEvents="none"
+          style={[
+            styles.resultText,
+            lastResult.valid ? styles.validText : styles.invalidText,
+            { opacity: resultOpacity },
+          ]}
+        >
+          {lastResult.valid
+            ? `${lastResult.word} — +${lastResult.score}`
+            : `${lastResult.word || '(empty)'} — Not a word/No Letters`}
+        </Animated.Text>
+      ) : null}
+    </View>
+  );
+}
+
+const ROW_MIN_HEIGHT = 46;
+
+const styles = StyleSheet.create({
+  wrapper: {
+    alignItems: 'center',
+    paddingVertical: 4,
+    width: '100%',
+    zIndex: 3, // table (GameplayScreen) sits at zIndex: 2 and overlaps this via negative marginTop
+    elevation: 3, // Android needs elevation in addition to zIndex for stacking order
+  },
+  row: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: ROW_MIN_HEIGHT,
+    minWidth: ROW_MIN_HEIGHT, // guarantees a visible frame even before any tiles mount
+    maxWidth: '90%',
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    alignSelf: 'center',
+    overflow: 'hidden', // keeps tiles, the flash, and the ripple all clipped to the row
+    position: 'relative',
+  },
+  emptySlot: {
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+    marginHorizontal: 3,
+    opacity: 0.5,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  ripple: {
+    position: 'absolute',
+    width: ROW_MIN_HEIGHT,
+    height: ROW_MIN_HEIGHT,
+    borderRadius: ROW_MIN_HEIGHT / 2,
+    top: 0,
+    left: 0,
+  },
+  resultText: {
+    position: 'absolute',
+    top: 4, // matches wrapper's paddingVertical, so it lines up over the row
+    left: 0,
+    right: 0,
+    height: ROW_MIN_HEIGHT,
+    lineHeight: ROW_MIN_HEIGHT, // vertically centers the single line of text over the row
+    textAlign: 'center',
+    fontFamily: FONT_WARNING,
+    fontSize: 12,
+    zIndex: 4, // above the row's own flash/ripple overlays
+    // Faint backdrop so the text stays legible over whatever tiles/blanks
+    // it's overlapping, without fully hiding them.
+    backgroundColor: 'rgba(255,255,255,0.85)',
+  },
+  validText: {
+    color: VALID_COLOR,
+  },
+  invalidText: {
+    color: INVALID_COLOR,
+  },
+});
+</file>
+
+<file path="components/gameplayReusables/WordInput/UseWordInput.js">
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
+import { isValidWord } from './WordValidator';
+import { calculateScore } from './ScoreSystem';
+import { DEFAULT_LEVEL_CONFIG } from './LevelConfig';
+/* global __DEV__ */ 
+
+// Number of player input boxes: how many letters the word being built can
+// hold before extra taps are ignored (and it auto-submits). Independent of
+// how many letters a conveyor belt holds. Edit this to change the default
+// everywhere, or pass a different value as useWordInput's third argument
+// (LevelConfig `inputBoxCount`) to override it for one screen/level.
+export const DEFAULT_INPUT_BOX_COUNT = 5;
+
+/**`onSubmit(result)` — This is the ONE place a submit can happen, so wiring
+ * scoring/patience off this callback instead of off a manual
+ * submitWord() call means an auto-submitted word scores and restores
+ * patience exactly the same as a manually-served one.
+ */
+// The input boxes are a fixed-length list of slots: null (empty) or
+// { id, character, beltIndex }. `id` is the conveyor letter's own id, so a
+// tapped-back slot returns that exact letter instance, never a lookalike.
+const fitSlots = (slots, n) => Array.from({ length: n }, (_, i) => slots[i] ?? null);
+
+export function useWordInput(   //Constuctor
+  conveyorRefs,
+  levelConfig = DEFAULT_LEVEL_CONFIG,
+  inputBoxCount = DEFAULT_INPUT_BOX_COUNT,
+  onSubmit
+) {
+  // slotsRef mirrors state so rapid taps in one frame always see the latest boxes.
+  const slotsRef = useRef(fitSlots([], inputBoxCount));
+  const [slotState, setSlotState] = useState(slotsRef.current);
+  const slots = useMemo(() => fitSlots(slotState, inputBoxCount), [slotState, inputBoxCount]);
+  // Filled letters only, in box order (gaps skipped) -> what gets validated/scored.
+  const currentWord = useMemo(() => slots.filter(Boolean), [slots]); // [{ id, character, beltIndex }]
+  const [lastResult, setLastResult] = useState(null); // { word, valid, score }
+
+  const commitSlots = useCallback((next) => {
+    slotsRef.current = next;
+    setSlotState(next);
+  }, []);
+
+  //guard against double-selecting the same letter id 
+  const selectedIdsRef = useRef(new Set());
+
+  const selectLetter = useCallback(
+    (letter, beltIndex) => {
+      if (!letter || !letter.active) return;
+      if (selectedIdsRef.current.has(letter.id)) return;
+      const current = fitSlots(slotsRef.current, inputBoxCount);
+      const emptyIndex = current.indexOf(null);
+      if (emptyIndex === -1) return; // every box is full — ignore further taps/keys until submit/reset
+
+      selectedIdsRef.current.add(letter.id);
+      // Fill the first empty box (a box freed by tapping it is reused; others don't shift).
+      const next = current.slice();
+      next[emptyIndex] = { id: letter.id, character: letter.character, beltIndex };
+      commitSlots(next);
+
+      if (__DEV__) {
+        console.log(`[WordInput] letter selected: "${letter.character}" (belt ${beltIndex}, id ${letter.id})`);
+      }
+
+      // Animation for removing letter once tapped
+      const belt = conveyorRefs[beltIndex]?.current;
+      belt?.removeLetterById(letter.id);  //Return back letter
+    },
+    [conveyorRefs, commitSlots, inputBoxCount]
+  );
+
+  const handleKeyPress = useCallback(
+    (rawChar) => {
+      const char = (rawChar || '').toUpperCase();
+      if (!/^[A-Z]$/.test(char)) return false; // not a single letter key
+      if (!fitSlots(slotsRef.current, inputBoxCount).includes(null)) return false; // every box is full
+
+      // Selection rule: first matching, available letter, scanning belts
+      // in the order they were passed in. Easy to change later (e.g. to
+      // "closest to center") without touching anything else here.
+      for (let i = 0; i < conveyorRefs.length; i++) {
+        const belt = conveyorRefs[i]?.current;
+        if (!belt) continue;
+        const match = belt
+          .getLetters() //read what's currently available
+          .find((l) => l.active && l.character === char && !selectedIdsRef.current.has(l.id));
+        if (match) {
+          selectLetter(match, i);
+          return true;
+        }
+      }
+      return false; // requested letter isn't available right now
+    },
+    [conveyorRefs, selectLetter, inputBoxCount]
+  );
+
+  // Keyboard input for web test
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const onKeyDown = (e) => {
+      if (e.key && e.key.length === 1) handleKeyPress(e.key);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleKeyPress]);
+
+  const resetWord = useCallback(() => {   //clear the whole current word without submitting
+    commitSlots(fitSlots([], inputBoxCount));
+    selectedIdsRef.current.clear();
+    // Note: this only clears the input system's own state. Letters
+    // already removed from the conveyor stay removed (they were consumed by
+    // the submit). To give ONE letter back, use returnLetterFromSlot.
+  }, [commitSlots, inputBoxCount]);
+
+  // Tap an occupied input box to undo that pick: the box empties and the SAME
+  // conveyor letter (matched by id, not character) goes back onto its belt.
+  // Empty box -> no-op. Never submits, validates, scores, or penalises.
+  const returnLetterFromSlot = useCallback(
+    (slotIndex) => {
+      const current = fitSlots(slotsRef.current, inputBoxCount);
+      const entry = current[slotIndex];
+      if (!entry) return false;
+
+      const next = current.slice();
+      next[slotIndex] = null;
+      commitSlots(next);
+      selectedIdsRef.current.delete(entry.id); // selectable again
+
+      conveyorRefs[entry.beltIndex]?.current?.restoreLetter({ id: entry.id, character: entry.character });
+
+      if (__DEV__) {
+        console.log(`[WordInput] letter returned: "${entry.character}" (box ${slotIndex}, belt ${entry.beltIndex}, id ${entry.id})`);
+      }
+      return true;
+    },
+    [conveyorRefs, commitSlots, inputBoxCount]
+  );
+
+  // Undo just the last selected letter (returns it to its belt)
+  const removeLastLetter = useCallback(() => {
+    const current = fitSlots(slotsRef.current, inputBoxCount);
+    for (let i = current.length - 1; i >= 0; i--) {
+      if (current[i]) return returnLetterFromSlot(i);
+    }
+    return false;
+  }, [inputBoxCount, returnLetterFromSlot]);
+
+  const submitWord = useCallback(() => {
+    const word = currentWord.map((l) => l.character).join('');
+    const valid = isValidWord(word);
+    const score = valid ? calculateScore(word, levelConfig.scoreMultiplier) : 0;
+    const result = { word, valid, score };
+
+    if (__DEV__) {
+      console.log(`[WordInput] submit: "${word}" -> ${valid ? `VALID (+${score})` : 'INVALID'}`);
+    }
+
+    setLastResult(result);
+    resetWord();
+    onSubmit?.(result); // <-- notifies the caller (e.g. GameplayScreen's handleWordSubmit)
+    return result;
+  }, [currentWord, levelConfig, resetWord, onSubmit]);
+
+  // Auto-submit the moment the player fills every slot. This reuses
+  // submitWord as-is. no separate "wrong animation" path
+  // to keep in sync and a full word that is valid gets scored the
+  // same way a manual submit would.
+  useEffect(() => {
+    if (inputBoxCount > 0 && currentWord.length >= inputBoxCount) {
+      submitWord();
+    }
+  }, [currentWord.length, inputBoxCount, submitWord]);
+
+  return {
+    slots,        //fixed-length [null | { id, character, beltIndex }]  one entry per input box
+    currentWord,  //[{ id, character, beltIndex }]  filled boxes only, in box order
+    returnLetterFromSlot, //(boxIndex) tap an occupied box to send its letter back to the belt
+    lastResult,   //{ word, valid, score } | null   result of the last submit
+    selectLetter,  //call from a belt's onLetterPress
+    handleKeyPress,  //call from a keyboard listener
+    submitWord,     //validate + score + reset
+    resetWord,
+    removeLastLetter,
+    inputBoxCount,
+  };
+}
 </file>
 
 <file path="screens/SettingsScreen.js">
@@ -4012,530 +4421,6 @@ const styles = StyleSheet.create({
 });
 </file>
 
-<file path="components/gameplayReusables/WordInput/CurrentWordDisplay.js">
-import React, { useEffect, useRef } from 'react';
-import { Animated, Text, View, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import LetterTile, { TILE_SIZE, BLANK_RECTANGLE } from './LetterTile';
-import { useResultFeedbackAnimation } from './LetterAnimations';
-import { FONT_WARNING } from '../Font';
-import { DEFAULT_INPUT_BOX_COUNT } from './UseWordInput';
-
-const VALID_COLOR = '#2e7d32';
-const INVALID_COLOR = '#c62828';
-
-// "WORD — +score" line stays fully
-// visible before it fades out. Edit here for a global change, or pass a
-// different value as the resultFadeDelayMs prop to override per screen.
-export const DEFAULT_RESULT_FADE_DELAY_MS = 2000;
-const RESULT_FADE_DURATION_MS = 300;
-
-/**
- * Purely presentational — renders `inputBoxCount` fixed slots (Wordle-style):
- * filling rectangles. Reacts to `lastResult` through colors and shakes after resultFadeDelayMs. 
- * useWordInput() doesn't know or care that this exists; 
- * swap it for your own UI any time.
- */
-export default function CurrentWordDisplay({
-  currentWord,
-  slots: slotsProp, // fixed-length box list from useWordInput (preferred; keeps gaps)
-  onSlotPress, // (boxIndex) => void — tapping an OCCUPIED box; empty boxes ignore taps
-  lastResult,
-  inputBoxCount = DEFAULT_INPUT_BOX_COUNT,
-  resultFadeDelayMs = DEFAULT_RESULT_FADE_DELAY_MS,
-}) {
-  const {
-    shakeX,
-    flashOpacity,
-    flashColor,
-    rippleScale,
-    rippleOpacity,
-    playValid,
-    playInvalid,
-  } = useResultFeedbackAnimation();
-
-  const resultOpacity = useRef(new Animated.Value(0)).current;
-  const fadeTimeoutRef = useRef(null);
-
-  // Track the specific result object we've already animated for, so we
-  // only fire once per submit rather than on every re-render.
-  const animatedResultRef = useRef(null);
-
-  useEffect(() => {
-    if (!lastResult || lastResult === animatedResultRef.current) return;
-    animatedResultRef.current = lastResult;
-    if (lastResult.valid) {
-      playValid();
-    } else {
-      playInvalid();
-    }
-
-    // Show the result line fully, then fade it out after the configured
-    // delay so it doesn't just sit there forever.
-    if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
-    resultOpacity.setValue(1);
-    fadeTimeoutRef.current = setTimeout(() => {
-      Animated.timing(resultOpacity, {
-        toValue: 0,
-        duration: RESULT_FADE_DURATION_MS,
-        useNativeDriver: true,
-      }).start();
-    }, resultFadeDelayMs);
-  }, [lastResult, playValid, playInvalid, resultOpacity, resultFadeDelayMs]);
-
-  // Clear any pending fade if the component unmounts mid-timeout.
-  useEffect(() => () => {
-    if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
-  }, []);
-
-  const flashBackgroundColor = flashColor.interpolate({
-    inputRange: [0, 1],
-    outputRange: [INVALID_COLOR, VALID_COLOR],
-  });
-  const rippleBackgroundColor = lastResult && lastResult.valid ? VALID_COLOR : INVALID_COLOR;
-
-  // Fixed-length slot list: real letters first, then empty placeholders
-  // Doesn't require all slot filled to pass the word
-  const slots = slotsProp ?? Array.from({ length: inputBoxCount }, (_, i) => (currentWord || [])[i] || null);
-
-  return (
-    <View style={styles.wrapper}>
-      <Animated.View style={[styles.row, { transform: [{ translateX: shakeX }] }]}>
-        {slots.map((letter, i) =>
-          letter ? (
-            // Whole box is the touch target, not just the glyph.
-            <TouchableOpacity
-              key={letter.id}
-              activeOpacity={0.7}
-              onPress={() => onSlotPress?.(i)}
-            >
-              <LetterTile character={letter.character} />
-            </TouchableOpacity>
-          ) : (
-            <Image
-              key={`empty-${i}`}
-              source={BLANK_RECTANGLE}
-              style={styles.emptySlot}
-              resizeMode="stretch"
-            />
-          )
-        )}
-
-        {/* Flash — a color wash over the whole row, red or green. */}
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.overlay, { backgroundColor: flashBackgroundColor, opacity: flashOpacity }]}
-        />
-
-        {/* Ripple — only relevant/visible on a valid word; clipped by
-            the row's overflow:hidden*/}
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.ripple,
-            {
-              backgroundColor: rippleBackgroundColor,
-              opacity: rippleOpacity,
-              transform: [{ scale: rippleScale }],
-            },
-          ]}
-        />
-      </Animated.View>
-
-      {/* Result line — absolutely positioned directly on top of the tile
-          row (a sibling of `row`, not a child, so it isn't clipped by
-          row's overflow:hidden) stops the tiles from shifting up/down every
-          time this text fades in or out. */}
-      {lastResult ? (
-        <Animated.Text
-          pointerEvents="none"
-          style={[
-            styles.resultText,
-            lastResult.valid ? styles.validText : styles.invalidText,
-            { opacity: resultOpacity },
-          ]}
-        >
-          {lastResult.valid
-            ? `${lastResult.word} — +${lastResult.score}`
-            : `${lastResult.word || '(empty)'} — Not a word/No Letters`}
-        </Animated.Text>
-      ) : null}
-    </View>
-  );
-}
-
-const ROW_MIN_HEIGHT = 46;
-
-const styles = StyleSheet.create({
-  wrapper: {
-    alignItems: 'center',
-    paddingVertical: 4,
-    width: '100%',
-    zIndex: 3, // table (GameplayScreen) sits at zIndex: 2 and overlaps this via negative marginTop
-    elevation: 3, // Android needs elevation in addition to zIndex for stacking order
-  },
-  row: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: ROW_MIN_HEIGHT,
-    minWidth: ROW_MIN_HEIGHT, // guarantees a visible frame even before any tiles mount
-    maxWidth: '90%',
-    borderRadius: 12,
-    paddingHorizontal: 6,
-    alignSelf: 'center',
-    overflow: 'hidden', // keeps tiles, the flash, and the ripple all clipped to the row
-    position: 'relative',
-  },
-  emptySlot: {
-    width: TILE_SIZE,
-    height: TILE_SIZE,
-    marginHorizontal: 3,
-    opacity: 0.5,
-  },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  ripple: {
-    position: 'absolute',
-    width: ROW_MIN_HEIGHT,
-    height: ROW_MIN_HEIGHT,
-    borderRadius: ROW_MIN_HEIGHT / 2,
-    top: 0,
-    left: 0,
-  },
-  resultText: {
-    position: 'absolute',
-    top: 4, // matches wrapper's paddingVertical, so it lines up over the row
-    left: 0,
-    right: 0,
-    height: ROW_MIN_HEIGHT,
-    lineHeight: ROW_MIN_HEIGHT, // vertically centers the single line of text over the row
-    textAlign: 'center',
-    fontFamily: FONT_WARNING,
-    fontSize: 12,
-    zIndex: 4, // above the row's own flash/ripple overlays
-    // Faint backdrop so the text stays legible over whatever tiles/blanks
-    // it's overlapping, without fully hiding them.
-    backgroundColor: 'rgba(255,255,255,0.85)',
-  },
-  validText: {
-    color: VALID_COLOR,
-  },
-  invalidText: {
-    color: INVALID_COLOR,
-  },
-});
-</file>
-
-<file path="components/gameplayReusables/WordInput/UseWordInput.js">
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform } from 'react-native';
-import { isValidWord } from './WordValidator';
-import { calculateScore } from './ScoreSystem';
-import { DEFAULT_LEVEL_CONFIG } from './LevelConfig';
-/* global __DEV__ */ 
-
-// Number of player input boxes: how many letters the word being built can
-// hold before extra taps are ignored (and it auto-submits). Independent of
-// how many letters a conveyor belt holds. Edit this to change the default
-// everywhere, or pass a different value as useWordInput's third argument
-// (LevelConfig `inputBoxCount`) to override it for one screen/level.
-export const DEFAULT_INPUT_BOX_COUNT = 5;
-
-/**`onSubmit(result)` — This is the ONE place a submit can happen, so wiring
- * scoring/patience off this callback instead of off a manual
- * submitWord() call means an auto-submitted word scores and restores
- * patience exactly the same as a manually-served one.
- */
-// The input boxes are a fixed-length list of slots: null (empty) or
-// { id, character, beltIndex }. `id` is the conveyor letter's own id, so a
-// tapped-back slot returns that exact letter instance, never a lookalike.
-const fitSlots = (slots, n) => Array.from({ length: n }, (_, i) => slots[i] ?? null);
-
-export function useWordInput(   //Constuctor
-  conveyorRefs,
-  levelConfig = DEFAULT_LEVEL_CONFIG,
-  inputBoxCount = DEFAULT_INPUT_BOX_COUNT,
-  onSubmit
-) {
-  // slotsRef mirrors state so rapid taps in one frame always see the latest boxes.
-  const slotsRef = useRef(fitSlots([], inputBoxCount));
-  const [slotState, setSlotState] = useState(slotsRef.current);
-  const slots = useMemo(() => fitSlots(slotState, inputBoxCount), [slotState, inputBoxCount]);
-  // Filled letters only, in box order (gaps skipped) -> what gets validated/scored.
-  const currentWord = useMemo(() => slots.filter(Boolean), [slots]); // [{ id, character, beltIndex }]
-  const [lastResult, setLastResult] = useState(null); // { word, valid, score }
-
-  const commitSlots = useCallback((next) => {
-    slotsRef.current = next;
-    setSlotState(next);
-  }, []);
-
-  //guard against double-selecting the same letter id 
-  const selectedIdsRef = useRef(new Set());
-
-  const selectLetter = useCallback(
-    (letter, beltIndex) => {
-      if (!letter || !letter.active) return;
-      if (selectedIdsRef.current.has(letter.id)) return;
-      const current = fitSlots(slotsRef.current, inputBoxCount);
-      const emptyIndex = current.indexOf(null);
-      if (emptyIndex === -1) return; // every box is full — ignore further taps/keys until submit/reset
-
-      selectedIdsRef.current.add(letter.id);
-      // Fill the first empty box (a box freed by tapping it is reused; others don't shift).
-      const next = current.slice();
-      next[emptyIndex] = { id: letter.id, character: letter.character, beltIndex };
-      commitSlots(next);
-
-      if (__DEV__) {
-        console.log(`[WordInput] letter selected: "${letter.character}" (belt ${beltIndex}, id ${letter.id})`);
-      }
-
-      // Animation for removing letter once tapped
-      const belt = conveyorRefs[beltIndex]?.current;
-      belt?.removeLetterById(letter.id);  //Return back letter
-    },
-    [conveyorRefs, commitSlots, inputBoxCount]
-  );
-
-  const handleKeyPress = useCallback(
-    (rawChar) => {
-      const char = (rawChar || '').toUpperCase();
-      if (!/^[A-Z]$/.test(char)) return false; // not a single letter key
-      if (!fitSlots(slotsRef.current, inputBoxCount).includes(null)) return false; // every box is full
-
-      // Selection rule: first matching, available letter, scanning belts
-      // in the order they were passed in. Easy to change later (e.g. to
-      // "closest to center") without touching anything else here.
-      for (let i = 0; i < conveyorRefs.length; i++) {
-        const belt = conveyorRefs[i]?.current;
-        if (!belt) continue;
-        const match = belt
-          .getLetters() //read what's currently available
-          .find((l) => l.active && l.character === char && !selectedIdsRef.current.has(l.id));
-        if (match) {
-          selectLetter(match, i);
-          return true;
-        }
-      }
-      return false; // requested letter isn't available right now
-    },
-    [conveyorRefs, selectLetter, inputBoxCount]
-  );
-
-  // Keyboard input for web test
-  useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    const onKeyDown = (e) => {
-      if (e.key && e.key.length === 1) handleKeyPress(e.key);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleKeyPress]);
-
-  const resetWord = useCallback(() => {   //clear the whole current word without submitting
-    commitSlots(fitSlots([], inputBoxCount));
-    selectedIdsRef.current.clear();
-    // Note: this only clears the input system's own state. Letters
-    // already removed from the conveyor stay removed (they were consumed by
-    // the submit). To give ONE letter back, use returnLetterFromSlot.
-  }, [commitSlots, inputBoxCount]);
-
-  // Tap an occupied input box to undo that pick: the box empties and the SAME
-  // conveyor letter (matched by id, not character) goes back onto its belt.
-  // Empty box -> no-op. Never submits, validates, scores, or penalises.
-  const returnLetterFromSlot = useCallback(
-    (slotIndex) => {
-      const current = fitSlots(slotsRef.current, inputBoxCount);
-      const entry = current[slotIndex];
-      if (!entry) return false;
-
-      const next = current.slice();
-      next[slotIndex] = null;
-      commitSlots(next);
-      selectedIdsRef.current.delete(entry.id); // selectable again
-
-      conveyorRefs[entry.beltIndex]?.current?.restoreLetter({ id: entry.id, character: entry.character });
-
-      if (__DEV__) {
-        console.log(`[WordInput] letter returned: "${entry.character}" (box ${slotIndex}, belt ${entry.beltIndex}, id ${entry.id})`);
-      }
-      return true;
-    },
-    [conveyorRefs, commitSlots, inputBoxCount]
-  );
-
-  // Undo just the last selected letter (returns it to its belt)
-  const removeLastLetter = useCallback(() => {
-    const current = fitSlots(slotsRef.current, inputBoxCount);
-    for (let i = current.length - 1; i >= 0; i--) {
-      if (current[i]) return returnLetterFromSlot(i);
-    }
-    return false;
-  }, [inputBoxCount, returnLetterFromSlot]);
-
-  const submitWord = useCallback(() => {
-    const word = currentWord.map((l) => l.character).join('');
-    const valid = isValidWord(word);
-    const score = valid ? calculateScore(word, levelConfig.scoreMultiplier) : 0;
-    const result = { word, valid, score };
-
-    if (__DEV__) {
-      console.log(`[WordInput] submit: "${word}" -> ${valid ? `VALID (+${score})` : 'INVALID'}`);
-    }
-
-    setLastResult(result);
-    resetWord();
-    onSubmit?.(result); // <-- notifies the caller (e.g. GameplayScreen's handleWordSubmit)
-    return result;
-  }, [currentWord, levelConfig, resetWord, onSubmit]);
-
-  // Auto-submit the moment the player fills every slot. This reuses
-  // submitWord as-is. no separate "wrong animation" path
-  // to keep in sync and a full word that is valid gets scored the
-  // same way a manual submit would.
-  useEffect(() => {
-    if (inputBoxCount > 0 && currentWord.length >= inputBoxCount) {
-      submitWord();
-    }
-  }, [currentWord.length, inputBoxCount, submitWord]);
-
-  return {
-    slots,        //fixed-length [null | { id, character, beltIndex }]  one entry per input box
-    currentWord,  //[{ id, character, beltIndex }]  filled boxes only, in box order
-    returnLetterFromSlot, //(boxIndex) tap an occupied box to send its letter back to the belt
-    lastResult,   //{ word, valid, score } | null   result of the last submit
-    selectLetter,  //call from a belt's onLetterPress
-    handleKeyPress,  //call from a keyboard listener
-    submitWord,     //validate + score + reset
-    resetWord,
-    removeLastLetter,
-    inputBoxCount,
-  };
-}
-</file>
-
-<file path="levels/levelPresets.js">
-/**
- * levelPresets
- * ------------
- * One LevelConfig per stage. To add a level, create LEVEL_N_CONFIG and add
- * it to LEVEL_PRESETS.
- *
- * Flow: LevelSelectScreen -> App (levelId) -> GameplayScreen ->
- * getLevelConfigById(levelId).
- *
- * A preset's `id` is 'level-N', N being the number LevelSelectScreen uses.
- *
- * Letter distribution is per conveyor belt, not per level (see `belts` in
- * LevelConfig.js). To tweak one belt in one level, pass e.g.
- *   belts: [null, { minVisibleVowels: 4 }, null]
- */
-import { createLevelConfig } from './LevelConfig';
-
-export const LEVEL_1_CONFIG = createLevelConfig({
-  id: 'level-1',
-  title: 'Level 1 — Warm Up',
-  conveyorSpeed: 1000, // Testing; original: 1300
-  targetScore: 50,// Testing; original: 150
-  timeLimitSeconds: 60, // Testing; original: 180 (3 min)
-  totalCustomers: 1,// Testing; original: 3
-  wordsPerCustomer: 1,// Testing; original: 2
-  scoreMultiplier: 1,
-  rattySpawnRate: 0.0,
-  wordDifficulty: { minLength: 3, maxLength: 5 },
-});
-
-export const LEVEL_2_CONFIG = createLevelConfig({
-  id: 'level-2',
-  title: 'Level 2 — Getting Busy',
-  conveyorSpeed: 1300,
-  targetScore: 350,
-  timeLimitSeconds: 60,
-  totalCustomers: 5,
-  wordsPerCustomer: 3,
-  scoreMultiplier: 1.5,
-  rattySpawnRate: 0.15,
-  wordDifficulty: { minLength: 3, maxLength: 6 },
-});
-
-export const LEVEL_3_CONFIG = createLevelConfig({
-  id: 'level-3',
-  title: 'Level 3 — Rush Hour',
-  conveyorSpeed: 1000,
-  targetScore: 500,
-  timeLimitSeconds: 75,
-  totalCustomers: 8,
-  wordsPerCustomer: 3,
-  scoreMultiplier: 2,
-  rattySpawnRate: 0.25,
-  wordDifficulty: { minLength: 4, maxLength: 8 },
-});
-
-export const LEVEL_PRESETS = [LEVEL_1_CONFIG, LEVEL_2_CONFIG, LEVEL_3_CONFIG];
-
-/** 1, '2' or 'level-3' -> preset id ('level-N'); anything else -> null. */
-export function toLevelId(levelRef) {
-  if (typeof levelRef === 'number' && Number.isInteger(levelRef)) {
-    return `level-${levelRef}`;
-  }
-  if (typeof levelRef === 'string' && levelRef.length > 0) {
-    return /^\d+$/.test(levelRef) ? `level-${levelRef}` : levelRef;
-  }
-  return null;
-}
-
-function findPreset(levelRef) {
-  const id = toLevelId(levelRef);
-  return id === null ? undefined : LEVEL_PRESETS.find((lvl) => lvl.id === id);
-}
-
-/** 'level-3', 3 or '3' -> 3; null if not a level id. */
-export function getLevelNumber(levelRef) {
-  const match = /^level-(\d+)$/.exec(toLevelId(levelRef) ?? '');
-  return match ? Number(match[1]) : null;
-}
-
-/** Numbers of every level that has a preset, e.g. [1, 2, 3]. */
-export function getAllLevelIds() {
-  return LEVEL_PRESETS.map((lvl) => getLevelNumber(lvl.id)).filter((n) => n !== null);
-}
-
-/** Number of the next level, or null if it has no preset (drives unlocking). */
-export function getNextLevelId(levelRef) {
-  const current = getLevelNumber(levelRef);
-  if (current === null) return null;
-  return hasLevelPreset(current + 1) ? current + 1 : null;
-}
-
-/** True if a preset exists for this level. */
-export function hasLevelPreset(levelRef) {
-  return findPreset(levelRef) !== undefined;
-}
-
-/**
- * Returns the preset for 1, '1' or 'level-1'. Unknown levels fall back to
- * Level 1 and warn in dev.
- */
-export function getLevelConfigById(levelRef) {
-  const preset = findPreset(levelRef);
-  if (!preset) {
-    // eslint-disable-next-line no-undef
-    if (typeof __DEV__ !== 'undefined' && __DEV__) {
-      console.warn(`[levelPresets] No preset for level "${levelRef}" — falling back to ${LEVEL_1_CONFIG.id}.`);
-    }
-    return LEVEL_1_CONFIG;
-  }
-  return preset;
-}
-</file>
-
 <file path="levels/IntroEndSequence.js">
 import React from 'react';
 import SlideshowSequence from '../components/SlideshowSequence';
@@ -4815,6 +4700,237 @@ export function useLevelMaker(levelConfig, isPaused = false) {
 }
 </file>
 
+<file path="screens/LevelSelectScreen.js">
+import React, { useRef, useState } from "react";
+import {
+  View,
+  Image,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  ImageBackground,
+  TouchableOpacity,
+  Platform,
+  useWindowDimensions,
+} from "react-native";
+import { hasLevelPreset } from "../levels/levelPresets";
+import DebugButton from "../components/tests/DebugButton"; // [TEST/DEBUG]
+
+const isLevelLocked = (lvl, unlockedLevels, lockedLevels) =>
+  !hasLevelPreset(lvl.id) ||
+  lockedLevels.includes(lvl.id) ||
+  !unlockedLevels.includes(lvl.id);
+
+const LEVELS = [
+  { id: 1, image: require("../assets/Final/levels/Level_1_Sinangag.png") },
+  { id: 2, image: require("../assets/Final/levels/Level_2_Adobo.png") },
+  { id: 3, image: require("../assets/Final/levels/Level_3_Sinigang-na-Bangus.png") },
+  { id: 4, image: require("../assets/Final/levels/Level_4_Boss_kare-kare.png") },
+];
+
+const IMAGE_WIDTH_RATIO = 0.70;
+const IMAGE_HEIGHT_RATIO = 0.38;
+const BOTTOM_OFFSET_RATIO = 0.10;
+const IMAGE_DROP_RATIO = 0.03;
+
+// DEBUG BUTTON TOGGLE
+const ENABLE_DEBUG_BUTTON = true;
+
+// [TEST/DEBUG]
+const DEBUG_TOP_RATIO = 0.17;
+
+const SHOW_DEBUG_BUTTON = ENABLE_DEBUG_BUTTON && __DEV__;
+
+function LevelImage({ level, locked, onPlay, width, height, drop }) {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.85}
+      disabled={locked}
+      onPress={onPlay}
+      style={{
+        width,
+        height,
+        opacity: locked ? 0.5 : 1,
+        transform: [{ translateY: drop }],
+      }}
+    >
+      <Image source={level.image} style={styles.levelImage} resizeMode="contain" />
+    </TouchableOpacity>
+  );
+}
+
+export default function LevelSelectScreen({
+  onSelectLevel,
+  onBack,
+  unlockedLevels = [1],
+  lockedLevels = [],
+  onDebugToggle, // [TEST/DEBUG]
+  onDebugResetSave, // [TEST/DEBUG]
+  debugAllUnlocked = false, // [TEST/DEBUG]
+}) {
+  const { width, height } = useWindowDimensions();
+
+  const pageWidth = width;
+  const imageWidth = Math.round(width * IMAGE_WIDTH_RATIO);
+  const imageHeight = Math.round(height * IMAGE_HEIGHT_RATIO);
+  const imageDrop = Math.round(height * IMAGE_DROP_RATIO);
+
+  const backSize = Math.round(Math.min(width * 0.65, 56));
+  const topInset =
+    (Platform.OS === "android" ? StatusBar.currentHeight ?? 24 : 44) + 8;
+
+  const debugTop = Math.round(height * DEBUG_TOP_RATIO);
+
+  const scrollRef = useRef(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const snapOffsets = LEVELS.map((_, i) => i * pageWidth);
+
+  const indexFromOffset = (x) =>
+    Math.min(LEVELS.length - 1, Math.max(0, Math.round(x / pageWidth)));
+
+  const handleMomentumEnd = (e) => {
+    setSelectedIndex(indexFromOffset(e.nativeEvent.contentOffset.x));
+  };
+
+  const handleDragEnd = (e) => {
+    const { contentOffset, velocity } = e.nativeEvent;
+    const vx = velocity ? Math.abs(velocity.y ?? velocity.x) : 0;
+    if (vx < 0.1) {
+      const i = indexFromOffset(contentOffset.x);
+      setSelectedIndex(i);
+      scrollRef.current?.scrollTo({ x: i * pageWidth, animated: true });
+    }
+  };
+
+  const playLevel = (lvl) => {
+    if (isLevelLocked(lvl, unlockedLevels, lockedLevels)) return;
+    onSelectLevel && onSelectLevel(lvl.id);
+  };
+
+  return (
+    <ImageBackground
+      source={require("../assets/Final/LevelSelectionMainBG.png")}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <StatusBar barStyle="dark-content" />
+
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={onBack}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={[styles.backButton, { top: topInset, left: width * 0.04 }]}
+      >
+        <Image
+          source={require("../assets/Final/buttons/buttonLevelSelectBack.png")}
+          style={{ width: backSize, height: backSize }}
+          resizeMode="contain"
+        />
+      </TouchableOpacity>
+
+      <View
+        style={[
+          styles.carousel,
+          {
+            height: imageHeight,
+            bottom: Math.round(height * BOTTOM_OFFSET_RATIO),
+          },
+        ]}
+      >
+        <ScrollView
+          ref={scrollRef}
+          style={{ width: pageWidth, height: imageHeight }}
+          contentContainerStyle={{ alignItems: "center" }}
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
+          horizontal
+          bounces={false}
+          overScrollMode="never"
+          nestedScrollEnabled
+          snapToOffsets={snapOffsets}
+          snapToEnd={false}
+          decelerationRate="fast"
+          disableIntervalMomentum
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={handleMomentumEnd}
+          onScrollEndDrag={handleDragEnd}
+        >
+          {LEVELS.map((lvl) => (
+            <View
+              key={lvl.id}
+              style={[styles.page, { width: pageWidth, height: imageHeight }]}
+            >
+              <LevelImage
+                level={lvl}
+                locked={isLevelLocked(lvl, unlockedLevels, lockedLevels)}
+                onPlay={() => playLevel(lvl)}
+                width={imageWidth}
+                height={imageHeight}
+                drop={imageDrop}
+              />
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* [TEST/DEBUG] */}
+      {SHOW_DEBUG_BUTTON && onDebugToggle && (
+        <View
+          style={[styles.debugWrap, { top: debugTop }]}
+          pointerEvents="box-none"
+        >
+          <DebugButton
+            allUnlocked={debugAllUnlocked}
+            onPress={onDebugToggle}
+            onResetSave={onDebugResetSave}
+          />
+        </View>
+      )}
+    </ImageBackground>
+  );
+}
+
+const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#ffebbd",
+    overflow: "hidden",
+  },
+
+  backButton: { position: "absolute", zIndex: 10 },
+
+  carousel: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    overflow: "hidden",
+    top: 560,
+  },
+  page: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  levelImage: {
+    width: "100%",
+    height: "100%",
+  },
+
+  // [TEST/DEBUG]
+  debugWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    marginTop: 40,
+    alignItems: "center",
+    zIndex: 20,
+  },
+});
+</file>
+
 <file path="components/gameplayReusables/ConveyorBelt/Conveyorbelt.js">
 import React, {
   useCallback,
@@ -5025,6 +5141,121 @@ const styles = StyleSheet.create({
 });
 </file>
 
+<file path="levels/levelPresets.js">
+/**
+ * levelPresets
+ * ------------
+ * One LevelConfig per stage. To add a level, create LEVEL_N_CONFIG and add
+ * it to LEVEL_PRESETS.
+ *
+ * Flow: LevelSelectScreen -> App (levelId) -> GameplayScreen ->
+ * getLevelConfigById(levelId).
+ *
+ * A preset's `id` is 'level-N', N being the number LevelSelectScreen uses.
+ *
+ * Letter distribution is per conveyor belt, not per level (see `belts` in
+ * LevelConfig.js). To tweak one belt in one level, pass e.g.
+ *   belts: [null, { minVisibleVowels: 4 }, null]
+ */
+import { createLevelConfig } from './LevelConfig';
+
+export const LEVEL_1_CONFIG = createLevelConfig({
+  id: 'level-1',
+  title: 'Level 1 — Warm Up',
+  conveyorSpeed: 1000, // Testing; original: 1300
+  targetScore: 50,// Testing; original: 150
+  timeLimitSeconds: 180, // Testing; original: 180 (3 min)
+  totalCustomers: 2,// Testing; original: 3
+  wordsPerCustomer: 1,// Testing; original: 2
+  scoreMultiplier: 1,
+  rattySpawnRate: 0.0,
+  wordDifficulty: { minLength: 3, maxLength: 5 },
+});
+
+export const LEVEL_2_CONFIG = createLevelConfig({
+  id: 'level-2',
+  title: 'Level 2 — Getting Busy',
+  conveyorSpeed: 1300,
+  targetScore: 350,
+  timeLimitSeconds: 60,
+  totalCustomers: 5,
+  wordsPerCustomer: 3,
+  scoreMultiplier: 1.5,
+  rattySpawnRate: 0.15,
+  wordDifficulty: { minLength: 3, maxLength: 6 },
+});
+
+export const LEVEL_3_CONFIG = createLevelConfig({
+  id: 'level-3',
+  title: 'Level 3 — Rush Hour',
+  conveyorSpeed: 1000,
+  targetScore: 500,
+  timeLimitSeconds: 75,
+  totalCustomers: 8,
+  wordsPerCustomer: 3,
+  scoreMultiplier: 2,
+  rattySpawnRate: 0.25,
+  wordDifficulty: { minLength: 4, maxLength: 8 },
+});
+
+export const LEVEL_PRESETS = [LEVEL_1_CONFIG, LEVEL_2_CONFIG, LEVEL_3_CONFIG];
+
+/** 1, '2' or 'level-3' -> preset id ('level-N'); anything else -> null. */
+export function toLevelId(levelRef) {
+  if (typeof levelRef === 'number' && Number.isInteger(levelRef)) {
+    return `level-${levelRef}`;
+  }
+  if (typeof levelRef === 'string' && levelRef.length > 0) {
+    return /^\d+$/.test(levelRef) ? `level-${levelRef}` : levelRef;
+  }
+  return null;
+}
+
+function findPreset(levelRef) {
+  const id = toLevelId(levelRef);
+  return id === null ? undefined : LEVEL_PRESETS.find((lvl) => lvl.id === id);
+}
+
+/** 'level-3', 3 or '3' -> 3; null if not a level id. */
+export function getLevelNumber(levelRef) {
+  const match = /^level-(\d+)$/.exec(toLevelId(levelRef) ?? '');
+  return match ? Number(match[1]) : null;
+}
+
+/** Numbers of every level that has a preset, e.g. [1, 2, 3]. */
+export function getAllLevelIds() {
+  return LEVEL_PRESETS.map((lvl) => getLevelNumber(lvl.id)).filter((n) => n !== null);
+}
+
+/** Number of the next level, or null if it has no preset (drives unlocking). */
+export function getNextLevelId(levelRef) {
+  const current = getLevelNumber(levelRef);
+  if (current === null) return null;
+  return hasLevelPreset(current + 1) ? current + 1 : null;
+}
+
+/** True if a preset exists for this level. */
+export function hasLevelPreset(levelRef) {
+  return findPreset(levelRef) !== undefined;
+}
+
+/**
+ * Returns the preset for 1, '1' or 'level-1'. Unknown levels fall back to
+ * Level 1 and warn in dev.
+ */
+export function getLevelConfigById(levelRef) {
+  const preset = findPreset(levelRef);
+  if (!preset) {
+    // eslint-disable-next-line no-undef
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.warn(`[levelPresets] No preset for level "${levelRef}" — falling back to ${LEVEL_1_CONFIG.id}.`);
+    }
+    return LEVEL_1_CONFIG;
+  }
+  return preset;
+}
+</file>
+
 <file path="package.json">
 {
   "name": "wormderya-beta",
@@ -5035,6 +5266,7 @@ const styles = StyleSheet.create({
     "@expo-google-fonts/pixelify-sans": "^0.4.2",
     "@expo/metro-runtime": "~57.0.15",
     "@expo/ngrok": "^4.1.0",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/slider": "5.2.0",
     "expo": "~57.0.22",
     "expo-font": "~57.0.4",
@@ -5057,7 +5289,7 @@ const styles = StyleSheet.create({
 <file path="screens/GameplayScreen.js">
 import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Image, ImageBackground, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, useWindowDimensions } from 'react-native';
 import Text from '../components/AppText';
 import { ConveyorBelt } from '../components/gameplayReusables/ConveyorBelt';
 import { useWordInput, CurrentWordDisplay } from '../components/gameplayReusables/WordInput';
@@ -5069,6 +5301,7 @@ import AchievementModal from '../components/gameplayReusables/AchievementModal';
 import { ACHIEVEMENTS } from '../components/gameplayReusables/Achievements.js';
 import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount';
 import UpgradeToast from '../components/gameplayReusables/UpgradeToast';
+import UpgradeHUD from '../components/gameplayReusables/UpgradeHUD';
 import { UPGRADE_LIST } from '../components/gameplayReusables/UseUpgrades';
 
 import { getLevelConfigById } from '../levels/levelPresets';
@@ -5077,14 +5310,25 @@ import { useLevelMaker } from '../levels/useLevelMaker';
 import { LevelIntroSequence, LevelEndSequence } from '../levels/IntroEndSequence';
 import { getRushHourLevelConfig, getRushHourStageForWords } from '../levels/RushHourConfig';
 
-const BELT_ROWS = [0, 1, 2];
-const CONVEYOR_ROW_GAP = 10;
+const BELT_ROWS = [0, 1, 2]; // belt rows
 
-// Safe fallback if useUpgrades wasn't passed down. No upgrade effects,
-// but the screen still runs so the missing prop is easy to spot.
+// Customer area tuning. These are the only numbers you need to touch to move
+// the sprite or the patience meter.
+const SPRITE_TOP = -26;         // sprite vertical offset (negative = up)
+const PATIENCE_OFFSET_X = 72;   // meter's left edge, in px right of screen center
+
+// Customer swapper sprites (HARDCODED FOR SECOND CUSTOMER)
+const CUSTOMER_SPRITES = [
+  { source: require('../assets/Final/Customers/SampleCustomer_1.png'), bottom: 0 },
+  { source: require('../assets/Final/Customers/CustomerPicky.png'), bottom: -10 },
+];
+
+// Safe fallbacks if a prop wasn't passed down. No effects, but the screen
+// still runs so the missing prop is easy to spot.
 const NO_UPGRADES = {
   ownedPermanent: new Set(),
   activeTemporary: {},
+  activeList: [],
   isActive: () => false,
   rewardMultiplier: 1,
   patienceDrainMultiplier: 1,
@@ -5094,6 +5338,37 @@ const NO_UPGRADES = {
   startNewRound: () => {},
 };
 
+const NO_WALLET = {
+  currency: 0,
+  addCurrency: () => {},
+};
+
+const NO_ACHIEVEMENTS = {
+  currentAchievement: null,
+  dismissAchievement: () => {},
+  unlockAchievement: () => {},
+};
+
+/**
+ * GameplayScreen
+ * --------------
+ * Thin shell that owns `sessionId` and the level -> difficulty lookup.
+ * Bumping sessionId on retry (or changing level) remounts <LevelSession>,
+ * resetting every hook inside it. A full remount can't miss state the way
+ * manual resets did (stale `lastResult`, useLevelMaker state).
+ *
+ * Props:
+ *   levelId          number | string  preset to load (default 1)
+ *   levelConfig      optional; a ready-made LevelConfig, wins over levelId
+ *   mode             'normal' (default) | 'rushHour'. rushHour ignores levelId /
+ *                    levelConfig and runs endless: stages come from
+ *                    levels/rushHourConfig.js, the clock is restored by correct
+ *                    words, and onLevelComplete is never called.
+ *   onLevelComplete  optional; called once when the level is won
+ *   wallet           the useWallet() instance from App.js (single shared balance)
+ *   achievements     the achievements instance from App.js
+ *   upgrades         the useUpgrades() instance from App.js
+ */
 export default function GameplayScreen({
   onOpenStore,
   onBack,
@@ -5108,12 +5383,16 @@ export default function GameplayScreen({
 }) {
   const [sessionId, setSessionId] = useState(0);
 
+  const safeAchievements = achievements ?? NO_ACHIEVEMENTS;
+
+  // Normal: the chosen level. Rush Hour: stage 1 as the starting config (its id is
+  // constant, so the session key below only changes on retry). LevelSession then
+  // derives the live per-stage config itself.
   const levelConfig = useMemo(
-    () =>
-      mode === 'rushHour'
-        ? getRushHourLevelConfig(1)
-        : levelConfigOverride ?? getLevelConfigById(levelId),
-    [mode, levelConfigOverride, levelId]
+    () => (mode === 'rushHour'
+      ? getRushHourLevelConfig(1)
+      : levelConfigOverride ?? getLevelConfigById(levelId)),
+    [mode, levelConfigOverride, levelId],
   );
 
   const handleRetry = useCallback(() => {
@@ -5130,20 +5409,31 @@ export default function GameplayScreen({
         onRetry={handleRetry}
         onLevelComplete={onLevelComplete}
         isStoreOpen={isStoreOpen}
-        wallet={wallet}
-        achievements={achievements}
+        wallet={wallet ?? NO_WALLET}
+        achievements={safeAchievements}
         upgrades={upgrades}
         mode={mode}
       />
+      {/* Positioned here so it doesn't unmount when there's something on top */}
       <AchievementModal
-        visible={achievements.currentAchievement !== null}
-        achievement={achievements.currentAchievement}
-        onDismiss={achievements.dismissAchievement}
+        visible={safeAchievements.currentAchievement !== null}
+        achievement={safeAchievements.currentAchievement}
+        onDismiss={safeAchievements.dismissAchievement}
       />
     </>
   );
 }
 
+/**
+ * LevelSession
+ * ------------
+ * One attempt at a level. Remounted via `key`, so all hooks start clean.
+ *
+ * levelId -> getLevelConfigById -> LevelConfig
+ *   -> useLevelMaker (customers, Ratty, isLevelComplete)
+ *   -> useScoreSystem, CustomerMood, LevelTimer
+ *   -> LevelEndSequence (score/stars; calls onRetry or onOpenStore)
+ */
 function LevelSession({
   levelConfig: baseLevelConfig,
   mode,
@@ -5159,18 +5449,26 @@ function LevelSession({
   // Fallback so a missing prop never crashes the screen.
   const safeUpgrades = upgrades ?? NO_UPGRADES;
 
-  const [phase, setPhase] = useState('intro');
+  const [phase, setPhase] = useState('intro'); // 'intro' | 'playing' | 'end'
+  const { width: winW, height: winH } = useWindowDimensions();
+  const boxW = winW;
+  const boxH = winH;
 
+  // --- Rush Hour session state (all reset by the remount on retry) ---
+  // Lives here, not in App: it never touches currentLevelId / unlockedLevels.
   const isRushHour = mode === 'rushHour';
   const [rushHourStage, setRushHourStage] = useState(1);
-  const [timeBonus, setTimeBonus] = useState(null);
+  const [timeBonus, setTimeBonus] = useState(null); // { id, seconds } -> LevelTimer
   const rushHourWordsRef = useRef(0);
 
+  // The config the rest of this component reads. Normal: the level as given.
+  // Rush Hour: rebuilt as the stage advances (same shape, same fields).
   const levelConfig = useMemo(
     () => (isRushHour ? getRushHourLevelConfig(rushHourStage) : baseLevelConfig),
-    [isRushHour, rushHourStage, baseLevelConfig]
+    [isRushHour, rushHourStage, baseLevelConfig],
   );
 
+  // One ref per conveyor row.
   const beltRef0 = useRef(null);
   const beltRef1 = useRef(null);
   const beltRef2 = useRef(null);
@@ -5225,7 +5523,8 @@ function LevelSession({
       if (__DEV__) {
         messages.forEach((m) => console.log(`[Upgrades] ${m}`));
       }
-      setToastMessages(messages);
+      // Append instead of replace so a toast still on screen isn't cut off.
+      setToastMessages((prev) => [...prev, ...messages]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -5234,6 +5533,8 @@ function LevelSession({
     safeUpgrades.extraHealth,
   ]);
 
+  // Score lives here (per attempt, can only go up). Currency lives ONLY in
+  // the App-level wallet; every scored word is forwarded to it once.
   const { currency, addCurrency } = wallet;
   const {
     rewardMultiplier,
@@ -5249,36 +5550,42 @@ function LevelSession({
 
   const levelMaker = useLevelMaker(levelConfig, isStoreOpen);
 
-  const handleWordSubmit = useCallback(
-    (result) => {
-      if (result.valid) {
-        addScoreFromWord(result.word, 1, levelConfig.scoreMultiplier);
-        customerRef.current?.restorePatience(100);
-        levelMaker.registerServedWord();
-        achievements.unlockAchievement(ACHIEVEMENTS.FIRST_WORD);
+  // Always points at the latest levelMaker, so effects and callbacks can call
+  // its methods without depending on the object's identity (which may change
+  // every render).
+  const levelMakerRef = useRef(levelMaker);
+  levelMakerRef.current = levelMaker;
 
-        if (isRushHour) {
-          setTimeBonus((prev) => ({
-            id: (prev ? prev.id : 0) + 1,
-            seconds: levelConfig.timeBonusSeconds,
-          }));
-          rushHourWordsRef.current += 1;
-          setRushHourStage(getRushHourStageForWords(rushHourWordsRef.current));
-        }
-      } else if (result.word.length > 0) {
-        customerRef.current?.applyWrongWordPenalty();
+  // Runs on every submitted word (auto-submit or Plate button). Plain function
+  // that always sees fresh props/state; it's reached through a ref below so
+  // useWordInput never holds a stale copy.
+  const onWordSubmit = (result) => {
+    if (result.valid) {
+      addScoreFromWord(result.word, 1, levelConfig.scoreMultiplier);
+      customerRef.current?.restorePatience(100);
+      levelMakerRef.current.registerServedWord();
+      achievements.unlockAchievement(ACHIEVEMENTS.FIRST_WORD); // Achievement trigger
+
+      if (isRushHour) {
+        // Restore some time (LevelTimer applies it once per id and caps it),
+        // then advance the stage every wordsPerStage correct words.
+        setTimeBonus((prev) => ({ id: (prev ? prev.id : 0) + 1, seconds: levelConfig.timeBonusSeconds }));
+        rushHourWordsRef.current += 1;
+        setRushHourStage(getRushHourStageForWords(rushHourWordsRef.current));
       }
-    },
-    [
-      addScoreFromWord,
-      levelConfig.scoreMultiplier,
-      levelConfig.timeBonusSeconds,
-      levelMaker,
-      achievements,
-      isRushHour,
-    ]
-  );
+    } else if (result.word.length > 0) {
+      // Wrong word: patience penalty only. Score never decreases.
+      customerRef.current?.applyWrongWordPenalty();
+    }
+  };
 
+  const onWordSubmitRef = useRef(onWordSubmit);
+  onWordSubmitRef.current = onWordSubmit;
+  const handleWordSubmit = useCallback((result) => {
+    onWordSubmitRef.current(result);
+  }, []);
+
+  // Map LevelConfig to the narrow shape useWordInput/ConveyorBelt expect.
   const wordInput = useWordInput(
     conveyorRefs,
     {
@@ -5288,26 +5595,32 @@ function LevelSession({
         maxLength: levelConfig.wordDifficulty.maxLength,
       },
     },
-    levelConfig.inputBoxCount,
-    handleWordSubmit
+    levelConfig.inputBoxCount, // player input boxes: independent of any belt's letter count
+    handleWordSubmit,
   );
 
+  // null | 'win' | 'lose'
   const [levelResult, setLevelResult] = useState(null);
 
   const handleLevelEnd = useCallback((won) => {
-    setLevelResult((prev) => prev ?? (won ? 'win' : 'lose'));
+    setLevelResult((prev) => prev ?? (won ? 'win' : 'lose')); // ignore if already ended
   }, []);
 
+  // Win paths: clock ends with enough score (LevelTimer),
+  // or all customers served (useLevelMaker).
+  const isLevelComplete = levelMaker.isLevelComplete;
   useEffect(() => {
-    if (levelMaker.isLevelComplete) handleLevelEnd(true);
-  }, [levelMaker.isLevelComplete, handleLevelEnd]);
+    if (isLevelComplete) handleLevelEnd(true);
+  }, [isLevelComplete, handleLevelEnd]);
 
   useEffect(() => {
-    if (levelResult) levelMaker.stop();
-  }, [levelResult, levelMaker]);
+    if (levelResult) levelMakerRef.current.stop();
+  }, [levelResult]);
 
+  // Report a win once (ref guards against callback identity changes).
   const completionReportedRef = useRef(false);
   useEffect(() => {
+    // Rush Hour never reports completion: it must not unlock normal levels.
     if (!isRushHour && levelResult === 'win' && !completionReportedRef.current) {
       completionReportedRef.current = true;
       onLevelComplete?.(levelConfig.id);
@@ -5315,41 +5628,49 @@ function LevelSession({
   }, [levelResult, onLevelComplete, levelConfig.id, isRushHour]);
 
   useEffect(() => {
-    if (isStoreOpen) levelMaker.dismissRattyEvent();
-  }, [isStoreOpen, levelMaker]);
+    if (isStoreOpen) levelMakerRef.current.dismissRattyEvent();
+  }, [isStoreOpen]);
 
-  // Extra Health absorbs a customer departure once.
+  // Extra Health absorbs a customer departure once; otherwise it's a loss.
   const handleCustomerLeft = useCallback(() => {
     if (extraHealth > 0) {
       consumeExtraHealth();
       setHealthRespawnKey((k) => k + 1);
       return;
     }
-    handleLevelEnd(false);
+    handleLevelEnd(false); // patience hit 0 -> loss
   }, [extraHealth, consumeExtraHealth, handleLevelEnd]);
 
   const handleServePlate = () => {
-    wordInput.submitWord();
+    wordInput.submitWord(); // scoring/patience handled via onSubmit
   };
 
   const handleIntroComplete = () => setPhase('playing');
 
+  // Track the store-open timeout so it can be cleared on unmount.
+  const storeTimeoutRef = useRef(null);
+  useEffect(() => {
+    return () => {
+      if (storeTimeoutRef.current) clearTimeout(storeTimeoutRef.current);
+    };
+  }, []);
+
   const handleEndComplete = () => {
     if (isRushHour || levelResult === 'lose') {
-      onRetry();
+      onRetry(); // remounts LevelSession, resetting all state (a Rush Hour run has no "next level")
     } else {
-      levelMaker.dismissRattyEvent();
-      setTimeout(() => {
+      levelMakerRef.current.dismissRattyEvent();
+      storeTimeoutRef.current = setTimeout(() => {
         onOpenStore?.();
       }, 50);
     }
   };
 
-  useEffect(() => {
-    if (levelResult) setPhase('end');
-  }, [levelResult]);
+  // Derived instead of set in an effect, so there's no extra gameplay frame
+  // between the level ending and the end sequence showing.
+  const activePhase = levelResult ? 'end' : phase;
 
-  if (phase === 'intro') {
+  if (activePhase === 'intro') {
     return (
       <LevelIntroSequence
         levelConfig={levelConfig}
@@ -5358,7 +5679,7 @@ function LevelSession({
     );
   }
 
-  if (phase === 'end') {
+  if (activePhase === 'end') {
     return (
       <LevelEndSequence
         levelConfig={levelConfig}
@@ -5370,40 +5691,37 @@ function LevelSession({
     );
   }
 
+  const currentSprite = CUSTOMER_SPRITES[levelMaker.customerIndex % CUSTOMER_SPRITES.length];
+
   return (
     <View style={styles.screenWrapper}>
-      <UpgradeToast
-        messages={toastMessages}
-        onDone={() => setToastMessages([])}
-      />
-
-      <View style={styles.container}>
-        <ImageBackground
-          source={require('../assets/Placeholder/TopBoard.png')}
-          style={styles.headerBackground}
-          resizeMode="stretch"
-        >
+      <ImageBackground
+        source={require('../assets/Final/GameplayUI/GameplayScreen.png')}
+        style={[styles.container, { width: boxW, height: boxH }]}
+        resizeMode="stretch"
+      >
+        {/* 1. HEADER BANNER: flex, same as every row below it, so it scales
+            down proportionally on shorter screens. */}
+        <View style={styles.headerBackground}>
           <TouchableOpacity onPress={onBack} activeOpacity={0.7} style={styles.quitWrapper}>
-            <Image
-              source={require('../assets/Placeholder/QuitButton.png')}
-              style={styles.quitButton}
-            />
-            <Text style={styles.quitText} numberOfLines={1}>
-              Return
-            </Text>
+            <Image source={require('../assets/Final/GameplayUI/quit-sign.png')} style={styles.quitButton} />
           </TouchableOpacity>
 
-          <View style={styles.coinDisplay}>
+          {/* Live wallet balance on the coin board. */}
+          <ImageBackground
+            source={require('../assets/Final/GameplayUI/CoinPatience.png')}
+            style={styles.patienceCoinBoard}
+            resizeMode="stretch"
+          >
             <Text style={styles.coinText} numberOfLines={1} adjustsFontSizeToFit>
               {formatCurrency(currency)}
             </Text>
-            <Image
-              source={require('../assets/Placeholder/pixel_coins.png')}
-              style={styles.moneyIcon}
-            />
-          </View>
-        </ImageBackground>
+          </ImageBackground>
+        </View>
 
+        {/* Timer: paused during any popup, while the store is open, or after the
+            level ends. Rush Hour: endless (time-out = run over), restored by
+            correct words, capped. */}
         <LevelTimer
           targetScore={levelConfig.targetScore}
           currentScore={score}
@@ -5425,18 +5743,32 @@ function LevelSession({
           <Text style={styles.healthText}>♥ Extra Health: {extraHealth}</Text>
         )}
 
-        <View style={styles.customerBox}>
-          <Image
-            source={require('../assets/Placeholder/SampleCustomer_1.png')}
-            style={styles.characterDog}
-          />
+        {/* 2. Customer area. The sprite and the patience meter are separate
+            now: the sprite sits in its own box, and the meter floats on top
+            of the area with absolute positioning, so moving one never shifts
+            the other. */}
+        <View style={styles.customerArea}>
+          <View style={styles.customerBox}>
+            <Image
+              source={currentSprite.source}
+              style={[
+                styles.characterDog,
+                // Per-customer height tweak: a negative `bottom` in
+                // CUSTOMER_SPRITES moves the sprite down.
+                { top: SPRITE_TOP - currentSprite.bottom },
+              ]}
+            />
+          </View>
+
+          {/* Keyed on customerIndex (and the Extra Health respawn counter) so
+              patience resets each time. */}
           <CustomerMood
             key={`customer-${levelMaker.customerIndex}-${healthRespawnKey}`}
             ref={customerRef}
             onCustomerLeft={handleCustomerLeft}
             decayRateMs={levelConfig.patienceDecayMs}
             drainMultiplier={patienceDrainMultiplier}
-            style={styles.patienceMeter}
+            style={[styles.patienceMeter, { left: boxW / 2 + PATIENCE_OFFSET_X }]}
           />
         </View>
 
@@ -5448,19 +5780,17 @@ function LevelSession({
           inputBoxCount={wordInput.inputBoxCount}
         />
 
-        <ImageBackground
-          source={require('../assets/Placeholder/Table.png')}
-          style={styles.table}
-          resizeMode="stretch"
-        >
+        {/* 3. Table / plate: serves the current word */}
+        <View style={styles.table}>
           <TouchableOpacity onPress={handleServePlate} activeOpacity={0.7}>
             <Image
-              source={require('../assets/Placeholder/Plate.png')}
+              source={require('../assets/Final/GameplayUI/serve-button.png')}
               style={styles.plate}
             />
           </TouchableOpacity>
-        </ImageBackground>
+        </View>
 
+        {/* 4. Chef */}
         <View style={styles.chefBar}>
           <Image
             source={require('../assets/Placeholder/WormProtagonist_1.png')}
@@ -5468,14 +5798,14 @@ function LevelSession({
           />
         </View>
 
-        <View style={styles.conveyorGroup}>
+        {/* 5. Conveyor belts: one image, three rows on top of it */}
+        <ImageBackground
+          source={require('../assets/Final/GameplayUI/conveyors.png')}
+          style={styles.conveyorGroup}
+          resizeMode="stretch"
+        >
           {BELT_ROWS.map((row) => (
-            <ImageBackground
-              key={row}
-              source={require('../assets/Placeholder/Conveyor.png')}
-              style={styles.conveyor}
-              resizeMode="stretch"
-            >
+            <View key={row} style={styles.conveyorRow}>
               <ConveyorBelt
                 ref={conveyorRefs[row]}
                 style={styles.conveyorBelt}
@@ -5483,20 +5813,26 @@ function LevelSession({
                   slotDurationMs: levelConfig.conveyorSpeed,
                   slotWidth: 70,
                   slotHeight: 60,
-                  ...(levelConfig.letterPool
-                    ? { letterPool: levelConfig.letterPool }
-                    : {}),
+                  ...(levelConfig.letterPool ? { letterPool: levelConfig.letterPool } : {}),
                   ...getBeltConfig(levelConfig, row),
                 }}
                 onLetterPress={(letter) => wordInput.selectLetter(letter, row)}
               />
-            </ImageBackground>
+            </View>
           ))}
-        </View>
+        </ImageBackground>
 
         <StatusBar style="light" />
-      </View>
+      </ImageBackground>
 
+      {/* Upgrade overlays sit after the game board so they draw on top of it. */}
+      <UpgradeToast
+        messages={toastMessages}
+        onDone={() => setToastMessages([])}
+      />
+      <UpgradeHUD activeList={safeUpgrades.activeList} />
+
+      {/* Mr. Ratty popup (rolled by useLevelMaker) */}
       <MrRattyDiscount
         visible={levelMaker.showRattyEvent}
         onDismiss={() => {
@@ -5509,46 +5845,68 @@ function LevelSession({
 }
 
 const styles = StyleSheet.create({
-  screenWrapper: { flex: 1, backgroundColor: '#222', alignItems: 'center', justifyContent: 'center' },
+  /* 1 the screen thingy */
+  screenWrapper: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' },
   container: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#b87b4e',
     alignItems: 'center',
-    paddingVertical: 0,
-    paddingHorizontal: 0,
   },
   headerBackground: {
-    width: '105%',
-    flex: 130,
+    width: '100%',
+    flex: 130, // scales with everything else
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 15,
+    alignItems: 'flex-start', // anchor children to the TOP, so the overflow hangs downward like the mockup
   },
-  quitWrapper: { width: 90, height: 55, left: 20, alignItems: 'center' },
-  quitButton: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', resizeMode: 'contain' },
-  quitText: { color: 'red', fontSize: 20, textAlign: 'center', bottom: 40 },
-  coinDisplay: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 1, maxWidth: 170, gap: 10 },
-  coinText: { flexShrink: 1, fontSize: 22, fontWeight: 'bold', color: '#fff', textShadowColor: '#000', textShadowRadius: 2, textShadowOffset: { width: 1, height: 1 } },
-  moneyIcon: { width: 40, height: 40, resizeMode: 'contain' },
+  quitWrapper: { alignItems: 'center', justifyContent: 'center' },
+  quitButton: { width: 130, height: 100, resizeMode: 'contain' },
+  patienceCoinBoard: { width: 130, height: 200, alignItems: 'center', justifyContent: 'center' },
+  coinText: {
+    flexShrink: 1,
+    fontSize: 40,
+    fontWeight: 'bold',
+    color: '#fff',
+    textShadowColor: '#000',
+    textShadowRadius: 2,
+    textShadowOffset: { width: 1, height: 1 },
+    marginTop: -125,
+    marginLeft: 50,
+  },
+
   stageText: { fontSize: 18, fontWeight: 'bold', color: '#fff', textShadowColor: '#000', textShadowRadius: 2, textShadowOffset: { width: 1, height: 1 } },
   healthText: { fontSize: 16, fontWeight: 'bold', color: '#FFD6E0', textShadowColor: '#000', textShadowRadius: 2, textShadowOffset: { width: 1, height: 1 }, marginTop: 2 },
-  customerBox: { flex: 150, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 15, paddingHorizontal: 15 },
-  characterDog: { width: 160, height: 160, resizeMode: 'contain' },
-  patienceMeter: { width: 94, height: 130, marginTop: -80, resizeMode: 'contain' },
-  table: { width: '100%', flex: 150, marginTop: -60, zIndex: 2, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  plate: { width: 60, height: 60 },
+
+  /* 2 Customer Area*/
+  // Wrapper that owns the row's flex space and is the positioning parent.
+  customerArea: { flex: 150, width: '100%' },
+  customerBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  characterDog: { width: 160, height: 160, resizeMode: 'contain', left: -72 },
+
+  patienceMeter: { position: 'absolute', top: '50%', marginTop: -150, width: 130, height: 150 },
+
+  table: {
+    width: '100%',
+    flex: 150,
+    marginTop: -60,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  plate: { width: 120, height: 60, marginTop: 60, resizeMode: 'stretch' },
+
+  /* 4 Chef Bar*/
   chefBar: { flex: 130, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 15 },
-  characterChef: { width: 115, height: 115, resizeMode: 'contain', left: 125, bottom: 30 },
-  conveyorGroup: { width: '100%', flex: 240, flexDirection: 'column', gap: CONVEYOR_ROW_GAP, bottom: 50 },
-  conveyor: { width: '100%', flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  characterChef: { width: 115, height: 115, resizeMode: 'contain', left: 125, bottom: 60 },
+
+  /* 5 Conveyor area */
+  // height: '150%' removed: it conflicted with flex: 240 (flex wins in a column).
+  conveyorGroup: { width: '100%', flex: 240, flexDirection: 'column', bottom: 75 },
+  conveyorRow: { justifyContent: 'center', alignItems: 'center', bottom: 10 },
+  conveyorBelt: { marginTop: 20 },
 });
 </file>
 
 <file path="App.js">
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useFonts } from "expo-font";
 import {
   PixelifySans_400Regular,
@@ -5566,19 +5924,17 @@ import StoryBackstoryScreen from "./screens/StoryBackstoryScreen";
 import GameplayScreen from "./screens/GameplayScreen";
 import { useWallet } from "./components/gameplayReusables/UseWallet";
 import { useAchievements } from "./components/gameplayReusables/UseAchievements.js";
+import { useUpgrades } from "./components/gameplayReusables/UseUpgrades";
 import { hasLevelPreset, getNextLevelId, getLevelConfigById, getAllLevelIds } from "./levels/levelPresets";
+import { loadGameData, saveGameData, clearGameData, DEFAULT_SAVE } from "./components/GameSave";
 
-/* Placeholder components */
 import QuitModal from './components/QuitModal';
 import RushHourModal from './screens/RushHourModal';
 import PopupModal from './components/PopupModal';
 import StoreScreen from './screens/StoreScreen';
 
-// [TEST/DEBUG] Adds a level-select button that toggles "unlock all levels"
-// <-> "reset to Level 1". Set to false before release or before anything at all.
 const DEBUG_LEVEL_TOGGLE = true;
 
-// Manual screen switching; React Navigation later
 const SCREENS = {
   SPLASH: "SPLASH",
   HOME: "HOME",
@@ -5589,22 +5945,79 @@ const SCREENS = {
   GAMEPLAY: "GAMEPLAY",
 };
 
-// Holds the screen-switching logic.
+/**
+ * Owns the persisted state. Loads once on mount, keeps a single snapshot
+ * in memory, and exposes a `patch` function the sub-hooks call to update
+ * their slice. Every patch writes the full snapshot immediately.
+ */
+function useGameSave() {
+  const [loaded, setLoaded] = useState(false);
+  const snapshotRef = useRef({ ...DEFAULT_SAVE });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const data = await loadGameData();
+      if (cancelled) return;
+      snapshotRef.current = data;
+      setLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // One writer: patch a slice, persist the whole snapshot.
+  const patch = useCallback((slice, value) => {
+    const next = { ...snapshotRef.current, [slice]: value };
+    snapshotRef.current = next;
+    saveGameData(next);
+  }, []);
+
+  const reset = useCallback(async () => {
+    await clearGameData();
+    snapshotRef.current = { ...DEFAULT_SAVE };
+  }, []);
+
+  return { loaded, snapshot: snapshotRef.current, patch, reset };
+}
+
 function ScreenSwitcher() {
+  const { loaded, snapshot, patch, reset } = useGameSave();
+
   const [screen, setScreen] = useState(SCREENS.SPLASH);
 
-  // Level picked on LevelSelectScreen; GameplayScreen loads its preset.
-  const [currentLevelId, setCurrentLevelId] = useState(1);
-
-  // Levels the player may open (in memory only; resets on restart).
-  const [unlockedLevels, setUnlockedLevels] = useState([1]);
-  // Level shown in the "unlocked" popup, or null.
+  const [currentLevelId, setCurrentLevelId] = useState(snapshot.currentLevelId);
+  const [unlockedLevels, setUnlockedLevels] = useState(snapshot.unlockedLevels);
   const [unlockNotice, setUnlockNotice] = useState(null);
+  const [showStore, setShowStore] = useState(false);
+  const [showRushHour, setShowRushHour] = useState(false);
+  const [gameMode, setGameMode] = useState('normal');
+  const [showQuit, setShowQuit] = useState(false);
 
-  // [TEST/DEBUG] True once every level with a preset is unlocked.
+  // Push top-level changes into the save snapshot.
+  useEffect(() => {
+    if (loaded) patch('unlockedLevels', unlockedLevels);
+  }, [unlockedLevels, loaded, patch]);
+  useEffect(() => {
+    if (loaded) patch('currentLevelId', currentLevelId);
+  }, [currentLevelId, loaded, patch]);
+
+  // Wallet / achievements / upgrades. Each receives its slice of the save
+  // and reports back via onChange, which we write to the snapshot.
+  const wallet = useWallet(0, {
+    initialState: snapshot.wallet,
+    onChange: (w) => patch('wallet', w),
+  });
+  const achievements = useAchievements(wallet, {
+    initialState: snapshot.achievements,
+    onChange: (a) => patch('achievements', a),
+  });
+  const upgrades = useUpgrades(wallet, {
+    initialState: snapshot.upgrades,
+    onChange: (u) => patch('upgrades', u),
+  });
+
   const debugAllUnlocked = getAllLevelIds().every((id) => unlockedLevels.includes(id));
 
-  // [TEST/DEBUG] Unlock everything, or reset progression back to Level 1.
   const handleDebugToggle = () => {
     setUnlockNotice(null);
     if (debugAllUnlocked) {
@@ -5615,51 +6028,41 @@ function ScreenSwitcher() {
     }
   };
 
-  // Called once per won level.
+  const handleDebugResetSave = async () => {
+    await reset();
+    setUnlockedLevels([1]);
+    setCurrentLevelId(1);
+    setUnlockNotice(null);
+  };
+
   const handleLevelComplete = (completedLevelId) => {
     const nextId = getNextLevelId(completedLevelId);
-    if (nextId === null || unlockedLevels.includes(nextId)) return; // last level or already unlocked
+    if (nextId === null || unlockedLevels.includes(nextId)) return;
     setUnlockedLevels((prev) => (prev.includes(nextId) ? prev : [...prev, nextId]));
     setUnlockNotice(nextId);
   };
 
-  // Store overlays the screen so progress isn't lost
-  const [showStore, setShowStore] = useState(false);
-  const openStore = () => { console.log('[App] openStore called'); setShowStore(true); };
+  const openStore = () => setShowStore(true);
   const closeStore = () => setShowStore(false);
 
-
-  // Use SCREEN.PLACEHOLDER_GAMEPLAY to show the placeholder screen
-  const [showRushHour, setShowRushHour] = useState(false);
-  // 'normal' | 'rushHour'. Separate from currentLevelId / unlockedLevels, which
-  // Rush Hour never reads or writes.
-  const [gameMode, setGameMode] = useState('normal');
-  const [showQuit, setShowQuit] = useState(false);
-
-  // Global currency
-  const wallet = useWallet(0);
-  const achievements = useAchievements(wallet);
+  // While the save is loading, keep the splash on screen.
+  if (!loaded) {
+    return <SplashScreen onFinish={() => {}} />;
+  }
 
   const renderCurrentScreen = () => {
-  switch (screen) {
-    case SCREENS.SPLASH:
-      return <SplashScreen onFinish={() => setScreen(SCREENS.HOME)} />;
+    switch (screen) {
+      case SCREENS.SPLASH:
+        return <SplashScreen onFinish={() => setScreen(SCREENS.HOME)} />;
 
-    case SCREENS.MODE_SELECT:
-      return (
-        <ModeSelectScreen
-          onSelectStoryMode={() => {
-            setGameMode('normal');
-            setScreen(SCREENS.LEVEL_SELECT);
-          }}
-          onSelectRushHour={() => {
-            // Show the Rush Hour intro popup; dismissing it starts the run.
-            setGameMode('rushHour');
-            setShowRushHour(true);
-          }}
-          onBack={() => setScreen(SCREENS.HOME)}
-        />
-      );
+      case SCREENS.MODE_SELECT:
+        return (
+          <ModeSelectScreen
+            onSelectStoryMode={() => { setGameMode('normal'); setScreen(SCREENS.LEVEL_SELECT); }}
+            onSelectRushHour={() => { setGameMode('rushHour'); setShowRushHour(true); }}
+            onBack={() => setScreen(SCREENS.HOME)}
+          />
+        );
 
       case SCREENS.SETTINGS:
         return <SettingsScreen onBack={() => setScreen(SCREENS.HOME)} />;
@@ -5668,23 +6071,15 @@ function ScreenSwitcher() {
         return (
           <LevelSelectScreen
             unlockedLevels={unlockedLevels}
-            onDebugToggle={DEBUG_LEVEL_TOGGLE ? handleDebugToggle : undefined} // [TEST/DEBUG]
-            debugAllUnlocked={debugAllUnlocked} // [TEST/DEBUG]
+            onDebugToggle={DEBUG_LEVEL_TOGGLE ? handleDebugToggle : undefined}
+            onDebugResetSave={DEBUG_LEVEL_TOGGLE ? handleDebugResetSave : undefined}
+            debugAllUnlocked={debugAllUnlocked}
             onSelectLevel={(levelId) => {
-              if (!hasLevelPreset(levelId)) {
-                // No preset yet — nothing to play.
-                console.log(`Level ${levelId} selected but has no preset yet`);
-                return;
-              }
+              if (!hasLevelPreset(levelId)) return;
               setGameMode('normal');
               setCurrentLevelId(levelId);
-              if (levelId === 1) {
-                // Level 1 plays its backstory first.
-                setScreen(SCREENS.STORY_BACKSTORY);
-              } else {
-                // TODO: per-level intros.
-                setScreen(SCREENS.GAMEPLAY);
-              }
+              if (levelId === 1) setScreen(SCREENS.STORY_BACKSTORY);
+              else setScreen(SCREENS.GAMEPLAY);
             }}
             onBack={() => setScreen(SCREENS.MODE_SELECT)}
           />
@@ -5709,6 +6104,7 @@ function ScreenSwitcher() {
             isStoreOpen={showStore}
             wallet={wallet}
             achievements={achievements}
+            upgrades={upgrades}
           />
         );
 
@@ -5718,11 +6114,7 @@ function ScreenSwitcher() {
           <HomeScreen
             onStart={() => setScreen(SCREENS.MODE_SELECT)}
             onOpenSettings={() => setScreen(SCREENS.SETTINGS)}
-            onQuit={() => {
-              // Close app
-              setShowQuit(true);
-              console.log("Quit pressed");
-            }}
+            onQuit={() => { setShowQuit(true); }}
           />
         );
     }
@@ -5730,36 +6122,30 @@ function ScreenSwitcher() {
 
   return (
     <View style={styles.container}>
-      {/* 1. Active screen (stays mounted while the Store is open) */}
       {renderCurrentScreen()}
 
-      {/* 2. Store overlay */}
+      {showStore && (
+        <Modal>
+          <View style={styles.overlay}>
+            <StoreScreen
+              onBack={closeStore}
+              wallet={wallet}
+              achievements={achievements}
+              upgrades={upgrades}
+              onGoToLevelSelect={() => { closeStore(); setScreen(SCREENS.LEVEL_SELECT); }}
+            />
+          </View>
+        </Modal>
+      )}
 
-        {showStore && (
-          <Modal>
-            <View style={styles.overlay}>
-              <StoreScreen 
-                onBack={closeStore} 
-                wallet={wallet} 
-                achievements={achievements}
-                onGoToLevelSelect={() => {closeStore(); setScreen(SCREENS.LEVEL_SELECT);}} />
-            </View>
-          </Modal>
-        )}
-
-      {/* 3. Global modals */}
       <RushHourModal
         visible={showRushHour}
-        onDismiss={() => {
-          setShowRushHour(false);
-          setScreen(SCREENS.GAMEPLAY); // gameMode is already 'rushHour'
-        }}
+        onDismiss={() => { setShowRushHour(false); setScreen(SCREENS.GAMEPLAY); }}
       />
 
       <QuitModal visible={showQuit} onQuit={() => setShowQuit(false)} />
 
-      {/* Level-unlocked warning */}
-      <PopupModal  //Now requires achievements to be dismissed before appearing
+      <PopupModal
         visible={unlockNotice !== null && achievements.currentAchievement === null}
         title="NEW LEVEL UNLOCKED!"
         message={unlockNotice !== null ? getLevelConfigById(unlockNotice).title : ""}
@@ -5772,11 +6158,7 @@ function ScreenSwitcher() {
 }
 
 function AppInner() {
-  // Native: the device screen is the frame.
-  if (Platform.OS !== "web") {
-    return <ScreenSwitcher />;
-  }
-
+  if (Platform.OS !== "web") return <ScreenSwitcher />;
   return (
     <View style={styles.webBackdrop}>
       <View style={styles.webPhoneFrame}>
@@ -5798,9 +6180,8 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  overlay: { flex: 1 },
   webBackdrop: {
     flex: 1,
     width: '100vw',
@@ -5813,7 +6194,7 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     height: '100%',
     maxHeight: 820,
-    aspectRatio: 9 / 19.5, // Modern phone ratio
+    aspectRatio: 9 / 19.5,
     overflow: 'hidden',
   },
 });
