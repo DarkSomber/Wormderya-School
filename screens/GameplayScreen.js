@@ -15,7 +15,6 @@ import UpgradeToast from '../components/gameplayReusables/UpgradeToast';
 import UpgradeHUD from '../components/gameplayReusables/UpgradeHUD';
 import { UPGRADE_LIST } from '../components/gameplayReusables/UseUpgrades';
 
-
 import { getLevelConfigById } from '../levels/levelPresets';
 import { getBeltConfig } from '../levels/LevelConfig';
 import { useLevelMaker } from '../levels/useLevelMaker';
@@ -327,6 +326,7 @@ function LevelSession({
         <ImageBackground
           source={require('../assets/Placeholder/TopBoard.png')}
           style={styles.headerBackground}
+          resizeMode="stretch"
         >
           <TouchableOpacity onPress={onBack} activeOpacity={0.7} style={styles.quitWrapper}>
             <Image
@@ -404,7 +404,7 @@ function LevelSession({
               style={styles.plate}
             />
           </TouchableOpacity>
-        </View>
+        </ImageBackground>
 
         <View style={styles.chefBar}>
           <Image
@@ -440,7 +440,7 @@ function LevelSession({
         </View>
 
         <StatusBar style="light" />
-      </ImageBackground>
+      </View>
 
       <MrRattyDiscount
         visible={levelMaker.showRattyEvent}
