@@ -131,18 +131,19 @@ export default function CurrentWordDisplay({
           row's overflow:hidden) stops the tiles from shifting up/down every
           time this text fades in or out. */}
       {lastResult ? (
-        <Animated.Text
-          pointerEvents="none"
-          style={[
-            styles.resultText,
-            lastResult.valid ? styles.validText : styles.invalidText,
-            { opacity: resultOpacity },
-          ]}
-        >
-          {lastResult.valid
-            ? `${lastResult.word} — +${lastResult.score}`
-            : `${lastResult.word || '(empty)'} — Not a word/No Letters`}
-        </Animated.Text>
+        <View pointerEvents="none" style={styles.resultWrap}>
+          <Animated.Text
+            style={[
+              styles.resultText,
+              lastResult.valid ? styles.validText : styles.invalidText,
+              { opacity: resultOpacity },
+            ]}
+          >
+            {lastResult.valid
+              ? `${lastResult.word} — +${lastResult.score}`
+              : `${lastResult.word || '(empty)'} — Not a word/No Letters`}
+          </Animated.Text>
+        </View>
       ) : null}
     </View>
   );
@@ -193,17 +194,20 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
   },
-  resultText: {
+  resultWrap: {
     position: 'absolute',
     top: 4, // matches wrapper's paddingVertical, so it lines up over the row
     left: 0,
     right: 0,
     height: ROW_MIN_HEIGHT,
+    zIndex: 4, // above the row's own flash/ripple overlays
+  },
+  resultText: {
+    height: ROW_MIN_HEIGHT,
     lineHeight: ROW_MIN_HEIGHT, // vertically centers the single line of text over the row
     textAlign: 'center',
     fontFamily: FONT_WARNING,
     fontSize: 12,
-    zIndex: 4, // above the row's own flash/ripple overlays
     // Faint backdrop so the text stays legible over whatever tiles/blanks
     // it's overlapping, without fully hiding them.
     backgroundColor: 'rgba(255,255,255,0.85)',

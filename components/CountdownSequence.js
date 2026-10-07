@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { View, StyleSheet } from 'react-native';
 import Text from './AppText';
 
@@ -8,11 +8,14 @@ export default function CountdownSequence({ slides, onComplete, msPerSlide = 800
   const isLastSlide = index === slides.length - 1;
   const slide = slides[index];
 
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
   // loop for each slide
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (isLastSlide) {
-        onComplete && onComplete();
+        onCompleteRef.current && onCompleteRef.current();
       } else {
         setIndex((i) => i + 1);
       }
@@ -20,7 +23,7 @@ export default function CountdownSequence({ slides, onComplete, msPerSlide = 800
 
     // Safety net so it won't fire twice
     return () => clearTimeout(timeoutId);
-  }, [index, isLastSlide, msPerSlide, onComplete]);
+  }, [index, isLastSlide, msPerSlide]);
 
   return (
     <View style={styles.container}>
