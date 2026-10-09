@@ -15,8 +15,10 @@ export const DEFAULT_RESULT_FADE_DELAY_MS = 2000;
 const RESULT_FADE_DURATION_MS = 300;
 
 /**
- * Purely presentational — renders `inputBoxCount` fixed slots (Wordle-style):
- * filling rectangles. Reacts to `lastResult` through colors and shakes after resultFadeDelayMs. 
+ * Purely presentational — renders one box per entry in `slots`. Boxes are
+ * dynamic: there are no empty placeholders, a box appears only when the player
+ * picks a character, plus "open" boxes (dashed outline) that the player just
+ * emptied and can still refill. Reacts to `lastResult` through colors and shakes after resultFadeDelayMs. 
  * useWordInput() doesn't know or care that this exists; 
  * swap it for your own UI any time.
  */
@@ -24,6 +26,8 @@ export default function CurrentWordDisplay({
   currentWord,
   slots: slotsProp, // fixed-length box list from useWordInput (preferred; keeps gaps)
   onSlotPress, // (boxIndex) => void — tapping an OCCUPIED box; empty boxes ignore taps
+  onHolePress, // (boxIndex) => void — tapping an OPEN (just-emptied) box picks it as the next tile's spot
+  targetHoleId, // id of the open box currently picked, for the highlight
   lastResult,
   inputBoxCount = DEFAULT_INPUT_BOX_COUNT,
   resultFadeDelayMs = DEFAULT_RESULT_FADE_DELAY_MS,
@@ -80,13 +84,25 @@ export default function CurrentWordDisplay({
 
   // Fixed-length slot list: real letters first, then empty placeholders
   // Doesn't require all slot filled to pass the word
-  const slots = slotsProp ?? Array.from({ length: inputBoxCount }, (_, i) => (currentWord || [])[i] || null);
+  const slots = slotsProp ?? (currentWord || []);
 
   return (
     <View style={styles.wrapper}>
       <Animated.View style={[styles.row, { transform: [{ translateX: shakeX }] }]}>
         {slots.map((letter, i) =>
-          letter ? (
+          letter && letter.held ? (
+            // Open box: its tile was just sent back. Stays here for a few
+            // seconds so the player can drop a different tile into this spot.
+            <TouchableOpacity
+              key={letter.id}
+              activeOpacity={0.7}
+              onPress={() => onHolePress?.(i)}
+            >
+              <View style={[styles.holeSlot, letter.id === targetHoleId && styles.holeSlotTarget]}>
+                <Image source={BLANK_RECTANGLE} style={styles.holeImage} resizeMode="stretch" />
+              </View>
+            </TouchableOpacity>
+          ) : letter ? (
             // Whole box is the touch target, not just the glyph.
             <TouchableOpacity
               key={letter.id}
@@ -177,6 +193,25 @@ const styles = StyleSheet.create({
     width: TILE_SIZE,
     height: TILE_SIZE,
     marginHorizontal: 3,
+    opacity: 0.5,
+  },
+  holeSlot: {
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+    marginHorizontal: 3,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#f9a825',
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  holeSlotTarget: {
+    borderStyle: 'solid',
+    borderColor: '#e65100',
+  },
+  holeImage: {
+    width: '100%',
+    height: '100%',
     opacity: 0.5,
   },
   overlay: {

@@ -12,8 +12,14 @@
  * Letter distribution is per conveyor belt, not per level (see `belts` in
  * LevelConfig.js). To tweak one belt in one level, pass e.g.
  *   belts: [null, { minVisibleVowels: 4 }, null]
+ *
+ * Tile mode (see LevelConfig.js): Levels 1-2 put consonant-vowel SYLLABLE tiles
+ * on ONE belt (`syllableBelts`, default the top belt) and single letters on the
+ * rest; Level 3+ use single letters everywhere (the default, so new levels need
+ * nothing). Input boxes are dynamic: none are drawn
+ * up front, one appears per character picked, up to `inputBoxCount` (default 11).
  */
-import { createLevelConfig } from './LevelConfig';
+import { createLevelConfig, parseLevelNumber } from './LevelConfig';
 
 export const LEVEL_1_CONFIG = createLevelConfig({
   id: 'level-1',
@@ -26,6 +32,8 @@ export const LEVEL_1_CONFIG = createLevelConfig({
   scoreMultiplier: 1,
   rattySpawnRate: 0.0,
   wordDifficulty: { minLength: 3, maxLength: 5 },
+  tileMode: 'syllable',
+  syllablePool: 'basic',    // 30 syllables: B K L M S T x A E I O U (top belt only)
 });
 
 export const LEVEL_2_CONFIG = createLevelConfig({
@@ -39,6 +47,8 @@ export const LEVEL_2_CONFIG = createLevelConfig({
   scoreMultiplier: 1.5,
   rattySpawnRate: 0.15,
   wordDifficulty: { minLength: 3, maxLength: 6 },
+  tileMode: 'syllable',
+  syllablePool: 'extended', // 70 syllables: wider variety than Level 1 (top belt only)
 });
 
 export const LEVEL_3_CONFIG = createLevelConfig({
@@ -74,8 +84,7 @@ function findPreset(levelRef) {
 
 /** 'level-3', 3 or '3' -> 3; null if not a level id. */
 export function getLevelNumber(levelRef) {
-  const match = /^level-(\d+)$/.exec(toLevelId(levelRef) ?? '');
-  return match ? Number(match[1]) : null;
+  return parseLevelNumber(toLevelId(levelRef));
 }
 
 /** Numbers of every level that has a preset, e.g. [1, 2, 3]. */

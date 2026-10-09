@@ -11,6 +11,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { hasLevelPreset } from "../levels/levelPresets";
+import Text from "../components/AppText";
 import DebugButton from "../components/tests/DebugButton"; // [TEST/DEBUG]
 
 const isLevelLocked = (lvl, unlockedLevels, lockedLevels) =>
@@ -53,6 +54,31 @@ function LevelImage({ level, locked, onPlay, width, height, drop }) {
     >
       <Image source={level.image} style={styles.levelImage} resizeMode="contain" />
     </TouchableOpacity>
+  );
+}
+
+// [TEMP] Shows which level is currently selected in the carousel.
+const TEMP_INDICATOR_HEIGHT = 64; // space reserved above the carousel for the indicator
+// Para sa mga arts (Level indicator badge: a small plaque/banner art that shows the
+// level number, e.g. "LEVEL 1" - one version per level or a blank plaque we put the number on.
+// Optional: active/inactive page-dot icons for the carousel position).
+// When the art is ready, replace the body of this component with an <Image> and keep the same props.
+function TempLevelIndicator({ index, total }) {
+  const level = LEVELS[index];
+  return (
+    <View style={styles.tempIndicatorWrap} pointerEvents="none">
+      <View style={styles.tempIndicatorBadge}>
+        <Text style={styles.tempIndicatorText}>LEVEL {level.id}</Text>
+      </View>
+      <View style={styles.tempDotsRow}>
+        {Array.from({ length: total }).map((_, i) => (
+          <View
+            key={i}
+            style={[styles.tempDot, i === index && styles.tempDotActive]}
+          />
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -135,6 +161,10 @@ export default function LevelSelectScreen({
           },
         ]}
       >
+        {/* [TEMP] selected-level indicator, sits right above the carousel */}
+        <TempLevelIndicator index={selectedIndex} total={LEVELS.length} />
+
+        <View style={styles.carouselClip}>
         <ScrollView
           ref={scrollRef}
           style={{ width: pageWidth, height: imageHeight }}
@@ -169,6 +199,7 @@ export default function LevelSelectScreen({
             </View>
           ))}
         </ScrollView>
+        </View>
       </View>
 
       {/* [TEST/DEBUG] */}
@@ -203,8 +234,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    overflow: "hidden",
     top: 560,
+  },
+  // Clips the scrolling pages; split from `carousel` so the indicator can sit above it
+  carouselClip: {
+    flex: 1,
+    overflow: "hidden",
   },
   page: {
     alignItems: "center",
@@ -214,6 +249,48 @@ const styles = StyleSheet.create({
   levelImage: {
     width: "100%",
     height: "100%",
+  },
+
+  // [TEMP] selected-level indicator (remove when art is added)
+  tempIndicatorWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: -TEMP_INDICATOR_HEIGHT,
+    height: TEMP_INDICATOR_HEIGHT,
+    justifyContent: "flex-end",
+    alignItems: "center",
+    zIndex: 5,
+  },
+  tempIndicatorBadge: {
+    paddingHorizontal: 18,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderWidth: 2,
+    borderColor: "#ffebbd",
+  },
+  tempIndicatorText: {
+    color: "#ffebbd",
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+  tempDotsRow: {
+    flexDirection: "row",
+    marginTop: 8,
+  },
+  tempDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 4,
+    backgroundColor: "rgba(0,0,0,0.25)",
+  },
+  tempDotActive: {
+    backgroundColor: "#ffebbd",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.55)",
   },
 
   // [TEST/DEBUG]
