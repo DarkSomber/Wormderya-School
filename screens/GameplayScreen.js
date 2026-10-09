@@ -356,7 +356,7 @@ function LevelSession({
     wordInput.submitWord(); // scoring/patience handled via onSubmit
   };
 
-  const handleIntroComplete = () => setPhase('playing');
+  const handleIntroComplete = useCallback(() => setPhase('playing'), []);
 
   // Track the store-open timeout so it can be cleared on unmount.
   const storeTimeoutRef = useRef(null);

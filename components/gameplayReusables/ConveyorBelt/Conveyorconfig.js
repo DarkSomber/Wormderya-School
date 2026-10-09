@@ -12,7 +12,7 @@ import { DEFAULT_LETTER_POOL } from './Letterpool';
 export const DEFAULT_CONVEYOR_CONFIG = {
   // Time (ms) for the belt to travel exactly one slot's width.
   // Lower = faster belt.
-  slotDurationMs: 1400,
+  slotDurationMs: 2000,
 
   // Visual scroll direction, No way to access yet, Note to self/next programmer: find a way to access it.
   direction: 'ltr', // 'ltr' | 'rtl'

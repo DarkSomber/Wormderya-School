@@ -31,7 +31,7 @@ export const LEVEL_1_CONFIG = createLevelConfig({
 export const LEVEL_2_CONFIG = createLevelConfig({
   id: 'level-2',
   title: 'Level 2 — Getting Busy',
-  conveyorSpeed: 1300,
+  conveyorSpeed: 1000,
   targetScore: 350,
   timeLimitSeconds: 60,
   totalCustomers: 5,
