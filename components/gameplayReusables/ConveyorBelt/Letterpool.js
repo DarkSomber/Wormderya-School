@@ -14,6 +14,40 @@ export const DEFAULT_LETTER_POOL = [
 // vowel/consonant split stays correct even if DEFAULT_LETTER_POOL grows.
 export const VOWELS = ['A', 'E', 'I', 'O', 'U'];
 
+/**
+ * Tile modes. A "tile" is whatever one conveyor slot and one input box hold:
+ *   letter   -> a single character ('B', 'A', 'Y')
+ *   syllable -> a consonant-vowel pair ('BA', 'LE', 'SO')
+ * Which mode a level uses is decided by LevelConfig's resolveTileMode().
+ */
+export const TILE_MODES = { LETTER: 'letter', SYLLABLE: 'syllable' };
+
+/** Every consonant + vowel combination, e.g. (['B','L']) -> BA BE BI BO BU LA LE LI LO LU. */
+export function buildSyllablePool(consonants, vowels = VOWELS) {
+  return consonants.flatMap((c) => vowels.map((v) => c + v));
+}
+
+/**
+ * Named syllable pools a level references with `syllablePool: 'basic'`.
+ * `extended` is a superset of `basic`, so a level using it gets a wider
+ * variety (more consonants -> more distinct tiles) than the level before it.
+ * To add a tier, add a consonant list here; nothing else needs to change.
+ */
+export const SYLLABLE_CONSONANTS = {
+  basic: ['B', 'K', 'L', 'M', 'S', 'T'],
+  extended: ['B', 'D', 'G', 'H', 'K', 'L', 'M', 'N', 'P', 'R', 'S', 'T', 'W', 'Y'],
+};
+
+export const SYLLABLE_POOLS = Object.fromEntries(
+  Object.entries(SYLLABLE_CONSONANTS).map(([name, consonants]) => [name, buildSyllablePool(consonants)])
+);
+
+/** 'basic' | 'extended' | a custom array of syllables -> the pool. Unknown names fall back to 'basic'. */
+export function getSyllablePool(nameOrPool = 'basic') {
+  if (Array.isArray(nameOrPool) && nameOrPool.length > 0) return nameOrPool;
+  return SYLLABLE_POOLS[nameOrPool] ?? SYLLABLE_POOLS.basic;
+}
+
 export function getVowelsInPool(pool = DEFAULT_LETTER_POOL) {
   return pool.filter((ch) => VOWELS.includes(ch));
 }

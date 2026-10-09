@@ -306,8 +306,9 @@ function LevelSession({
         maxLength: levelConfig.wordDifficulty.maxLength,
       },
     },
-    levelConfig.inputBoxCount, // player input boxes: independent of any belt's letter count
+    levelConfig.inputBoxCount, // max player input boxes (they appear as tiles are picked): independent of any belt's letter count
     handleWordSubmit,
+    { slotHoldMs: levelConfig.slotHoldMs },
   );
 
   // null | 'win' | 'lose'
@@ -482,6 +483,8 @@ function LevelSession({
           currentWord={wordInput.currentWord}
           slots={wordInput.slots}
           onSlotPress={wordInput.returnLetterFromSlot}
+          onHolePress={wordInput.selectHoleSlot}
+          targetHoleId={wordInput.targetHoleId}
           lastResult={wordInput.lastResult}
           inputBoxCount={wordInput.inputBoxCount}
         />
@@ -519,7 +522,8 @@ function LevelSession({
                   slotDurationMs: levelConfig.conveyorSpeed,
                   slotWidth: 70,
                   slotHeight: 60,
-                  ...(levelConfig.letterPool ? { letterPool: levelConfig.letterPool } : {}),
+                  // Tile mode (syllables on Levels 1-2, letters otherwise), pool, distribution
+                  // and belt size all come from getBeltConfig, the single place that picks them.
                   ...getBeltConfig(levelConfig, row),
                 }}
                 onLetterPress={(letter) => wordInput.selectLetter(letter, row)}

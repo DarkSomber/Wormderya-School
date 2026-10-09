@@ -25,7 +25,7 @@ export default function LetterTile({ character }) {
   return (
     <Animated.View style={[styles.tileWrapper, { opacity, transform: [{ scale }] }]}>
       <ImageBackground source={BLANK_RECTANGLE} style={styles.tile} resizeMode="stretch">
-        <Text style={styles.letter}>{character}</Text>
+        <Text style={[styles.letter, character.length > 1 && styles.syllable]} numberOfLines={1}>{character}</Text>
       </ImageBackground>
     </Animated.View>
   );
@@ -46,5 +46,9 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#4a2e0f',
+  },
+  // Two-character syllable tiles ('BA', 'WA') need a smaller font to fit the box.
+  syllable: {
+    fontSize: 16,
   },
 });

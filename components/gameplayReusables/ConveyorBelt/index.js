@@ -3,6 +3,10 @@ export { default as Letter } from './Letter';
 export { DEFAULT_CONVEYOR_CONFIG } from './Conveyorconfig';
 export {
   DEFAULT_LETTER_POOL,
+  TILE_MODES,
+  SYLLABLE_POOLS,
+  buildSyllablePool,
+  getSyllablePool,
   VOWELS,
   LETTER_DISTRIBUTION_PROFILES,
   getVowelsInPool,

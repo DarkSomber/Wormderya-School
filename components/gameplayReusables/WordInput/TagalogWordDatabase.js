@@ -144,7 +144,7 @@ export const TAGALOG_WORD_LIST = [
   'ARAY',
   'BAGAY',
   'LABIS',
-  'ALAT',     // alat
+  'ALAT',     // salty variant
   'ULAT', 
   'KABAYO',
   'TUHOD',
