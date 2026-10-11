@@ -20,6 +20,7 @@ import { getBeltConfig } from '../levels/LevelConfig';
 import { useLevelMaker } from '../levels/useLevelMaker';
 import { LevelIntroSequence, LevelEndSequence } from '../levels/IntroEndSequence';
 import { getRushHourLevelConfig, getRushHourStageForWords } from '../levels/RushHourConfig';
+/* global __DEV__ */
 
 const BELT_ROWS = [0, 1, 2]; // belt rows
 
