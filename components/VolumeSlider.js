@@ -15,7 +15,7 @@ import Slider from "@react-native-community/slider";
  * ----------------------------------------------------------------------
  */
 
-export default function VolumeSlider({ label, value, onValueChange, style }) {
+export default function VolumeSlider({ label, value, onValueChange, onSlidingComplete, style }) {
   return (
     <View style={[styles.row, style]}>
       <Text style={styles.label}>{label}</Text>
@@ -25,6 +25,7 @@ export default function VolumeSlider({ label, value, onValueChange, style }) {
         maximumValue={1}
         value={value}
         onValueChange={onValueChange}
+        onSlidingComplete={onSlidingComplete}
         minimumTrackTintColor="#4caf50"
         maximumTrackTintColor="#f0e6d2"
         thumbTintColor="#ffffff"

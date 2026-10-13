@@ -10,6 +10,10 @@ export const DEFAULT_SAVE = {
   wallet: { currency: 0, priceStates: {} },
   upgrades: { owned: [], consumables: {} },
   achievements: { unlocked: [] },
+  // Best score per level ('level-1'...) and for Rush Hour ('rushHour'). Drives the "new record" jingle.
+  bestScores: {},
+  // Settings-screen volume sliders, 0-1.
+  settings: { master: 0.8, music: 0.8, sfx: 0.8 },
 };
 
 function safeClone(obj) {
@@ -79,6 +83,15 @@ function mergeWithDefaults(saved) {
       unlocked: Array.isArray(saved.achievements?.unlocked)
         ? saved.achievements.unlocked.filter((s) => typeof s === 'string')
         : base.achievements.unlocked,
+    },
+    bestScores: Object.fromEntries(
+      Object.entries(saved.bestScores && typeof saved.bestScores === 'object' ? saved.bestScores : {})
+        .filter(([, v]) => Number.isFinite(v) && v > 0)
+    ),
+    settings: {
+      master: Number.isFinite(saved.settings?.master) ? saved.settings.master : base.settings.master,
+      music: Number.isFinite(saved.settings?.music) ? saved.settings.music : base.settings.music,
+      sfx: Number.isFinite(saved.settings?.sfx) ? saved.settings.sfx : base.settings.sfx,
     },
   };
 }

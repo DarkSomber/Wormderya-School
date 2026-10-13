@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { isValidWord } from './WordValidator';
 import { calculateScore } from './ScoreSystem';
 import { DEFAULT_LEVEL_CONFIG } from './LevelConfig';
+import audio from '../../../audio/AudioManager';
 /* global __DEV__ */ 
 
 // Maximum number of input boxes: how many characters the word being built can
@@ -150,6 +151,7 @@ export function useWordInput(   //Constuctor
       });
       setTarget(null);
       commitSlots(next);
+      audio.playSfx('serve_letters'); // only reached when the tile was actually accepted
 
       if (__DEV__) {
         console.log(`[WordInput] tile selected: "${letter.character}" (belt ${beltIndex}, id ${letter.id})`);
@@ -242,6 +244,7 @@ export function useWordInput(   //Constuctor
       selectedIdsRef.current.delete(entry.tileId); // selectable again
 
       conveyorRefs[entry.beltIndex]?.current?.restoreLetter({ id: entry.tileId, character: entry.tileChar });
+      audio.playSfx('click');
 
       if (__DEV__) {
         console.log(`[WordInput] letter returned: "${entry.tileChar}" (box ${slotIndex}, belt ${entry.beltIndex}, id ${entry.tileId})`);

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import Text from './AppText';
+import audio from '../audio/AudioManager';
 
 /**
  * SlideshowSequence
@@ -35,6 +36,7 @@ export default function SlideshowSequence({
   const slide = slides[index];
  
   const handleNext = () => {
+    audio.playSfx('click');
     if (isLastSlide) {
       onComplete && onComplete();
     } else {
