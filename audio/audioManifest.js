@@ -15,6 +15,9 @@ export const SFX = {
   "trophy": require('../assets/audio/sfx/trophy.wav'),
   "win": require('../assets/audio/sfx/win.wav'),
   "wrong": require('../assets/audio/sfx/wrong.wav'),
+  "serve_letter1": require('../assets/audio/sfx/serve_letter1.wav'),
+  "serve_letter2": require('../assets/audio/sfx/serve_letter2.wav'),
+  "serve_letter3": require('../assets/audio/sfx/serve_letter3.wav'),
 };
 
 export const VA = {

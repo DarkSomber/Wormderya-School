@@ -38,6 +38,10 @@ export const DEFAULT_SLOT_HOLD_MS = 3000;
 const isTile = (s) => !!s && !s.held;
 const isHold = (s) => !!s && s.held === true;
 
+const PICK_SOUNDS = ['serve_lettere1', 'serve_letter2', 'serve_letter3'];
+const playPickSound = () =>
+  audio.playSfx(PICK_SOUNDS[Math.floor(Math.random() * PICK_SOUNDS.length)]);
+
 // Which open box the next tile goes into: the one the player tapped (targetId)
 // if it is still open, else the most recently emptied one. -1 = no open box.
 const findHoleIndex = (slots, targetId) => {
@@ -151,7 +155,7 @@ export function useWordInput(   //Constuctor
       });
       setTarget(null);
       commitSlots(next);
-      audio.playSfx('serve_letters'); // only reached when the tile was actually accepted
+      playPickSound(); // only reached when the tile was actually accepted
 
       if (__DEV__) {
         console.log(`[WordInput] tile selected: "${letter.character}" (belt ${beltIndex}, id ${letter.id})`);
@@ -244,7 +248,7 @@ export function useWordInput(   //Constuctor
       selectedIdsRef.current.delete(entry.tileId); // selectable again
 
       conveyorRefs[entry.beltIndex]?.current?.restoreLetter({ id: entry.tileId, character: entry.tileChar });
-      audio.playSfx('click');
+      audio.playSfx('serve_letters');
 
       if (__DEV__) {
         console.log(`[WordInput] letter returned: "${entry.tileChar}" (box ${slotIndex}, belt ${entry.beltIndex}, id ${entry.tileId})`);
