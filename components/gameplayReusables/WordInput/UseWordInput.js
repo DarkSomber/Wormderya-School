@@ -38,7 +38,7 @@ export const DEFAULT_SLOT_HOLD_MS = 3000;
 const isTile = (s) => !!s && !s.held;
 const isHold = (s) => !!s && s.held === true;
 
-const PICK_SOUNDS = ['serve_lettere1', 'serve_letter2', 'serve_letter3'];
+const PICK_SOUNDS = ['serve_letter1', 'serve_letter2', 'serve_letter3'];
 const playPickSound = () =>
   audio.playSfx(PICK_SOUNDS[Math.floor(Math.random() * PICK_SOUNDS.length)]);
 
