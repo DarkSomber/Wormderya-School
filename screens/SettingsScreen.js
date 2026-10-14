@@ -11,6 +11,7 @@ import Text from "../components/AppText";
 import AppButton from "../components/AppButton";
 import VolumeSlider from "../components/VolumeSlider";
 import audio from "../audio/AudioManager";
+import AchievementList from "../components/AchievementList";
 
 const PANEL_TITLES = {
   music: "Settings",
@@ -44,7 +45,7 @@ const ART_STYLE = {
   ],
 };
 
-export default function SettingsScreen({ onBack }) {
+export default function SettingsScreen({ onBack, achievements }) {
   const [view, setView] = useState("music");
   // Start from the engine's live values (App loads the saved ones into it).
   const [masterVolume, setMasterVolume] = useState(() => audio.getVolumes().master);
@@ -121,21 +122,30 @@ export default function SettingsScreen({ onBack }) {
             </>
           )}
 
-          {view !== "music" && (
-            <>
-              <View style={styles.placeholderContent}>
-                <Text style={styles.placeholderContentText}>
-                  {view === "credits" ? "CREDITS" : "ACHIEVEMENTS"}
-                  {"\n"}CONTENT PLACEHOLDER
-                </Text>
-              </View>
+          {view === "achievements" && (
+          <>
+          <AchievementList unlockedIds={achievements?.unlockedIds} />
+            <AppButton
+            label="Back"
+            onPress={() => setView("music")}
+            style={styles.panelBackButton}
+            />
+          </>
+          )}
 
-              <AppButton
-                label="Back"
-                onPress={() => setView("music")}
-                style={styles.panelBackButton}
-              />
-            </>
+          {view === "credits" && (
+          <>
+          <View style={styles.placeholderContent}>
+            <Text style={styles.placeholderContentText}>
+            CREDITS{"\n"}CONTENT PLACEHOLDER
+            </Text>
+          </View>
+          <AppButton
+          label="Back"
+          onPress={() => setView("music")}
+          style={styles.panelBackButton}
+          />
+        </>
           )}
         </View>
 
