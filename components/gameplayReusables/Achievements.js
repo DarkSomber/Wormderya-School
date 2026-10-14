@@ -14,12 +14,14 @@ export const ACHIEVEMENTS = {
     title: 'First Bite!',
     description: 'Served your very first word.',
     coinReward: 10,
+    icon: require('../../assets/Final/Achieve1.png'),
   },
   FIRST_PURCHASE: {
     id: 'first-purchase',
     title: 'Big Spender',
     description: 'Bought your first item from Mr. Ratty.',
     coinReward: 15,
+    icon: require('../../assets/Final/Achieve1.png'),
   },
 
 };

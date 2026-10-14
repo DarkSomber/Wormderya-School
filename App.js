@@ -157,7 +157,10 @@ function ScreenSwitcher() {
         );
 
       case SCREENS.SETTINGS:
-        return <SettingsScreen onBack={() => setScreen(SCREENS.HOME)} />;
+        return <SettingsScreen
+                onBack={() => setScreen(SCREENS.HOME)}
+                achievements={achievements}
+                />
 
       case SCREENS.LEVEL_SELECT:
         return (
