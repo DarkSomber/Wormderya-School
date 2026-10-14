@@ -10,6 +10,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/slider": "5.2.0",
     "expo": "~57.0.22",
+    "expo-audio": "~57.0.5",
     "expo-font": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
@@ -18,6 +19,11 @@
     "react-native-web": "^0.21.2"
   },
   "scripts": {
+    "audio": "node scripts/generate-audio-manifest.js",
+    "prestart": "npm run audio",
+    "preandroid": "npm run audio",
+    "preios": "npm run audio",
+    "preweb": "npm run audio",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",

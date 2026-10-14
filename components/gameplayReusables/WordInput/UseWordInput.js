@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { isValidWord } from './WordValidator';
 import { calculateScore } from './ScoreSystem';
 import { DEFAULT_LEVEL_CONFIG } from './LevelConfig';
+import audio from '../../../audio/AudioManager';
 /* global __DEV__ */ 
 
 // Maximum number of input boxes: how many characters the word being built can
@@ -36,6 +37,10 @@ export const DEFAULT_SLOT_HOLD_MS = 3000;
 // player has picked (plus open boxes for a few seconds), never empty placeholders.
 const isTile = (s) => !!s && !s.held;
 const isHold = (s) => !!s && s.held === true;
+
+const PICK_SOUNDS = ['serve_letter1', 'serve_letter2', 'serve_letter3'];
+const playPickSound = () =>
+  audio.playSfx(PICK_SOUNDS[Math.floor(Math.random() * PICK_SOUNDS.length)]);
 
 // Which open box the next tile goes into: the one the player tapped (targetId)
 // if it is still open, else the most recently emptied one. -1 = no open box.
@@ -150,6 +155,7 @@ export function useWordInput(   //Constuctor
       });
       setTarget(null);
       commitSlots(next);
+      playPickSound(); // only reached when the tile was actually accepted
 
       if (__DEV__) {
         console.log(`[WordInput] tile selected: "${letter.character}" (belt ${beltIndex}, id ${letter.id})`);
@@ -242,6 +248,7 @@ export function useWordInput(   //Constuctor
       selectedIdsRef.current.delete(entry.tileId); // selectable again
 
       conveyorRefs[entry.beltIndex]?.current?.restoreLetter({ id: entry.tileId, character: entry.tileChar });
+      audio.playSfx('serve_letters');
 
       if (__DEV__) {
         console.log(`[WordInput] letter returned: "${entry.tileChar}" (box ${slotIndex}, belt ${entry.beltIndex}, id ${entry.tileId})`);

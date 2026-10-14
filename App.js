@@ -19,6 +19,7 @@ import { useAchievements } from "./components/gameplayReusables/UseAchievements.
 import { useUpgrades } from "./components/gameplayReusables/UseUpgrades";
 import { hasLevelPreset, getNextLevelId, getLevelConfigById, getAllLevelIds } from "./levels/levelPresets";
 import { loadGameData, saveGameData, clearGameData, DEFAULT_SAVE } from "./components/GameSave";
+import audio from "./audio/AudioManager";
 
 import QuitModal from './components/QuitModal';
 import RushHourModal from './screens/RushHourModal';
@@ -69,11 +70,14 @@ function useGameSave() {
     snapshotRef.current = { ...DEFAULT_SAVE };
   }, []);
 
-  return { loaded, snapshot: snapshotRef.current, patch, reset };
+  // Always the latest snapshot, for callbacks that outlive a render.
+  const getSnapshot = useCallback(() => snapshotRef.current, []);
+
+  return { loaded, snapshot: snapshotRef.current, getSnapshot, patch, reset };
 }
 
 function ScreenSwitcher() {
-  const { loaded, snapshot, patch, reset } = useGameSave();
+  const { loaded, snapshot, getSnapshot, patch, reset } = useGameSave();
 
   const [screen, setScreen] = useState(SCREENS.SPLASH);
 
@@ -84,6 +88,28 @@ function ScreenSwitcher() {
   const [showRushHour, setShowRushHour] = useState(false);
   const [gameMode, setGameMode] = useState('normal');
   const [showQuit, setShowQuit] = useState(false);
+
+  // ---- Audio ----
+  // Start the audio engine once.
+  useEffect(() => {
+    audio.init();
+  }, []);
+
+  // Once the save is in, apply the saved slider values and let the Settings
+  // screen persist new ones.
+  useEffect(() => {
+    if (!loaded) return;
+    audio.setVolumes(snapshot.settings);
+    audio.setPersistHandler((volumes) => patch('settings', volumes));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, patch]);
+
+  // Menu music everywhere except the splash and gameplay (LevelSession owns
+  // the music while a level is running).
+  const menuMusicOn = loaded && screen !== SCREENS.SPLASH && screen !== SCREENS.GAMEPLAY;
+  useEffect(() => {
+    if (menuMusicOn) audio.setMusic('menu');
+  }, [menuMusicOn]);
 
   // Push top-level changes into the save snapshot.
   useEffect(() => {
@@ -134,7 +160,25 @@ function ScreenSwitcher() {
     setUnlockNotice(nextId);
   };
 
-  const openStore = () => setShowStore(true);
+  // Best scores power the "new record" jingle. Normal levels are keyed
+  // 'level-N'; Rush Hour has one shared key.
+  const scoreKey = gameMode === 'rushHour' ? 'rushHour' : `level-${currentLevelId}`;
+  const getBestScore = useCallback(
+    () => getSnapshot().bestScores?.[scoreKey] ?? 0,
+    [getSnapshot, scoreKey]
+  );
+  const reportScore = useCallback(
+    (score) => {
+      const best = getSnapshot().bestScores ?? {};
+      if (score > (best[scoreKey] ?? 0)) patch('bestScores', { ...best, [scoreKey]: score });
+    },
+    [getSnapshot, patch, scoreKey]
+  );
+
+  const openStore = () => {
+    audio.playSfx('ratty_shop_appear');
+    setShowStore(true);
+  };
   const closeStore = () => setShowStore(false);
 
   // While the save is loading, keep the splash on screen.
@@ -200,6 +244,8 @@ function ScreenSwitcher() {
             wallet={wallet}
             achievements={achievements}
             upgrades={upgrades}
+            getBestScore={getBestScore}
+            onReportScore={reportScore}
           />
         );
 

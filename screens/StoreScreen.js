@@ -4,6 +4,7 @@ import { formatCurrency } from '../components/gameplayReusables/UseWallet';
 import AchievementModal from '../components/gameplayReusables/AchievementModal';
 import { ACHIEVEMENTS } from '../components/gameplayReusables/Achievements.js';
 import { UPGRADE_LIST } from '../components/gameplayReusables/UseUpgrades';
+import audio from '../audio/AudioManager';
 import {
   StyleSheet,
   View,
@@ -49,11 +50,13 @@ export default function StoreScreen({
     setFeedback(null);
 
     if (owned) {
+      audio.playSfx('wrong');
       setFeedback({ type: 'error', text: 'Already owned.' });
       return;
     }
 
     if (!affordable) {
+      audio.playSfx('wrong');
       setFeedback({
         type: 'error',
         text: `Not enough coins (need ${price}, have ${wallet.currency}).`,
@@ -82,10 +85,12 @@ export default function StoreScreen({
     }
 
     if (result.success) {
+      audio.playSfx('ratty_buy');
       setFeedback({ type: 'ok', text: `Bought ${selected.name}!` });
       achievements.unlockAchievement(ACHIEVEMENTS.FIRST_PURCHASE);
       setRattyOutcome('discount');
     } else {
+      audio.playSfx('wrong');
       setFeedback({
         type: 'error',
         text:
@@ -99,6 +104,7 @@ export default function StoreScreen({
   };
 
   const handleDecline = () => {
+    audio.playSfx('ratty_ignore');
     wallet.declineOffer(UPGRADE_LIST.map((u) => u.id));
     setRattyOutcome('inflate');
   };
@@ -121,7 +127,10 @@ export default function StoreScreen({
     <View style={styles.screenWrapper}>
       <View style={styles.container}>
         <TouchableOpacity
-          onPress={onBack}
+          onPress={() => {
+            audio.playSfx('click');
+            onBack?.();
+          }}
           activeOpacity={0.7}
           style={styles.backButtonWrapper}
         >
@@ -172,6 +181,7 @@ export default function StoreScreen({
                   key={item.id}
                   style={styles.itemSlotContainer}
                   onPress={() => {
+                    audio.playSfx('click');
                     setSelectedId(item.id);
                     setFeedback(null);
                   }}

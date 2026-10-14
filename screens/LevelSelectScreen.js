@@ -13,7 +13,7 @@ import {
 import { hasLevelPreset } from "../levels/levelPresets";
 import Text from "../components/AppText";
 import DebugButton from "../components/tests/DebugButton"; // [TEST/DEBUG]
-/* global __DEV__ */
+import audio from "../audio/AudioManager";
 
 const isLevelLocked = (lvl, unlockedLevels, lockedLevels) =>
   !hasLevelPreset(lvl.id) ||
@@ -129,6 +129,7 @@ export default function LevelSelectScreen({
 
   const playLevel = (lvl) => {
     if (isLevelLocked(lvl, unlockedLevels, lockedLevels)) return;
+    audio.playSfx("click");
     onSelectLevel && onSelectLevel(lvl.id);
   };
 
@@ -142,7 +143,10 @@ export default function LevelSelectScreen({
 
       <TouchableOpacity
         activeOpacity={0.75}
-        onPress={onBack}
+        onPress={() => {
+          audio.playSfx("click");
+          onBack && onBack();
+        }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         style={[styles.backButton, { top: topInset, left: width * 0.04 }]}
       >

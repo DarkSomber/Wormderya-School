@@ -22,6 +22,9 @@ import { LevelIntroSequence, LevelEndSequence } from '../levels/IntroEndSequence
 import { getRushHourLevelConfig, getRushHourStageForWords } from '../levels/RushHourConfig';
 /* global __DEV__ */
 
+import audio from '../audio/AudioManager';
+import { customerVoice } from '../audio/customerVoice';
+
 const BELT_ROWS = [0, 1, 2]; // belt rows
 
 // Customer area tuning. These are the only numbers you need to touch to move
@@ -30,10 +33,16 @@ const SPRITE_TOP = -26;         // sprite vertical offset (negative = up)
 const PATIENCE_OFFSET_X = 72;   // meter's left edge, in px right of screen center
 
 // Customer swapper sprites (HARDCODED FOR SECOND CUSTOMER)
+// `voice` picks the VA files (greetings_<voice>, goodbye_<voice>, ...), 1-3.
+// When the third customer sprite is added, give it `voice: 3`.
 const CUSTOMER_SPRITES = [
-  { source: require('../assets/Final/Customers/SampleCustomer_1.png'), bottom: 0 },
-  { source: require('../assets/Final/Customers/CustomerPicky.png'), bottom: -10 },
+  { source: require('../assets/Final/Customers/SampleCustomer_1.png'), bottom: 0, voice: 1 },
+  { source: require('../assets/Final/Customers/CustomerPicky.png'), bottom: -10, voice: 2 },
 ];
+
+// Patience meter bands (same thresholds CustomerMood uses for its face).
+const PATIENCE_RANK = { happy: 0, impatient: 1, angry: 2 };
+const patienceBand = (p) => (p > 70 ? 'happy' : p > 30 ? 'impatient' : 'angry');
 
 // Safe fallbacks if a prop wasn't passed down. No effects, but the screen
 // still runs so the missing prop is easy to spot.
@@ -80,6 +89,8 @@ const NO_ACHIEVEMENTS = {
  *   wallet           the useWallet() instance from App.js (single shared balance)
  *   achievements     the achievements instance from App.js
  *   upgrades         the useUpgrades() instance from App.js
+ *   getBestScore     () => number; the best score before this run (for the "new record" jingle)
+ *   onReportScore    (score) => void; called once when a run counts (a win, or any Rush Hour run)
  */
 export default function GameplayScreen({
   onOpenStore,
@@ -92,6 +103,8 @@ export default function GameplayScreen({
   achievements,
   upgrades,
   mode = 'normal',
+  getBestScore,
+  onReportScore,
 }) {
   const [sessionId, setSessionId] = useState(0);
 
@@ -125,6 +138,8 @@ export default function GameplayScreen({
         achievements={safeAchievements}
         upgrades={upgrades}
         mode={mode}
+        getBestScore={getBestScore}
+        onReportScore={onReportScore}
       />
       {/* Positioned here so it doesn't unmount when there's something on top */}
       <AchievementModal
@@ -157,6 +172,8 @@ function LevelSession({
   wallet,
   achievements,
   upgrades,
+  getBestScore,
+  onReportScore,
 }) {
   // Fallback so a missing prop never crashes the screen.
   const safeUpgrades = upgrades ?? NO_UPGRADES;
@@ -268,11 +285,20 @@ function LevelSession({
   const levelMakerRef = useRef(levelMaker);
   levelMakerRef.current = levelMaker;
 
+  // Which customer is up decides whose voice lines play.
+  const customerVoiceId = CUSTOMER_SPRITES[levelMaker.customerIndex % CUSTOMER_SPRITES.length].voice;
+
   // Runs on every submitted word (auto-submit or Plate button). Plain function
   // that always sees fresh props/state; it's reached through a ref below so
   // useWordInput never holds a stale copy.
   const onWordSubmit = (result) => {
+    if (result.word.length > 0) audio.playSfx('serve_word');
+
     if (result.valid) {
+      audio.playSfx('correct');
+      customerVoice.served(customerVoiceId, {
+        lastForCustomer: levelMaker.wordsServedForCustomer + 1 >= levelConfig.wordsPerCustomer,
+      });
       addScoreFromWord(result.word, 1, levelConfig.scoreMultiplier);
       customerRef.current?.restorePatience(100);
       levelMakerRef.current.registerServedWord();
@@ -287,6 +313,8 @@ function LevelSession({
       }
     } else if (result.word.length > 0) {
       // Wrong word: patience penalty only. Score never decreases.
+      audio.playSfx('wrong');
+      customerVoice.wrong(customerVoiceId);
       customerRef.current?.applyWrongWordPenalty();
     }
   };
@@ -314,6 +342,20 @@ function LevelSession({
 
   // null | 'win' | 'lose'
   const [levelResult, setLevelResult] = useState(null);
+
+  // CustomerMood reports every patience change. Only a drop into a worse band
+  // speaks ("ehem" at impatient, a sigh at angry); a fresh customer starts happy.
+  const patienceBandRef = useRef('happy');
+  const voiceIdRef = useRef(customerVoiceId);
+  voiceIdRef.current = customerVoiceId;
+  const handlePatienceChange = useCallback((patience) => {
+    const band = patienceBand(patience);
+    const previous = patienceBandRef.current;
+    patienceBandRef.current = band;
+    if (PATIENCE_RANK[band] > PATIENCE_RANK[previous]) {
+      customerVoice.patience(voiceIdRef.current, band);
+    }
+  }, []);
 
   const handleLevelEnd = useCallback((won) => {
     setLevelResult((prev) => prev ?? (won ? 'win' : 'lose')); // ignore if already ended
@@ -383,6 +425,51 @@ function LevelSession({
   // between the level ending and the end sequence showing.
   const activePhase = levelResult ? 'end' : phase;
 
+  // ---- Audio ----
+  // Level music only while actually playing. The intro countdown and the end
+  // screen fade it out (which also fades out the menu music on entry). Ratty's
+  // shop after a level is won gets the menu track, so the shop isn't silent and
+  // Level Select (also the menu track) carries on without a restart.
+  const isPlaying = activePhase === 'playing';
+  const musicTrack = isPlaying ? 'level' : isStoreOpen ? 'menu' : null;
+  useEffect(() => {
+    audio.setMusic(musicTrack);
+  }, [musicTrack]);
+
+  // Shop opened mid-level (Mr. Ratty's visit): keep the level music quiet under it.
+  const duckMusic = isPlaying && !!isStoreOpen;
+  useEffect(() => {
+    audio.setDuck(duckMusic);
+    return () => audio.setDuck(false);
+  }, [duckMusic]);
+
+  // Each customer greets when they step up (first one when the clock starts).
+  useEffect(() => {
+    if (!isPlaying || levelMaker.isLevelComplete) return;
+    customerVoice.greet(customerVoiceId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying, levelMaker.customerIndex]);
+
+  // Nobody keeps talking after the player leaves.
+  useEffect(() => () => audio.stopVoice(), []);
+
+  // Record check: only wins count in normal mode; every Rush Hour run counts.
+  // The best score is read once at mount, so retries compare against the live best.
+  const [bestBefore] = useState(() => getBestScore?.() ?? 0);
+  const runCounts = levelResult !== null && (isRushHour || levelResult === 'win');
+  const isNewRecord = runCounts && bestBefore > 0 && score > bestBefore;
+
+  const endHandledRef = useRef(false);
+  useEffect(() => {
+    if (!levelResult || endHandledRef.current) return;
+    endHandledRef.current = true;
+    if (isNewRecord) audio.playSfx('new_record');
+    else audio.playSfx(levelResult === 'win' ? 'win' : 'lose');
+    if (levelResult === 'lose') audio.stopVoice(); // a customer who walked out stops talking
+    if (runCounts) onReportScore?.(score);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [levelResult]);
+
   if (activePhase === 'intro') {
     return (
       <LevelIntroSequence
@@ -399,6 +486,7 @@ function LevelSession({
         won={levelResult === 'win'}
         finalScore={score}
         rushHourStage={isRushHour ? rushHourStage : null}
+        newRecord={isNewRecord}
         onComplete={handleEndComplete}
       />
     );
@@ -416,7 +504,11 @@ function LevelSession({
         {/* 1. HEADER BANNER: flex, same as every row below it, so it scales
             down proportionally on shorter screens. */}
         <View style={styles.headerBackground}>
-          <TouchableOpacity onPress={onBack} activeOpacity={0.7} style={styles.quitWrapper}>
+          <TouchableOpacity
+            onPress={() => { audio.playSfx('click'); onBack?.(); }}
+            activeOpacity={0.7}
+            style={styles.quitWrapper}
+          >
             <Image source={require('../assets/Final/GameplayUI/quit-sign.png')} style={styles.quitButton} />
           </TouchableOpacity>
 
@@ -474,6 +566,7 @@ function LevelSession({
             key={`customer-${levelMaker.customerIndex}-${healthRespawnKey}`}
             ref={customerRef}
             onCustomerLeft={handleCustomerLeft}
+            onPatienceChange={handlePatienceChange}
             decayRateMs={levelConfig.patienceDecayMs}
             drainMultiplier={patienceDrainMultiplier}
             style={[styles.patienceMeter, { left: boxW / 2 + PATIENCE_OFFSET_X }]}

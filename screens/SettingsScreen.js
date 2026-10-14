@@ -10,6 +10,7 @@ import {
 import Text from "../components/AppText";
 import AppButton from "../components/AppButton";
 import VolumeSlider from "../components/VolumeSlider";
+import audio from "../audio/AudioManager";
 import AchievementList from "../components/AchievementList";
 
 const PANEL_TITLES = {
@@ -46,9 +47,21 @@ const ART_STYLE = {
 
 export default function SettingsScreen({ onBack, achievements }) {
   const [view, setView] = useState("music");
-  const [masterVolume, setMasterVolume] = useState(0.8);
-  const [musicVolume, setMusicVolume] = useState(0.8);
-  const [sfxVolume, setSfxVolume] = useState(0.8);
+  // Start from the engine's live values (App loads the saved ones into it).
+  const [masterVolume, setMasterVolume] = useState(() => audio.getVolumes().master);
+  const [musicVolume, setMusicVolume] = useState(() => audio.getVolumes().music);
+  const [sfxVolume, setSfxVolume] = useState(() => audio.getVolumes().sfx);
+
+  // Sliders apply live (you hear the music change as you drag) and are saved
+  // when released. The SFX slider plays a click on release as a preview.
+  const liveVolume = (kind, setter) => (value) => {
+    setter(value);
+    audio.setVolume(kind, value);
+  };
+  const saveVolume = (preview) => () => {
+    audio.commitVolumes();
+    if (preview) audio.playSfx("click");
+  };
 
   return (
     <ImageBackground
@@ -73,19 +86,22 @@ export default function SettingsScreen({ onBack, achievements }) {
               <VolumeSlider
                 label="Master Volume"
                 value={masterVolume}
-                onValueChange={setMasterVolume}
+                onValueChange={liveVolume("master", setMasterVolume)}
+                onSlidingComplete={saveVolume(true)}
                 style={styles.sliderSpacing}
               />
               <VolumeSlider
                 label="Music Volume"
                 value={musicVolume}
-                onValueChange={setMusicVolume}
+                onValueChange={liveVolume("music", setMusicVolume)}
+                onSlidingComplete={saveVolume(false)}
                 style={styles.sliderSpacing}
               />
               <VolumeSlider
                 label="Sound Effects (SFX)"
                 value={sfxVolume}
-                onValueChange={setSfxVolume}
+                onValueChange={liveVolume("sfx", setSfxVolume)}
+                onSlidingComplete={saveVolume(true)}
                 style={styles.sliderSpacing}
               />
 
@@ -138,7 +154,10 @@ export default function SettingsScreen({ onBack, achievements }) {
         <View style={styles.topBar}>
           <TouchableOpacity
             activeOpacity={0.75}
-            onPress={onBack}
+            onPress={() => {
+              audio.playSfx("click");
+              onBack?.();
+            }}
             style={styles.backCircle}
           >
             <Image

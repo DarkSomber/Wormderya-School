@@ -1,6 +1,7 @@
 import React from "react";
 import { TouchableOpacity, StyleSheet, ImageBackground } from 'react-native';
 import Text from './AppText';
+import audio from '../audio/AudioManager';
 
 /**
  * AppButton
@@ -48,6 +49,12 @@ export default function AppButton({
 }) {
   const sizeStyle = multiline ? styles.buttonMultiline : null;
 
+  // Every menu button makes the same click, then does its own thing.
+  const handlePress = (e) => {
+    audio.playSfx('click');
+    onPress?.(e);
+  };
+
   const content = (
     <Text
       style={[styles.label, disabled && styles.labelDisabled, textStyle]}
@@ -62,7 +69,7 @@ export default function AppButton({
     return (
       <TouchableOpacity
         activeOpacity={0.75}
-        onPress={onPress}
+        onPress={handlePress}
         disabled={disabled}
         style={[styles.buttonBase, sizeStyle, style]}
       >
@@ -83,7 +90,7 @@ export default function AppButton({
   return (
     <TouchableOpacity
       activeOpacity={0.75}
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled}
       style={[
         styles.buttonBase,

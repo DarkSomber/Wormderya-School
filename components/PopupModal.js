@@ -1,6 +1,13 @@
 import React from 'react';
 import { StyleSheet, View, Modal, TouchableOpacity } from 'react-native';
 import Text from './AppText';
+import audio from '../audio/AudioManager';
+
+// Popup buttons all click, then run their own handler.
+const withClick = (fn) => (e) => {
+  audio.playSfx('click');
+  fn?.(e);
+};
 
 export default function PopupModal({
   visible,
@@ -53,7 +60,7 @@ export default function PopupModal({
             {cancelText && onCancel ? (
               <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
-                onPress={onCancel}
+                onPress={withClick(onCancel)}
               >
                 <Text style={styles.buttonText}>{cancelText}</Text>
               </TouchableOpacity>
@@ -61,7 +68,7 @@ export default function PopupModal({
 
             <TouchableOpacity
               style={[styles.button, { backgroundColor: buttonColor }]}
-              onPress={onPress}
+              onPress={withClick(onPress)}
             >
               <Text style={styles.buttonText}>{buttonText}</Text>
             </TouchableOpacity>
