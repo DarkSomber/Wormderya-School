@@ -9,9 +9,10 @@ import {
   StyleSheet,
   View,
   Image,
-  ImageBackground,
   TouchableOpacity,
   ScrollView,
+  StatusBar,
+  useWindowDimensions
 } from 'react-native';
 import Text from '../components/AppText';
 
@@ -35,16 +36,28 @@ export default function StoreScreen({
   onGoToLevelSelect,
 }) {
   const safeUpgrades = upgrades ?? NO_UPGRADES;
+  const { width, height } = useWindowDimensions();
 
   const [rattyOutcome, setRattyOutcome] = useState(null);
-  const [selectedId, setSelectedId] = useState(UPGRADE_LIST[0].id);
+  const [offers] = useState(() => pickRandom(UPGRADE_LIST, 3));
+  const [selectedId, setSelectedId] = useState(offers[0].id);
+  const selected = offers.find((u) => u.id === selectedId) || offers[0];
   const [feedback, setFeedback] = useState(null); // last action result, shown in status line
 
-  const selected = UPGRADE_LIST.find((u) => u.id === selectedId) || UPGRADE_LIST[0];
   const price = wallet.getEffectivePrice(selected.id, selected.price);
   const owned = safeUpgrades.ownedPermanent.has(selected.id);
   const active = safeUpgrades.isActive(selected.id);
   const affordable = wallet.currency >= price;
+
+  //random three boxes instead of scroll
+  function pickRandom(list, n) {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, n);
+}
 
   const handleBuy = () => {
     setFeedback(null);
@@ -105,9 +118,9 @@ export default function StoreScreen({
 
   const handleDecline = () => {
     audio.playSfx('ratty_ignore');
-    wallet.declineOffer(UPGRADE_LIST.map((u) => u.id));
+    wallet.declineOffer(offers.map((u) => u.id));
     setRattyOutcome('inflate');
-  };
+};
 
   const statusLine = owned
     ? 'OWNED'
@@ -124,146 +137,138 @@ export default function StoreScreen({
     : '#7A2E2E';
 
   return (
-    <View style={styles.screenWrapper}>
-      <View style={styles.container}>
+  <View style={styles.screenWrapper}>
+    {/* The stage is the picture's shape, as large as fits on this phone */}
+    <View style={[styles.stage, { width: Math.min(width, height * (500 / 552)) }]}>
+      <Image
+      source={require('../assets/Final/store/Sample.png')}
+      style={{ width: '100%', height: '100%' }}
+      resizeMode="stretch"
+/>
+    <View style={styles.coinHeader}>
+        <Text style={styles.coinText} numberOfLines={1} adjustsFontSizeToFit>
+        {formatCurrency(wallet.currency)}
+        </Text>
+        <Image source={require('../assets/Placeholder/pixel_coins.png')} style={styles.coinIcon} />
+      </View>
+
+      {/* Tap areas over the three boxes in the picture */}
+      <View style={styles.boxesRow}>
+         
+        {offers.map((item) => {
+          const itemPrice = wallet.getEffectivePrice(item.id, item.price);
+          const onSale = itemPrice < item.price;
+          const pricedUp = itemPrice > item.price;
+          const itemOwned = safeUpgrades.ownedPermanent.has(item.id);
+
+          return (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.boxSlot}
+              activeOpacity={0.7}
+              onPress={() => {
+                audio.playSfx('click');
+                setSelectedId(item.id);
+                setFeedback(null);
+              }}
+            >
+              <View
+                style={[
+                  styles.boxHighlight,
+                  selectedId === item.id && styles.itemSelected,
+                ]}
+              >
+                <Text style={styles.itemSlotInitial}>{item.name.charAt(0)}</Text>
+                {itemOwned && <Text style={styles.ownedBadge}>✓</Text>}
+              </View>
+
+              <View style={styles.priceContainer}>
+                <Image
+                  source={require('../assets/Placeholder/pixel_coins.png')}
+                  style={styles.smallCoinIcon}
+                />
+                <Text style={styles.priceText}>
+                  {itemPrice}
+                  {onSale ? ' ↓' : ''}
+                  {pricedUp ? ' ↑' : ''}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Name, description, status */}
+      <View style={styles.textArea}>
+        <Text style={styles.descriptionText}>{selected.name}</Text>
+        <Text style={styles.affordabilityText}>{selected.description}</Text>
+        <Text style={[styles.affordabilityText, { color: statusColor }]}>
+          {statusLine}
+        </Text>
+      </View>
+
+      {/* Buy is only hard-disabled when already owned. If not affordable,
+          it still taps and shows a clear message instead of silently
+          doing nothing. */}
+      <View style={styles.buttonRow}>
         <TouchableOpacity
-          onPress={() => {
-            audio.playSfx('click');
-            onBack?.();
-          }}
-          activeOpacity={0.7}
-          style={styles.backButtonWrapper}
+          onPress={handleBuy}
+          activeOpacity={0.8}
+          disabled={owned}
+          style={[styles.buttonHalf, owned && styles.buyButtonDisabled]}
         >
           <Image
-            source={require('../assets/Final/buttons/buttonBack.png')}
-            style={styles.backButtonIcon}
+            source={require('../assets/Placeholder/BuyButton.png')}
+            style={styles.buttonImage}
+            resizeMode="contain"
           />
         </TouchableOpacity>
-
-        <Image
-          source={require('../assets/Placeholder/TopBoard.png')}
-          style={styles.shopSign}
-        />
-
-        <Image
-          source={require('../assets/Placeholder/MrRatty.png')}
-          style={styles.ratMerchant}
-        />
-
-        <ImageBackground
-          source={require('../assets/Placeholder/Board.png')}
-          style={styles.shopPanel}
-          resizeMode="stretch"
-        >
-          <View style={styles.coinHeader}>
-            <Text style={styles.coinText} numberOfLines={1} adjustsFontSizeToFit>
-              {formatCurrency(wallet.currency)}
-            </Text>
-            <Image
-              source={require('../assets/Placeholder/pixel_coins.png')}
-              style={styles.coinIcon}
-            />
-          </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.itemRow}
-          >
-            {UPGRADE_LIST.map((item) => {
-              const itemPrice = wallet.getEffectivePrice(item.id, item.price);
-              const onSale = itemPrice < item.price;
-              const pricedUp = itemPrice > item.price;
-              const itemOwned = safeUpgrades.ownedPermanent.has(item.id);
-
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.itemSlotContainer}
-                  onPress={() => {
-                    audio.playSfx('click');
-                    setSelectedId(item.id);
-                    setFeedback(null);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    style={[
-                      styles.itemSlotBox,
-                      selectedId === item.id && styles.itemSelected,
-                    ]}
-                  >
-                    <Text style={styles.itemSlotInitial}>
-                      {item.name.charAt(0)}
-                    </Text>
-                    {itemOwned && <Text style={styles.ownedBadge}>✓</Text>}
-                  </View>
-                  <View style={styles.priceContainer}>
-                    <Image
-                      source={require('../assets/Placeholder/pixel_coins.png')}
-                      style={styles.smallCoinIcon}
-                    />
-                    <Text style={styles.priceText}>
-                      {itemPrice}
-                      {onSale ? ' ↓' : ''}
-                      {pricedUp ? ' ↑' : ''}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          <Text style={styles.descriptionText}>{selected.name}</Text>
-          <Text style={styles.affordabilityText}>{selected.description}</Text>
-          <Text style={[styles.affordabilityText, { color: statusColor }]}>
-            {statusLine}
-          </Text>
-
-          {/* Buy is only hard-disabled when already owned. If not affordable,
-              it still taps and shows a clear message instead of silently
-              doing nothing. */}
-          <TouchableOpacity
-            onPress={handleBuy}
-            activeOpacity={0.8}
-            disabled={owned}
-            style={owned ? styles.buyButtonDisabled : undefined}
-          >
-            <Image
-              source={require('../assets/Placeholder/BuyButton.png')}
-              style={styles.buyButtonImage}
-            />
-          </TouchableOpacity>
-        </ImageBackground>
 
         <TouchableOpacity
           onPress={handleDecline}
           activeOpacity={0.7}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={styles.declineButtonWrapper}
+          style={styles.buttonHalf}
         >
           <Image
             source={require('../assets/Placeholder/DeclineButton.png')}
-            style={styles.backButtonImage}
+            style={styles.buttonImage}
+            resizeMode="contain"
           />
         </TouchableOpacity>
       </View>
 
-      <ShopOutcomeModal
-        visible={rattyOutcome !== null}
-        outcome={rattyOutcome}
-        onDismiss={() => {
-          setRattyOutcome(null);
-          onGoToLevelSelect?.();
+      {/* Back button, top left, below the status bar */}
+      <TouchableOpacity
+        onPress={() => {
+          audio.playSfx('click');
+          onBack?.();
         }}
-      />
-      <AchievementModal
-        visible={achievements.currentAchievement !== null}
-        achievement={achievements.currentAchievement}
-        onDismiss={achievements.dismissAchievement}
-      />
+        activeOpacity={0.7}
+        style={[styles.backButtonWrapper, { top: (StatusBar.currentHeight ?? 0) + 8 }]}
+      >
+        <Image
+          source={require('../assets/Final/buttons/buttonBack.png')}
+          style={styles.backButtonIcon}
+        />
+      </TouchableOpacity>
     </View>
-  );
+
+    <ShopOutcomeModal
+      visible={rattyOutcome !== null}
+      outcome={rattyOutcome}
+      onDismiss={() => {
+        setRattyOutcome(null);
+        onGoToLevelSelect?.();
+      }}
+    />
+    <AchievementModal
+      visible={achievements.currentAchievement !== null}
+      achievement={achievements.currentAchievement}
+      onDismiss={achievements.dismissAchievement}
+    />
+  </View>
+);
 }
 
 const styles = StyleSheet.create({
@@ -273,157 +278,77 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  container: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#4A3B32',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-  },
-  backButtonWrapper: {
-    position: 'absolute',
-    top: -18,
-    left: 5,
-    zIndex: 10,
-  },
-  backButtonIcon: {
-    width: 100,
-    height: 100,
-    resizeMode: 'contain',
-  },
-  shopSign: {
-    width: '100%',
-    height: 150,
-    resizeMode: 'stretch',
-  },
-  ratMerchant: {
-    width: 380,
-    height: 400,
-    resizeMode: 'stretch',
-    marginTop: -150,
-  },
-  shopPanel: {
-    width: '100%',
-    height: 430,
-    marginRight: 20,
-    paddingVertical: 25,
-    paddingHorizontal: 1,
-    alignItems: 'center',
-    borderRadius: 8,
-    justifyContent: 'space-between',
-    marginTop: -100,
-    zIndex: 1,
-  },
+  stage: {
+  aspectRatio: 268 / 552,
+  overflow: 'hidden',
+  backgroundColor: 'blue'
+},
+
+  backButtonWrapper: { position: 'absolute', zIndex: 10 },
+  backButtonIcon: { width: 120, bottom: '70%',resizeMode: 'contain' },
+
   coinHeader: {
-    flexDirection: 'row',
-    marginTop: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    maxWidth: '80%',
-    gap: 9,
+  position: 'absolute',
+  top: '49%',     // tune this one number
+  right: '39%',
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 6,
+  zIndex: 5,
   },
-  coinIcon: {
-    width: 40,
-    height: 40,
-    resizeMode: 'contain',
-  },
-  coinText: {
-    flexShrink: 1,
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    gap: 12,
-  },
-  itemSlotContainer: {
-    alignItems: 'center',
-    width: 100,
-  },
-  itemSlotBox: {
-    width: 90,
-    height: 90,
-    backgroundColor: '#E8D6B0',
-    borderWidth: 3,
-    borderColor: '#7A5230',
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  itemSelected: {
-    borderColor: '#FFE194',
-    borderWidth: 4,
-  },
-  itemSlotInitial: {
-    fontSize: 44,
-    fontWeight: 'bold',
-    color: '#5A3A1A',
-  },
-  ownedBadge: {
+  coinIcon: { width: 28, height: 28, resizeMode: 'contain' },
+  coinText: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
+
+  // Lines up with the three boxes in the picture
+  boxesRow: {
     position: 'absolute',
-    top: 4,
-    right: 6,
-    fontSize: 20,
-    color: '#2E7D32',
-    fontWeight: 'bold',
+    top: '58.5%',
+    left: '4.5%',
+    right: '4.5%',
+    height: '10%',
+    flexDirection: 'row',
+  },
+  boxSlot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  boxHighlight: {
+    width: '69%',
+    height: '100%',
+    borderRadius: 8,
+    borderWidth: 3,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemSelected: { borderColor: '#FFE194', borderWidth: 4 },
+  itemSlotInitial: { fontSize: 30, fontWeight: 'bold', color: '#5A3A1A' },
+  ownedBadge: {
+    position: 'absolute', top: 2, right: 4,
+    fontSize: 16, color: '#2E7D32', fontWeight: 'bold',
   },
   priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
+    position: 'absolute', top: '100%',
+    flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2,
   },
-  smallCoinIcon: {
-    width: 28,
-    height: 28,
-    resizeMode: 'contain',
-  },
-  priceText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-  },
+  smallCoinIcon: { width: 18, height: 18, resizeMode: 'contain' },
+  priceText: { fontSize: 14, fontWeight: 'bold', color: '#000' },
+
+  textArea: { position: 'absolute', top: '72%', left: '8%', right: '8%' },
   descriptionText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: '#000',
-    marginTop: -10,
-    marginBottom: 4,
-    paddingHorizontal: 10,
+    fontSize: 17, fontWeight: 'bold', textAlign: 'center', color: '#000', marginBottom: 2,
   },
   affordabilityText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#7A2E2E',
-    textAlign: 'center',
-    marginBottom: 6,
-    paddingHorizontal: 16,
+    fontSize: 12, fontWeight: 'bold', color: '#7A2E2E', textAlign: 'center', marginBottom: 3,
   },
-  buyButtonImage: {
-    width: 170,
-    height: 55,
-    marginLeft: 15,
-    marginBottom: 15,
-    resizeMode: 'stretch',
+
+  buttonRow: {
+    position: 'absolute',
+    bottom: '3%',
+    left: '6%',
+    right: '6%',
+    height: '8%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  buyButtonDisabled: {
-    opacity: 0.4,
-  },
-  declineButtonWrapper: {
-    width: '100%',
-    zIndex: 20,
-    elevation: 20,
-  },
-  backButtonImage: {
-    width: '100%',
-    height: 60,
-    resizeMode: 'contain',
-    marginTop: 2,
-  },
+  buttonHalf: { width: '48%', height: '100%' },
+  buttonImage: { width: '100%', height: '100%' },
+  buyButtonDisabled: { opacity: 0.4 },
 });
