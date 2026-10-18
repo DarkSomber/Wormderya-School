@@ -23,13 +23,19 @@ const isLevelLocked = (lvl, unlockedLevels, lockedLevels) =>
 const LEVELS = [
   { id: 1, image: require("../assets/Final/levels/Level_1_Sinangag.png") },
   { id: 2, image: require("../assets/Final/levels/Level_2_Adobo.png") },
-  { id: 3, image: require("../assets/Final/levels/Level_3_Sinigang-na-Bangus.png") },
-  { id: 4, image: require("../assets/Final/levels/Level_4_Boss_kare-kare.png") },
+  {
+    id: 3,
+    image: require("../assets/Final/levels/Level_3_Sinigang-na-Bangus.png"),
+  },
+  {
+    id: 4,
+    image: require("../assets/Final/levels/Level_4_Boss_kare-kare.png"),
+  },
 ];
 
-const IMAGE_WIDTH_RATIO = 0.70;
+const IMAGE_WIDTH_RATIO = 0.7;
 const IMAGE_HEIGHT_RATIO = 0.38;
-const BOTTOM_OFFSET_RATIO = 0.10;
+const BOTTOM_OFFSET_RATIO = 0.1;
 const IMAGE_DROP_RATIO = 0.03;
 
 // DEBUG BUTTON TOGGLE
@@ -53,7 +59,11 @@ function LevelImage({ level, locked, onPlay, width, height, drop }) {
         transform: [{ translateY: drop }],
       }}
     >
-      <Image source={level.image} style={styles.levelImage} resizeMode="contain" />
+      <Image
+        source={level.image}
+        style={styles.levelImage}
+        resizeMode="contain"
+      />
     </TouchableOpacity>
   );
 }
@@ -101,7 +111,7 @@ export default function LevelSelectScreen({
 
   const backSize = Math.round(Math.min(width * 0.65, 56));
   const topInset =
-    (Platform.OS === "android" ? StatusBar.currentHeight ?? 24 : 44) + 8;
+    (Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 44) + 8;
 
   const debugTop = Math.round(height * DEBUG_TOP_RATIO);
 
@@ -170,40 +180,40 @@ export default function LevelSelectScreen({
         <TempLevelIndicator index={selectedIndex} total={LEVELS.length} />
 
         <View style={styles.carouselClip}>
-        <ScrollView
-          ref={scrollRef}
-          style={{ width: pageWidth, height: imageHeight }}
-          contentContainerStyle={{ alignItems: "center" }}
-          showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
-          horizontal
-          bounces={false}
-          overScrollMode="never"
-          nestedScrollEnabled
-          snapToOffsets={snapOffsets}
-          snapToEnd={false}
-          decelerationRate="fast"
-          disableIntervalMomentum
-          scrollEventThrottle={16}
-          onMomentumScrollEnd={handleMomentumEnd}
-          onScrollEndDrag={handleDragEnd}
-        >
-          {LEVELS.map((lvl) => (
-            <View
-              key={lvl.id}
-              style={[styles.page, { width: pageWidth, height: imageHeight }]}
-            >
-              <LevelImage
-                level={lvl}
-                locked={isLevelLocked(lvl, unlockedLevels, lockedLevels)}
-                onPlay={() => playLevel(lvl)}
-                width={imageWidth}
-                height={imageHeight}
-                drop={imageDrop}
-              />
-            </View>
-          ))}
-        </ScrollView>
+          <ScrollView
+            ref={scrollRef}
+            style={{ width: pageWidth, height: imageHeight }}
+            contentContainerStyle={{ alignItems: "center" }}
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            horizontal
+            bounces={false}
+            overScrollMode="never"
+            nestedScrollEnabled
+            snapToOffsets={snapOffsets}
+            snapToEnd={false}
+            decelerationRate="fast"
+            disableIntervalMomentum
+            scrollEventThrottle={16}
+            onMomentumScrollEnd={handleMomentumEnd}
+            onScrollEndDrag={handleDragEnd}
+          >
+            {LEVELS.map((lvl) => (
+              <View
+                key={lvl.id}
+                style={[styles.page, { width: pageWidth, height: imageHeight }]}
+              >
+                <LevelImage
+                  level={lvl}
+                  locked={isLevelLocked(lvl, unlockedLevels, lockedLevels)}
+                  onPlay={() => playLevel(lvl)}
+                  width={imageWidth}
+                  height={imageHeight}
+                  drop={imageDrop}
+                />
+              </View>
+            ))}
+          </ScrollView>
         </View>
       </View>
 

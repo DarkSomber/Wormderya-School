@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import ShopOutcomeModal from './ShopOutcomeModal.js';
-import { formatCurrency } from '../components/gameplayReusables/UseWallet';
-import AchievementModal from '../components/gameplayReusables/AchievementModal';
-import { ACHIEVEMENTS } from '../components/gameplayReusables/Achievements.js';
-import { UPGRADE_LIST } from '../components/gameplayReusables/UseUpgrades';
-import audio from '../audio/AudioManager';
+import React, { useState } from "react";
+import ShopOutcomeModal from "./ShopOutcomeModal.js";
+import { formatCurrency } from "../components/gameplayReusables/UseWallet";
+import AchievementModal from "../components/gameplayReusables/AchievementModal";
+import { ACHIEVEMENTS } from "../components/gameplayReusables/Achievements.js";
+import { UPGRADE_LIST } from "../components/gameplayReusables/UseUpgrades";
+import audio from "../audio/AudioManager";
 import {
   StyleSheet,
   View,
@@ -12,8 +12,8 @@ import {
   ImageBackground,
   TouchableOpacity,
   ScrollView,
-} from 'react-native';
-import Text from '../components/AppText';
+} from "react-native";
+import Text from "../components/AppText";
 
 const NO_UPGRADES = {
   ownedPermanent: new Set(),
@@ -23,7 +23,7 @@ const NO_UPGRADES = {
   patienceDrainMultiplier: 1,
   extraHealth: 0,
   consumeExtraHealth: () => {},
-  buyUpgrade: () => ({ success: false, reason: 'unavailable' }),
+  buyUpgrade: () => ({ success: false, reason: "unavailable" }),
   startNewRound: () => {},
 };
 
@@ -40,7 +40,8 @@ export default function StoreScreen({
   const [selectedId, setSelectedId] = useState(UPGRADE_LIST[0].id);
   const [feedback, setFeedback] = useState(null); // last action result, shown in status line
 
-  const selected = UPGRADE_LIST.find((u) => u.id === selectedId) || UPGRADE_LIST[0];
+  const selected =
+    UPGRADE_LIST.find((u) => u.id === selectedId) || UPGRADE_LIST[0];
   const price = wallet.getEffectivePrice(selected.id, selected.price);
   const owned = safeUpgrades.ownedPermanent.has(selected.id);
   const active = safeUpgrades.isActive(selected.id);
@@ -50,21 +51,21 @@ export default function StoreScreen({
     setFeedback(null);
 
     if (owned) {
-      audio.playSfx('wrong');
-      setFeedback({ type: 'error', text: 'Already owned.' });
+      audio.playSfx("wrong");
+      setFeedback({ type: "error", text: "Already owned." });
       return;
     }
 
     if (!affordable) {
-      audio.playSfx('wrong');
+      audio.playSfx("wrong");
       setFeedback({
-        type: 'error',
+        type: "error",
         text: `Not enough coins (need ${price}, have ${wallet.currency}).`,
       });
       // eslint-disable-next-line no-undef
       if (__DEV__) {
         console.log(
-          `[Store] buy blocked: need=${price} have=${wallet.currency} id=${selected.id}`
+          `[Store] buy blocked: need=${price} have=${wallet.currency} id=${selected.id}`,
         );
       }
       return;
@@ -73,7 +74,7 @@ export default function StoreScreen({
     // eslint-disable-next-line no-undef
     if (__DEV__) {
       console.log(
-        `[Store] buying "${selected.name}" for ${price} (currency before=${wallet.currency})`
+        `[Store] buying "${selected.name}" for ${price} (currency before=${wallet.currency})`,
       );
     }
 
@@ -85,82 +86,86 @@ export default function StoreScreen({
     }
 
     if (result.success) {
-      audio.playSfx('ratty_buy');
-      setFeedback({ type: 'ok', text: `Bought ${selected.name}!` });
+      audio.playSfx("ratty_buy");
+      setFeedback({ type: "ok", text: `Bought ${selected.name}!` });
       achievements.unlockAchievement(ACHIEVEMENTS.FIRST_PURCHASE);
-      setRattyOutcome('discount');
+      setRattyOutcome("discount");
     } else {
-      audio.playSfx('wrong');
+      audio.playSfx("wrong");
       setFeedback({
-        type: 'error',
+        type: "error",
         text:
-          result.reason === 'insufficient'
-            ? 'Not enough coins.'
-            : result.reason === 'owned'
-            ? 'Already owned.'
-            : 'Purchase failed.',
+          result.reason === "insufficient"
+            ? "Not enough coins."
+            : result.reason === "owned"
+              ? "Already owned."
+              : "Purchase failed.",
       });
     }
   };
 
   const handleDecline = () => {
-    audio.playSfx('ratty_ignore');
+    audio.playSfx("ratty_ignore");
     wallet.declineOffer(UPGRADE_LIST.map((u) => u.id));
-    setRattyOutcome('inflate');
+    setRattyOutcome("inflate");
   };
 
   const statusLine = owned
-    ? 'OWNED'
+    ? "OWNED"
     : active
-    ? 'ACTIVE'
-    : feedback
-    ? feedback.text
-    : `${price} coins${!affordable ? ' — not enough coins' : ''}`;
+      ? "ACTIVE"
+      : feedback
+        ? feedback.text
+        : `${price} coins${!affordable ? " — not enough coins" : ""}`;
 
   const statusColor = feedback
-    ? feedback.type === 'ok'
-      ? '#2E7D32'
-      : '#7A2E2E'
-    : '#7A2E2E';
+    ? feedback.type === "ok"
+      ? "#2E7D32"
+      : "#7A2E2E"
+    : "#7A2E2E";
 
   return (
     <View style={styles.screenWrapper}>
       <View style={styles.container}>
         <TouchableOpacity
           onPress={() => {
-            audio.playSfx('click');
+            audio.playSfx("click");
             onBack?.();
           }}
           activeOpacity={0.7}
           style={styles.backButtonWrapper}
         >
           <Image
-            source={require('../assets/Final/buttons/buttonBack.png')}
+            source={require("../assets/Final/buttons/buttonLevelSelectBack.png")}
             style={styles.backButtonIcon}
           />
         </TouchableOpacity>
 
         <Image
-          source={require('../assets/Placeholder/TopBoard.png')}
+          source={require("../assets/Placeholder/TopBoard.png")}
           style={styles.shopSign}
         />
 
         <Image
-          source={require('../assets/Placeholder/MrRatty.png')}
+          source={require("../assets/Final/RattyBodega/MrRatty.png")}
           style={styles.ratMerchant}
         />
 
         <ImageBackground
-          source={require('../assets/Placeholder/Board.png')}
+          source={require("../assets/Placeholder/Board.png")}
           style={styles.shopPanel}
           resizeMode="stretch"
         >
           <View style={styles.coinHeader}>
-            <Text style={styles.coinText} numberOfLines={1} adjustsFontSizeToFit>
+            <Text
+              style={styles.coinText}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
               {formatCurrency(wallet.currency)}
             </Text>
             <Image
-              source={require('../assets/Placeholder/pixel_coins.png')}
+              source={require("../assets/Placeholder/pixel_coins.png")}
               style={styles.coinIcon}
             />
           </View>
@@ -181,7 +186,7 @@ export default function StoreScreen({
                   key={item.id}
                   style={styles.itemSlotContainer}
                   onPress={() => {
-                    audio.playSfx('click');
+                    audio.playSfx("click");
                     setSelectedId(item.id);
                     setFeedback(null);
                   }}
@@ -200,13 +205,13 @@ export default function StoreScreen({
                   </View>
                   <View style={styles.priceContainer}>
                     <Image
-                      source={require('../assets/Placeholder/pixel_coins.png')}
+                      source={require("../assets/Placeholder/pixel_coins.png")}
                       style={styles.smallCoinIcon}
                     />
                     <Text style={styles.priceText}>
                       {itemPrice}
-                      {onSale ? ' ↓' : ''}
-                      {pricedUp ? ' ↑' : ''}
+                      {onSale ? " ↓" : ""}
+                      {pricedUp ? " ↑" : ""}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -230,7 +235,7 @@ export default function StoreScreen({
             style={owned ? styles.buyButtonDisabled : undefined}
           >
             <Image
-              source={require('../assets/Placeholder/BuyButton.png')}
+              source={require("../assets/Placeholder/BuyButton.png")}
               style={styles.buyButtonImage}
             />
           </TouchableOpacity>
@@ -243,7 +248,7 @@ export default function StoreScreen({
           style={styles.declineButtonWrapper}
         >
           <Image
-            source={require('../assets/Placeholder/DeclineButton.png')}
+            source={require("../assets/Placeholder/DeclineButton.png")}
             style={styles.backButtonImage}
           />
         </TouchableOpacity>
@@ -269,20 +274,20 @@ export default function StoreScreen({
 const styles = StyleSheet.create({
   screenWrapper: {
     flex: 1,
-    backgroundColor: '#222',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#222",
+    alignItems: "center",
+    justifyContent: "center",
   },
   container: {
     flex: 1,
-    width: '100%',
+    width: "100%",
     maxWidth: 420,
-    backgroundColor: '#4A3B32',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
+    backgroundColor: "#4A3B32",
+    alignItems: "center",
+    justifyContent: "flex-start",
   },
   backButtonWrapper: {
-    position: 'absolute',
+    position: "absolute",
     top: -18,
     left: 5,
     zIndex: 10,
@@ -290,118 +295,118 @@ const styles = StyleSheet.create({
   backButtonIcon: {
     width: 100,
     height: 100,
-    resizeMode: 'contain',
+    resizeMode: "contain",
   },
   shopSign: {
-    width: '100%',
+    width: "100%",
     height: 150,
-    resizeMode: 'stretch',
+    resizeMode: "stretch",
   },
   ratMerchant: {
-    width: 380,
-    height: 400,
-    resizeMode: 'stretch',
-    marginTop: -150,
+    width: 100,
+    height: 80,
+    resizeMode: "contain",
+    marginTop: -125,
   },
   shopPanel: {
-    width: '100%',
+    width: "100%",
     height: 430,
     marginRight: 20,
     paddingVertical: 25,
     paddingHorizontal: 1,
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: 8,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
     marginTop: -100,
     zIndex: 1,
   },
   coinHeader: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginTop: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    maxWidth: '80%',
+    alignItems: "center",
+    justifyContent: "center",
+    maxWidth: "80%",
     gap: 9,
   },
   coinIcon: {
     width: 40,
     height: 40,
-    resizeMode: 'contain',
+    resizeMode: "contain",
   },
   coinText: {
     flexShrink: 1,
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000',
+    fontWeight: "bold",
+    color: "#000",
   },
   itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 10,
     gap: 12,
   },
   itemSlotContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     width: 100,
   },
   itemSlotBox: {
     width: 90,
     height: 90,
-    backgroundColor: '#E8D6B0',
+    backgroundColor: "#E8D6B0",
     borderWidth: 3,
-    borderColor: '#7A5230',
+    borderColor: "#7A5230",
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   itemSelected: {
-    borderColor: '#FFE194',
+    borderColor: "#FFE194",
     borderWidth: 4,
   },
   itemSlotInitial: {
     fontSize: 44,
-    fontWeight: 'bold',
-    color: '#5A3A1A',
+    fontWeight: "bold",
+    color: "#5A3A1A",
   },
   ownedBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: 4,
     right: 6,
     fontSize: 20,
-    color: '#2E7D32',
-    fontWeight: 'bold',
+    color: "#2E7D32",
+    fontWeight: "bold",
   },
   priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
     marginTop: 4,
   },
   smallCoinIcon: {
     width: 28,
     height: 28,
-    resizeMode: 'contain',
+    resizeMode: "contain",
   },
   priceText: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
+    fontWeight: "bold",
+    color: "#000",
   },
   descriptionText: {
     fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: '#000',
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#000",
     marginTop: -10,
     marginBottom: 4,
     paddingHorizontal: 10,
   },
   affordabilityText: {
     fontSize: 13,
-    fontWeight: 'bold',
-    color: '#7A2E2E',
-    textAlign: 'center',
+    fontWeight: "bold",
+    color: "#7A2E2E",
+    textAlign: "center",
     marginBottom: 6,
     paddingHorizontal: 16,
   },
@@ -410,20 +415,20 @@ const styles = StyleSheet.create({
     height: 55,
     marginLeft: 15,
     marginBottom: 15,
-    resizeMode: 'stretch',
+    resizeMode: "stretch",
   },
   buyButtonDisabled: {
     opacity: 0.4,
   },
   declineButtonWrapper: {
-    width: '100%',
+    width: "100%",
     zIndex: 20,
     elevation: 20,
   },
   backButtonImage: {
-    width: '100%',
+    width: "100%",
     height: 60,
-    resizeMode: 'contain',
+    resizeMode: "contain",
     marginTop: 2,
   },
 });
