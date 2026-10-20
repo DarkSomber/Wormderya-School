@@ -9,11 +9,12 @@ import {
   StyleSheet,
   View,
   Image,
-  ImageBackground,
   TouchableOpacity,
   ScrollView,
-} from "react-native";
-import Text from "../components/AppText";
+  StatusBar,
+  useWindowDimensions
+} from 'react-native';
+import Text from '../components/AppText';
 
 const NO_UPGRADES = {
   ownedPermanent: new Set(),
@@ -35,9 +36,12 @@ export default function StoreScreen({
   onGoToLevelSelect,
 }) {
   const safeUpgrades = upgrades ?? NO_UPGRADES;
+  const { width, height } = useWindowDimensions();
 
   const [rattyOutcome, setRattyOutcome] = useState(null);
-  const [selectedId, setSelectedId] = useState(UPGRADE_LIST[0].id);
+  const [offers] = useState(() => pickRandom(UPGRADE_LIST, 3));
+  const [selectedId, setSelectedId] = useState(offers[0].id);
+  const selected = offers.find((u) => u.id === selectedId) || offers[0];
   const [feedback, setFeedback] = useState(null); // last action result, shown in status line
 
   const selected =
@@ -46,6 +50,16 @@ export default function StoreScreen({
   const owned = safeUpgrades.ownedPermanent.has(selected.id);
   const active = safeUpgrades.isActive(selected.id);
   const affordable = wallet.currency >= price;
+
+  //random three boxes instead of scroll
+  function pickRandom(list, n) {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, n);
+}
 
   const handleBuy = () => {
     setFeedback(null);
@@ -170,16 +184,26 @@ export default function StoreScreen({
             />
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.itemRow}
-          >
-            {UPGRADE_LIST.map((item) => {
-              const itemPrice = wallet.getEffectivePrice(item.id, item.price);
-              const onSale = itemPrice < item.price;
-              const pricedUp = itemPrice > item.price;
-              const itemOwned = safeUpgrades.ownedPermanent.has(item.id);
+          return (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.boxSlot}
+              activeOpacity={0.7}
+              onPress={() => {
+                audio.playSfx('click');
+                setSelectedId(item.id);
+                setFeedback(null);
+              }}
+            >
+              <View
+                style={[
+                  styles.boxHighlight,
+                  selectedId === item.id && styles.itemSelected,
+                ]}
+              >
+                <Text style={styles.itemSlotInitial}>{item.name.charAt(0)}</Text>
+                {itemOwned && <Text style={styles.ownedBadge}>✓</Text>}
+              </View>
 
               return (
                 <TouchableOpacity
@@ -219,11 +243,14 @@ export default function StoreScreen({
             })}
           </ScrollView>
 
-          <Text style={styles.descriptionText}>{selected.name}</Text>
-          <Text style={styles.affordabilityText}>{selected.description}</Text>
-          <Text style={[styles.affordabilityText, { color: statusColor }]}>
-            {statusLine}
-          </Text>
+      {/* Name, description, status */}
+      <View style={styles.textArea}>
+        <Text style={styles.descriptionText}>{selected.name}</Text>
+        <Text style={styles.affordabilityText}>{selected.description}</Text>
+        <Text style={[styles.affordabilityText, { color: statusColor }]}>
+          {statusLine}
+        </Text>
+      </View>
 
           {/* Buy is only hard-disabled when already owned. If not affordable,
               it still taps and shows a clear message instead of silently
@@ -245,7 +272,7 @@ export default function StoreScreen({
           onPress={handleDecline}
           activeOpacity={0.7}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={styles.declineButtonWrapper}
+          style={styles.buttonHalf}
         >
           <Image
             source={require("../assets/Placeholder/DeclineButton.png")}
@@ -254,21 +281,37 @@ export default function StoreScreen({
         </TouchableOpacity>
       </View>
 
-      <ShopOutcomeModal
-        visible={rattyOutcome !== null}
-        outcome={rattyOutcome}
-        onDismiss={() => {
-          setRattyOutcome(null);
-          onGoToLevelSelect?.();
+      {/* Back button, top left, below the status bar */}
+      <TouchableOpacity
+        onPress={() => {
+          audio.playSfx('click');
+          onBack?.();
         }}
-      />
-      <AchievementModal
-        visible={achievements.currentAchievement !== null}
-        achievement={achievements.currentAchievement}
-        onDismiss={achievements.dismissAchievement}
-      />
+        activeOpacity={0.7}
+        style={[styles.backButtonWrapper, { top: (StatusBar.currentHeight ?? 0) + 8 }]}
+      >
+        <Image
+          source={require('../assets/Final/buttons/buttonBack.png')}
+          style={styles.backButtonIcon}
+        />
+      </TouchableOpacity>
     </View>
-  );
+
+    <ShopOutcomeModal
+      visible={rattyOutcome !== null}
+      outcome={rattyOutcome}
+      onDismiss={() => {
+        setRattyOutcome(null);
+        onGoToLevelSelect?.();
+      }}
+    />
+    <AchievementModal
+      visible={achievements.currentAchievement !== null}
+      achievement={achievements.currentAchievement}
+      onDismiss={achievements.dismissAchievement}
+    />
+  </View>
+);
 }
 
 const styles = StyleSheet.create({
@@ -393,6 +436,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#000",
   },
+  smallCoinIcon: { width: 18, height: 18, resizeMode: 'contain' },
+  priceText: { fontSize: 14, fontWeight: 'bold', color: '#000' },
+
+  textArea: { position: 'absolute', top: '72%', left: '8%', right: '8%' },
   descriptionText: {
     fontSize: 20,
     fontWeight: "bold",
