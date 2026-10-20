@@ -1,9 +1,9 @@
 import React, { forwardRef, useState, useEffect, useRef, useImperativeHandle } from 'react';
 import { Image, StyleSheet } from 'react-native';
 
-const MOOD_HAPPY = require('../../assets/Placeholder/CustomerPatienceBar_Happy.png');
-const MOOD_IMPATIENT = require('../../assets/Placeholder/CustomerPatienceBar_Impatient.png');
-const MOOD_ANGRY = require('../../assets/Placeholder/CustomerPatienceBar_Angry.png');
+const MOOD_HAPPY = require('../../assets/Final/GameplayUI/Patience_High.png');
+const MOOD_IMPATIENT = require('../../assets/Final/GameplayUI/Patience_Moderate.png');
+const MOOD_ANGRY = require('../../assets/Final/GameplayUI/Patience_Low.png');
 
 function getMoodImageSource(patience) {
   if (patience > 70) return MOOD_HAPPY;

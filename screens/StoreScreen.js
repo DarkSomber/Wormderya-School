@@ -201,7 +201,11 @@ export default function StoreScreen({
                   selectedId === item.id && styles.itemSelected,
                 ]}
               >
-                <Text style={styles.itemSlotInitial}>{item.name.charAt(0)}</Text>
+                {item.icon ? (
+                    <Image source={item.icon} style={styles.itemIcon} />
+                  ) : (
+                    <Text style={styles.itemSlotInitial}>{item.name.charAt(0)}</Text>
+                  )}
                 {itemOwned && <Text style={styles.ownedBadge}>✓</Text>}
               </View>
 
@@ -329,11 +333,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
   },
-  backButtonWrapper: {
-    position: "absolute",
-    top: -18,
-    left: 5,
-    zIndex: 10,
+  coinIcon: { width: 28, height: 28, resizeMode: 'contain' },
+  coinText: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
+
+  // Lines up with the three boxes in the picture
+  boxesRow: {
+    position: 'absolute',
+    top: '57.9%',
+    left: '4.5%',
+    right: '4.5%',
+    height: '10%',
+    flexDirection: 'row',
   },
   backButtonIcon: {
     width: 100,
@@ -412,6 +422,9 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#5A3A1A",
   },
+  itemSelected: { borderColor: '#FFE194', borderWidth: 4 },
+  itemSlotInitial: { fontSize: 30, fontWeight: 'bold', color: '#5A3A1A' },
+  itemIcon: { width: '80%', height: '80%', resizeMode: 'contain' },
   ownedBadge: {
     position: "absolute",
     top: 4,
