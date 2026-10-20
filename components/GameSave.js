@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+/* global __DEV__ */
 
 const SAVE_KEY = '@wormderya/save-v1';
 const SAVE_VERSION = 1;

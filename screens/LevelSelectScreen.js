@@ -14,6 +14,7 @@ import { hasLevelPreset } from "../levels/levelPresets";
 import Text from "../components/AppText";
 import DebugButton from "../components/tests/DebugButton"; // [TEST/DEBUG]
 import audio from "../audio/AudioManager";
+/* global __DEV__ */
 
 const isLevelLocked = (lvl, unlockedLevels, lockedLevels) =>
   !hasLevelPreset(lvl.id) ||
