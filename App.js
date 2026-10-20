@@ -13,18 +13,30 @@ import ModeSelectScreen from "./screens/ModeSelectScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import LevelSelectScreen from "./screens/LevelSelectScreen";
 import StoryBackstoryScreen from "./screens/StoryBackstoryScreen";
+import StoryEndingScreen from "./screens/StoryEndingScreen";
 import GameplayScreen from "./screens/GameplayScreen";
+import BossGameplayScreen from "./screens/BossGameplayScreen";
 import { useWallet } from "./components/gameplayReusables/UseWallet";
 import { useAchievements } from "./components/gameplayReusables/UseAchievements.js";
 import { useUpgrades } from "./components/gameplayReusables/UseUpgrades";
-import { hasLevelPreset, getNextLevelId, getLevelConfigById, getAllLevelIds } from "./levels/levelPresets";
-import { loadGameData, saveGameData, clearGameData, DEFAULT_SAVE } from "./components/GameSave";
+import {
+  hasLevelPreset,
+  getNextLevelId,
+  getLevelConfigById,
+  getAllLevelIds,
+} from "./levels/levelPresets";
+import {
+  loadGameData,
+  saveGameData,
+  clearGameData,
+  DEFAULT_SAVE,
+} from "./components/GameSave";
 import audio from "./audio/AudioManager";
 
-import QuitModal from './components/QuitModal';
-import RushHourModal from './screens/RushHourModal';
-import PopupModal from './components/PopupModal';
-import StoreScreen from './screens/StoreScreen';
+import QuitModal from "./components/QuitModal";
+import RushHourModal from "./screens/RushHourModal";
+import PopupModal from "./components/PopupModal";
+import StoreScreen from "./screens/StoreScreen";
 
 const DEBUG_LEVEL_TOGGLE = true;
 
@@ -36,6 +48,7 @@ const SCREENS = {
   LEVEL_SELECT: "LEVEL_SELECT",
   STORY_BACKSTORY: "STORY_BACKSTORY",
   GAMEPLAY: "GAMEPLAY",
+  STORY_ENDING: "STORY_ENDING",
 };
 
 /**
@@ -55,7 +68,9 @@ function useGameSave() {
       snapshotRef.current = data;
       setLoaded(true);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // One writer: patch a slice, persist the whole snapshot.
@@ -86,8 +101,9 @@ function ScreenSwitcher() {
   const [unlockNotice, setUnlockNotice] = useState(null);
   const [showStore, setShowStore] = useState(false);
   const [showRushHour, setShowRushHour] = useState(false);
-  const [gameMode, setGameMode] = useState('normal');
+  const [gameMode, setGameMode] = useState("normal");
   const [showQuit, setShowQuit] = useState(false);
+  const [endingPending, setEndingPending] = useState(false);
 
   // ---- Audio ----
   // Start the audio engine once.
@@ -100,41 +116,44 @@ function ScreenSwitcher() {
   useEffect(() => {
     if (!loaded) return;
     audio.setVolumes(snapshot.settings);
-    audio.setPersistHandler((volumes) => patch('settings', volumes));
+    audio.setPersistHandler((volumes) => patch("settings", volumes));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, patch]);
 
   // Menu music everywhere except the splash and gameplay (LevelSession owns
   // the music while a level is running).
-  const menuMusicOn = loaded && screen !== SCREENS.SPLASH && screen !== SCREENS.GAMEPLAY;
+  const menuMusicOn =
+    loaded && screen !== SCREENS.SPLASH && screen !== SCREENS.GAMEPLAY;
   useEffect(() => {
-    if (menuMusicOn) audio.setMusic('menu');
+    if (menuMusicOn) audio.setMusic("menu");
   }, [menuMusicOn]);
 
   // Push top-level changes into the save snapshot.
   useEffect(() => {
-    if (loaded) patch('unlockedLevels', unlockedLevels);
+    if (loaded) patch("unlockedLevels", unlockedLevels);
   }, [unlockedLevels, loaded, patch]);
   useEffect(() => {
-    if (loaded) patch('currentLevelId', currentLevelId);
+    if (loaded) patch("currentLevelId", currentLevelId);
   }, [currentLevelId, loaded, patch]);
 
   // Wallet / achievements / upgrades. Each receives its slice of the save
   // and reports back via onChange, which we write to the snapshot.
   const wallet = useWallet(0, {
     initialState: snapshot.wallet,
-    onChange: (w) => patch('wallet', w),
+    onChange: (w) => patch("wallet", w),
   });
   const achievements = useAchievements(wallet, {
     initialState: snapshot.achievements,
-    onChange: (a) => patch('achievements', a),
+    onChange: (a) => patch("achievements", a),
   });
   const upgrades = useUpgrades(wallet, {
     initialState: snapshot.upgrades,
-    onChange: (u) => patch('upgrades', u),
+    onChange: (u) => patch("upgrades", u),
   });
 
-  const debugAllUnlocked = getAllLevelIds().every((id) => unlockedLevels.includes(id));
+  const debugAllUnlocked = getAllLevelIds().every((id) =>
+    unlockedLevels.includes(id),
+  );
 
   const handleDebugToggle = () => {
     setUnlockNotice(null);
@@ -154,29 +173,34 @@ function ScreenSwitcher() {
   };
 
   const handleLevelComplete = (completedLevelId) => {
+    if (completedLevelId === 4) setEndingPending(true);
     const nextId = getNextLevelId(completedLevelId);
     if (nextId === null || unlockedLevels.includes(nextId)) return;
-    setUnlockedLevels((prev) => (prev.includes(nextId) ? prev : [...prev, nextId]));
+    setUnlockedLevels((prev) =>
+      prev.includes(nextId) ? prev : [...prev, nextId],
+    );
     setUnlockNotice(nextId);
   };
 
   // Best scores power the "new record" jingle. Normal levels are keyed
   // 'level-N'; Rush Hour has one shared key.
-  const scoreKey = gameMode === 'rushHour' ? 'rushHour' : `level-${currentLevelId}`;
+  const scoreKey =
+    gameMode === "rushHour" ? "rushHour" : `level-${currentLevelId}`;
   const getBestScore = useCallback(
     () => getSnapshot().bestScores?.[scoreKey] ?? 0,
-    [getSnapshot, scoreKey]
+    [getSnapshot, scoreKey],
   );
   const reportScore = useCallback(
     (score) => {
       const best = getSnapshot().bestScores ?? {};
-      if (score > (best[scoreKey] ?? 0)) patch('bestScores', { ...best, [scoreKey]: score });
+      if (score > (best[scoreKey] ?? 0))
+        patch("bestScores", { ...best, [scoreKey]: score });
     },
-    [getSnapshot, patch, scoreKey]
+    [getSnapshot, patch, scoreKey],
   );
 
   const openStore = () => {
-    audio.playSfx('ratty_shop_appear');
+    audio.playSfx("ratty_shop_appear");
     setShowStore(true);
   };
   const closeStore = () => setShowStore(false);
@@ -194,28 +218,62 @@ function ScreenSwitcher() {
       case SCREENS.MODE_SELECT:
         return (
           <ModeSelectScreen
-            onSelectStoryMode={() => { setGameMode('normal'); setScreen(SCREENS.LEVEL_SELECT); }}
-            onSelectRushHour={() => { setGameMode('rushHour'); setShowRushHour(true); }}
+            onSelectStoryMode={() => {
+              setGameMode("normal");
+              setScreen(SCREENS.LEVEL_SELECT);
+            }}
+            onSelectRushHour={() => {
+              setGameMode("rushHour");
+              setShowRushHour(true);
+            }}
             onBack={() => setScreen(SCREENS.HOME)}
           />
         );
 
+      //temp for checking of ending screen
+      /*
+        case SCREENS.SPLASH:
+  return <SplashScreen onFinish={() => setScreen(SCREENS.STORY_ENDING)} />;
+        */
+
+      //temp for checking of level 4
+      /*
+        return (
+          <SplashScreen
+            onFinish={() => {
+              setGameMode("normal");
+              setCurrentLevelId(4);
+              setScreen(SCREENS.GAMEPLAY); // TEMP: jump straight to boss
+            }}
+          />
+        );
+        */
+
+      /*
+
+*/
+
       case SCREENS.SETTINGS:
-        return <SettingsScreen
-                onBack={() => setScreen(SCREENS.HOME)}
-                achievements={achievements}
-                />
+        return (
+          <SettingsScreen
+            onBack={() => setScreen(SCREENS.HOME)}
+            achievements={achievements}
+          />
+        );
 
       case SCREENS.LEVEL_SELECT:
         return (
           <LevelSelectScreen
             unlockedLevels={unlockedLevels}
             onDebugToggle={DEBUG_LEVEL_TOGGLE ? handleDebugToggle : undefined}
-            onDebugResetSave={DEBUG_LEVEL_TOGGLE ? handleDebugResetSave : undefined}
+            onDebugResetSave={
+              DEBUG_LEVEL_TOGGLE ? handleDebugResetSave : undefined
+            }
             debugAllUnlocked={debugAllUnlocked}
             onSelectLevel={(levelId) => {
               if (!hasLevelPreset(levelId)) return;
-              setGameMode('normal');
+              setEndingPending(false);
+              setGameMode("normal");
               setCurrentLevelId(levelId);
               if (levelId === 1) setScreen(SCREENS.STORY_BACKSTORY);
               else setScreen(SCREENS.GAMEPLAY);
@@ -233,12 +291,35 @@ function ScreenSwitcher() {
         );
 
       case SCREENS.GAMEPLAY:
+        if (gameMode === "normal" && currentLevelId === 4) {
+          return (
+            <BossGameplayScreen
+              mode={gameMode}
+              levelId={currentLevelId}
+              onLevelComplete={handleLevelComplete}
+              onBack={() => {
+                if (endingPending) {
+                  setEndingPending(false);
+                  setScreen(SCREENS.STORY_ENDING);
+                } else {
+                  setScreen(SCREENS.LEVEL_SELECT);
+                }
+              }}
+            />
+          );
+        }
         return (
           <GameplayScreen
             mode={gameMode}
             levelId={currentLevelId}
             onLevelComplete={handleLevelComplete}
-            onBack={() => setScreen(gameMode === 'rushHour' ? SCREENS.MODE_SELECT : SCREENS.LEVEL_SELECT)}
+            onBack={() =>
+              setScreen(
+                gameMode === "rushHour"
+                  ? SCREENS.MODE_SELECT
+                  : SCREENS.LEVEL_SELECT,
+              )
+            }
             onOpenStore={openStore}
             isStoreOpen={showStore}
             wallet={wallet}
@@ -255,7 +336,9 @@ function ScreenSwitcher() {
           <HomeScreen
             onStart={() => setScreen(SCREENS.MODE_SELECT)}
             onOpenSettings={() => setScreen(SCREENS.SETTINGS)}
-            onQuit={() => { setShowQuit(true); }}
+            onQuit={() => {
+              setShowQuit(true);
+            }}
           />
         );
     }
@@ -273,7 +356,10 @@ function ScreenSwitcher() {
               wallet={wallet}
               achievements={achievements}
               upgrades={upgrades}
-              onGoToLevelSelect={() => { closeStore(); setScreen(SCREENS.LEVEL_SELECT); }}
+              onGoToLevelSelect={() => {
+                closeStore();
+                setScreen(SCREENS.LEVEL_SELECT);
+              }}
             />
           </View>
         </Modal>
@@ -281,15 +367,22 @@ function ScreenSwitcher() {
 
       <RushHourModal
         visible={showRushHour}
-        onDismiss={() => { setShowRushHour(false); setScreen(SCREENS.GAMEPLAY); }}
+        onDismiss={() => {
+          setShowRushHour(false);
+          setScreen(SCREENS.GAMEPLAY);
+        }}
       />
 
       <QuitModal visible={showQuit} onQuit={() => setShowQuit(false)} />
 
       <PopupModal
-        visible={unlockNotice !== null && achievements.currentAchievement === null}
+        visible={
+          unlockNotice !== null && achievements.currentAchievement === null
+        }
         title="NEW LEVEL UNLOCKED!"
-        message={unlockNotice !== null ? getLevelConfigById(unlockNotice).title : ""}
+        message={
+          unlockNotice !== null ? getLevelConfigById(unlockNotice).title : ""
+        }
         extraMessage="You can play it from the Level Select screen."
         buttonText="Nice!"
         onPress={() => setUnlockNotice(null)}
@@ -325,17 +418,17 @@ const styles = StyleSheet.create({
   overlay: { flex: 1 },
   webBackdrop: {
     flex: 1,
-    width: '100vw',
-    height: '100vh',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: "100vw",
+    height: "100vh",
+    justifyContent: "center",
+    alignItems: "center",
   },
   webPhoneFrame: {
-    width: '100%',
+    width: "100%",
     maxWidth: 400,
-    height: '100%',
+    height: "100%",
     maxHeight: 820,
     aspectRatio: 9 / 19.5,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
 });
