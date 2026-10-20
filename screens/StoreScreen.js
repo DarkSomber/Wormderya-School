@@ -178,7 +178,11 @@ export default function StoreScreen({
                   selectedId === item.id && styles.itemSelected,
                 ]}
               >
-                <Text style={styles.itemSlotInitial}>{item.name.charAt(0)}</Text>
+                {item.icon ? (
+                    <Image source={item.icon} style={styles.itemIcon} />
+                  ) : (
+                    <Text style={styles.itemSlotInitial}>{item.name.charAt(0)}</Text>
+                  )}
                 {itemOwned && <Text style={styles.ownedBadge}>✓</Text>}
               </View>
 
@@ -302,7 +306,7 @@ const styles = StyleSheet.create({
   // Lines up with the three boxes in the picture
   boxesRow: {
     position: 'absolute',
-    top: '58.5%',
+    top: '57.9%',
     left: '4.5%',
     right: '4.5%',
     height: '10%',
@@ -320,6 +324,7 @@ const styles = StyleSheet.create({
   },
   itemSelected: { borderColor: '#FFE194', borderWidth: 4 },
   itemSlotInitial: { fontSize: 30, fontWeight: 'bold', color: '#5A3A1A' },
+  itemIcon: { width: '80%', height: '80%', resizeMode: 'contain' },
   ownedBadge: {
     position: 'absolute', top: 2, right: 4,
     fontSize: 16, color: '#2E7D32', fontWeight: 'bold',

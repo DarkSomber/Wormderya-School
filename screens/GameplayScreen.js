@@ -14,6 +14,7 @@ import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount';
 import UpgradeToast from '../components/gameplayReusables/UpgradeToast';
 import UpgradeHUD from '../components/gameplayReusables/UpgradeHUD';
 import { UPGRADE_LIST } from '../components/gameplayReusables/UseUpgrades';
+import { useStage, Stage, Slot } from '../components/gameplayReusables/Stage';
 
 import { getLevelConfigById } from '../levels/levelPresets';
 import { getBeltConfig } from '../levels/LevelConfig';
@@ -25,6 +26,18 @@ import { getRushHourLevelConfig, getRushHourStageForWords } from '../levels/Rush
 import audio from '../audio/AudioManager';
 import { customerVoice } from '../audio/customerVoice';
 
+const RECTS = {
+  quit:      { x: 3,   y: 0,   w: 171, h: 147 },
+  coin:      { x: 326, y: 0,   w: 186, h: 300 }, // board + patience meter (one PNG)
+  customer:  { x: 0,  y: 125, w: 230, h: 250 },
+  word:      { x: 30,  y: 380, w: 452, h: 100 },
+  serve:     { x: 175, y: 460, w: 161, h: 84  },
+  chef:      { x: 330, y: 480, w: 200, h: 200 },
+  conveyors: { x: 0,   y: 665, w: 512, h: 328 }, // the brown belt bars image
+  belt0:     { x: 0,   y: 663, w: 512, h: 94  },
+  belt1:     { x: 0,   y: 777, w: 512, h: 94  },
+  belt2:     { x: 0,   y: 885, w: 512, h: 94  },
+};
 const BELT_ROWS = [0, 1, 2]; // belt rows
 
 // Customer area tuning. These are the only numbers you need to touch to move
@@ -36,7 +49,7 @@ const PATIENCE_OFFSET_X = 72;   // meter's left edge, in px right of screen cent
 // `voice` picks the VA files (greetings_<voice>, goodbye_<voice>, ...), 1-3.
 // When the third customer sprite is added, give it `voice: 3`.
 const CUSTOMER_SPRITES = [
-  { source: require('../assets/Final/Customers/SampleCustomer_1.png'), bottom: 0, voice: 1 },
+  { source: require('../assets/Final/Customers/Customer1.png'), voice: 1 },
   { source: require('../assets/Final/Customers/CustomerPicky.png'), bottom: -10, voice: 2 },
 ];
 
@@ -179,9 +192,7 @@ function LevelSession({
   const safeUpgrades = upgrades ?? NO_UPGRADES;
 
   const [phase, setPhase] = useState('intro'); // 'intro' | 'playing' | 'end'
-  const { width: winW, height: winH } = useWindowDimensions();
-  const boxW = winW;
-  const boxH = winH;
+  const { scale, scaleX, scaleY, w, h } = useStage();
 
   // --- Rush Hour session state (all reset by the remount on retry) ---
   // Lives here, not in App: it never touches currentLevelId / unlockedLevels.
@@ -495,84 +506,84 @@ function LevelSession({
   const currentSprite = CUSTOMER_SPRITES[levelMaker.customerIndex % CUSTOMER_SPRITES.length];
 
   return (
-    <View style={styles.screenWrapper}>
-      <ImageBackground
-        source={require('../assets/Final/GameplayUI/GameplayScreen.png')}
-        style={[styles.container, { width: boxW, height: boxH }]}
-        resizeMode="stretch"
+  <View style={styles.screenWrapper}>
+    <Stage source={require('../assets/Final/GameplayUI/GameplayScreen.png')} w={w} h={h} scale={scale}>
+
+      <Slot rect={RECTS.quit} scale={scale} scaleX={scaleX} scaleY={scaleY}>
+        <TouchableOpacity style={{ flex: 1 }} onPress={() => { audio.playSfx('click'); onBack?.(); }}>
+          <Image source={require('../assets/Final/GameplayUI/quit-sign.png')}
+                 style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
+        </TouchableOpacity>
+      </Slot>
+
+      <Slot rect={RECTS.coin} scale={scale}>
+  <ImageBackground
+    source={require('../assets/Final/GameplayUI/CoinPatience.png')}
+    style={{ width: '100%', height: '100%' }}
+    resizeMode="stretch"
+  >
+    {/* TOP PART: the number */}
+    <View style={{ 
+      position: 'absolute', left: '50%', top: '10%', height: '15%', justifyContent: 'center',
+     }}>
+      <Text
+        style={{
+          fontSize: 50 * scale,
+          fontWeight: 'bold',
+          color: '#fff',
+          textShadowColor: '#000',
+          textShadowRadius: 2,
+          textShadowOffset: { width: 1, height: 1 },
+        }}
+        numberOfLines={1}
+        adjustsFontSizeToFit
       >
-        {/* 1. HEADER BANNER: flex, same as every row below it, so it scales
-            down proportionally on shorter screens. */}
-        <View style={styles.headerBackground}>
-          <TouchableOpacity
-            onPress={() => { audio.playSfx('click'); onBack?.(); }}
-            activeOpacity={0.7}
-            style={styles.quitWrapper}
-          >
-            <Image source={require('../assets/Final/GameplayUI/quit-sign.png')} style={styles.quitButton} />
-          </TouchableOpacity>
+        {formatCurrency(currency)}
+      </Text>
+    </View>
 
-          {/* Live wallet balance on the coin board. */}
-          <ImageBackground
-            source={require('../assets/Final/GameplayUI/CoinPatience.png')}
-            style={styles.patienceCoinBoard}
-            resizeMode="stretch"
-          >
-            <Text style={styles.coinText} numberOfLines={1} adjustsFontSizeToFit>
-              {formatCurrency(currency)}
-            </Text>
-          </ImageBackground>
-        </View>
-
-        {/* Timer: paused during any popup, while the store is open, or after the
-            level ends. Rush Hour: endless (time-out = run over), restored by
-            correct words, capped. */}
-        <LevelTimer
-          targetScore={levelConfig.targetScore}
-          currentScore={score}
-          initialTimeInSeconds={levelConfig.timeLimitSeconds}
-          isPaused={
-            levelResult !== null ||
-            levelMaker.showRattyEvent ||
-            achievements.currentAchievement !== null ||
-            isStoreOpen
-          }
-          onLevelEnd={handleLevelEnd}
-          endless={isRushHour}
-          timeBonus={isRushHour ? timeBonus : null}
-          maxTimeInSeconds={isRushHour ? levelConfig.maxTimeSeconds : undefined}
+    {/* BOTTOM PART: the patience meter */}
+    <View style={{
+        position: 'absolute', left: '8%', top: '25%', width: '84%', height: '55%',
+        transform: [{ translateX: 5 }, { translateY: 111 }],
+      }}>
+      <CustomerMood
+        key={`customer-${levelMaker.customerIndex}-${healthRespawnKey}`}
+        ref={customerRef}
+        onCustomerLeft={handleCustomerLeft}
+        onPatienceChange={handlePatienceChange}
+        decayRateMs={levelConfig.patienceDecayMs}
+        drainMultiplier={patienceDrainMultiplier}
+        style={{ width: '100%', height: '100%' }}
         />
-
-        {/* 2. Customer area. The sprite and the patience meter are separate
-            now: the sprite sits in its own box, and the meter floats on top
-            of the area with absolute positioning, so moving one never shifts
-            the other. */}
-        <View style={styles.customerArea}>
-          <View style={styles.customerBox}>
-            <Image
-              source={currentSprite.source}
-              style={[
-                styles.characterDog,
-                // Per-customer height tweak: a negative `bottom` in
-                // CUSTOMER_SPRITES moves the sprite down.
-                { top: SPRITE_TOP - currentSprite.bottom },
-              ]}
-            />
-          </View>
-
-          {/* Keyed on customerIndex (and the Extra Health respawn counter) so
-              patience resets each time. */}
-          <CustomerMood
-            key={`customer-${levelMaker.customerIndex}-${healthRespawnKey}`}
-            ref={customerRef}
-            onCustomerLeft={handleCustomerLeft}
-            onPatienceChange={handlePatienceChange}
-            decayRateMs={levelConfig.patienceDecayMs}
-            drainMultiplier={patienceDrainMultiplier}
-            style={[styles.patienceMeter, { left: boxW / 2 + PATIENCE_OFFSET_X }]}
-          />
         </View>
+      </ImageBackground>
+    </Slot>
 
+    <Slot rect={{ x: 175, y: 120, w: 512, h: 1088 }} scale={scale} style={{ backgroundColor: 'transparent' }}>
+    <LevelTimer
+      targetScore={levelConfig.targetScore}
+      currentScore={score}
+      initialTimeInSeconds={levelConfig.timeLimitSeconds}
+      isPaused={
+        levelResult !== null ||
+        levelMaker.showRattyEvent ||
+        achievements.currentAchievement !== null ||
+        isStoreOpen
+      }
+      onLevelEnd={handleLevelEnd}
+      endless={isRushHour}
+      timeBonus={isRushHour ? timeBonus : null}
+      maxTimeInSeconds={isRushHour ? levelConfig.maxTimeSeconds : undefined}
+    />
+  </Slot>
+
+      <Slot rect={RECTS.customer} scale={scale} style={{ alignItems: 'center', justifyContent: 'flex-end' }}>
+        <Image source={currentSprite.source}
+               style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
+      </Slot>
+
+      <Slot rect={RECTS.word} scale={scale}>
         <CurrentWordDisplay
           currentWord={wordInput.currentWord}
           slots={wordInput.slots}
@@ -582,49 +593,43 @@ function LevelSession({
           lastResult={wordInput.lastResult}
           inputBoxCount={wordInput.inputBoxCount}
         />
+      </Slot>
 
-        {/* 3. Table / plate: serves the current word */}
-        <View style={styles.table}>
-          <TouchableOpacity onPress={handleServePlate} activeOpacity={0.7}>
-            <Image
-              source={require('../assets/Final/GameplayUI/serve-button.png')}
-              style={styles.plate}
-            />
-          </TouchableOpacity>
-        </View>
+      <Slot rect={RECTS.serve} scale={scale}>
+        <TouchableOpacity style={{ flex: 1 }} onPress={handleServePlate}>
+          <Image source={require('../assets/Final/GameplayUI/serve-button.png')}
+                 style={{ width: '100%', height: '100%', resizeMode: 'stretch' }} />
+        </TouchableOpacity>
+      </Slot>
 
-        {/* 4. Chef */}
-        <View style={styles.chefBar}>
-          <Image
-            source={require('../assets/Placeholder/WormProtagonist_1.png')}
-            style={styles.characterChef}
-          />
-        </View>
+      <Slot rect={RECTS.chef} scale={scale}>
+        <Image source={require('../assets/Final/MainCharacter.png')}
+               style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
+      </Slot>
 
-        {/* 5. Conveyor belts: one image, three rows on top of it */}
-        <ImageBackground
+      <Slot rect={RECTS.conveyors} scale={scale}>
+        <Image
           source={require('../assets/Final/GameplayUI/conveyors.png')}
-          style={styles.conveyorGroup}
+          style={{ width: '100%', height: '100%' }}
           resizeMode="stretch"
-        >
-          {BELT_ROWS.map((row) => (
-            <View key={row} style={styles.conveyorRow}>
-              <ConveyorBelt
-                ref={conveyorRefs[row]}
-                style={styles.conveyorBelt}
-                config={{
-                  slotDurationMs: levelConfig.conveyorSpeed,
-                  slotWidth: 70,
-                  slotHeight: 60,
-                  // Tile mode (syllables on Levels 1-2, letters otherwise), pool, distribution
-                  // and belt size all come from getBeltConfig, the single place that picks them.
-                  ...getBeltConfig(levelConfig, row),
-                }}
-                onLetterPress={(letter) => wordInput.selectLetter(letter, row)}
-              />
-            </View>
-          ))}
-        </ImageBackground>
+        />
+      </Slot>
+
+      {BELT_ROWS.map((row) => (
+        <Slot key={row} rect={RECTS[`belt${row}`]} scale={scale}>
+          <ConveyorBelt
+            ref={conveyorRefs[row]}
+            style={{ width: '100%', height: '100%' }}
+            config={{
+              slotDurationMs: levelConfig.conveyorSpeed,
+              slotWidth: 100 * scale,  // see note below
+              slotHeight: 94 * scale,
+              ...getBeltConfig(levelConfig, row),
+            }}
+            onLetterPress={(letter) => wordInput.selectLetter(letter, row)}
+          />
+        </Slot>
+      ))}
 
         {/* Floating status: absolutely positioned, so it takes no layout space
             and can never push the rows (or the background art alignment). */}
@@ -636,9 +641,8 @@ function LevelSession({
             )}
           </View>
         )}
-
+        </Stage>
         <StatusBar style="light" />
-      </ImageBackground>
 
       {/* Upgrade overlays sit after the game board so they draw on top of it. */}
       <UpgradeToast
@@ -655,72 +659,15 @@ function LevelSession({
           onOpenStore?.();
         }}
       />
-    </View>
-  );
+  </View>
+);
 }
 
 const styles = StyleSheet.create({
-  /* 1 the screen thingy */
   screenWrapper: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' },
-  container: {
-    alignItems: 'center',
-  },
-  headerBackground: {
-    width: '100%',
-    flex: 130, // scales with everything else
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start', // anchor children to the TOP, so the overflow hangs downward like the mockup
-  },
-  quitWrapper: { alignItems: 'center', justifyContent: 'center' },
-  quitButton: { width: 130, height: 100, resizeMode: 'contain' },
-  patienceCoinBoard: { width: 130, height: 200, alignItems: 'center', justifyContent: 'center' },
-  coinText: {
-    flexShrink: 1,
-    fontSize: 40,
-    fontWeight: 'bold',
-    color: '#fff',
-    textShadowColor: '#000',
-    textShadowRadius: 2,
-    textShadowOffset: { width: 1, height: 1 },
-    marginTop: -125,
-    marginLeft: 50,
-  },
 
   // Floating Stage / Extra Health readout. Move it by changing top/left.
   statusOverlay: { position: 'absolute', top: 12, left: 0, right: 0, alignItems: 'center' },
   stageText: { fontSize: 18, fontWeight: 'bold', color: '#fff', textShadowColor: '#000', textShadowRadius: 2, textShadowOffset: { width: 1, height: 1 } },
   healthText: { fontSize: 16, fontWeight: 'bold', color: '#FFD6E0', textShadowColor: '#000', textShadowRadius: 2, textShadowOffset: { width: 1, height: 1 }, marginTop: 2 },
-
-  /* 2 Customer Area*/
-  // Wrapper that owns the row's flex space and is the positioning parent.
-  customerArea: { flex: 150, width: '100%' },
-  // Sprite box: just centers the sprite. Nothing else lives in here.
-  customerBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  // `left` nudges the sprite to where it sat before the split.
-  characterDog: { width: 160, height: 160, resizeMode: 'contain', left: -72 },
-  // Floats over the area, anchored to its vertical center. `left` is set
-  // inline from the screen width. (resizeMode removed: it only applies to
-  // Image styles, not View styles.)
-  patienceMeter: { position: 'absolute', top: '50%', marginTop: -150, width: 130, height: 150 },
-
-  table: {
-    width: '100%',
-    flex: 150,
-    marginTop: -60,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  plate: { width: 120, height: 60, marginTop: 60, resizeMode: 'stretch' },
-
-  /* 4 Chef Bar*/
-  chefBar: { flex: 130, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 15 },
-  characterChef: { width: 115, height: 115, resizeMode: 'contain', left: 125, bottom: 60 },
-
-  /* 5 Conveyor area */
-  // height: '150%' removed: it conflicted with flex: 240 (flex wins in a column).
-  conveyorGroup: { width: '100%', flex: 240, flexDirection: 'column', bottom: 75 },
-  conveyorRow: { justifyContent: 'center', alignItems: 'center', bottom: 10 },
-  conveyorBelt: { marginTop: 20 },
 });

@@ -9,6 +9,7 @@ export const UPGRADES = {
     type: 'temporary',
     durationMs: 10000,
     patienceDrainMultiplier: 0.5,
+    icon: require('../../assets/Final/store/Power-Teka_Lang_Po.png'),
   },
   DOBLENG_MAHAL: {
     id: 'dobleng-mahal',
@@ -19,6 +20,7 @@ export const UPGRADES = {
     durationMs: 15000,
     rewardMultiplier: 2,
     patienceDrainMultiplier: 2,
+    icon: require('../../assets/Final/store/Power-DMDH.png'),
   },
   EXTRA_HEALTH: {
     id: 'extra-health',
@@ -27,6 +29,7 @@ export const UPGRADES = {
     price: 30,
     type: 'consumable',
     healthBonus: 1,
+    icon: require('../../assets/Final/store/Power-Extra_Health.png'),
   },
   YOLO: {
     id: 'yolo',
@@ -36,6 +39,7 @@ export const UPGRADES = {
     type: 'permanent',
     rewardMultiplier: 2.5,
     patienceDrainMultiplier: 1.5,
+    icon: require('../../assets/Final/store/Power-YOLO.png'),
   },
 };
 
