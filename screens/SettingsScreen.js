@@ -39,17 +39,18 @@ const ART_STYLE = {
   left: `${(-ART_BORDER.left / artW) * 100}%`,
   top: `${(-ART_BORDER.top / artH) * 100}%`,
 
-  transform: [
-    { translateX: 20},
-    { translateY: 20},
-  ],
+  transform: [{ translateX: 20 }, { translateY: 20 }],
 };
 
 export default function SettingsScreen({ onBack, achievements }) {
   const [view, setView] = useState("music");
   // Start from the engine's live values (App loads the saved ones into it).
-  const [masterVolume, setMasterVolume] = useState(() => audio.getVolumes().master);
-  const [musicVolume, setMusicVolume] = useState(() => audio.getVolumes().music);
+  const [masterVolume, setMasterVolume] = useState(
+    () => audio.getVolumes().master,
+  );
+  const [musicVolume, setMusicVolume] = useState(
+    () => audio.getVolumes().music,
+  );
   const [sfxVolume, setSfxVolume] = useState(() => audio.getVolumes().sfx);
 
   // Sliders apply live (you hear the music change as you drag) and are saved
@@ -123,29 +124,31 @@ export default function SettingsScreen({ onBack, achievements }) {
           )}
 
           {view === "achievements" && (
-          <>
-          <AchievementList unlockedIds={achievements?.unlockedIds} />
-            <AppButton
-            label="Back"
-            onPress={() => setView("music")}
-            style={styles.panelBackButton}
-            />
-          </>
+            <>
+              <AchievementList unlockedIds={achievements?.unlockedIds} />
+              <View>
+                <AppButton
+                  onPress={() => setView("music")}
+                  style={styles.panelBackButton}
+                  backgroundImage={require("../assets/Final/buttons/buttonBack.png")}
+                />
+              </View>
+            </>
           )}
 
           {view === "credits" && (
-          <>
-          <View style={styles.placeholderContent}>
-            <Text style={styles.placeholderContentText}>
-            CREDITS{"\n"}CONTENT PLACEHOLDER
-            </Text>
-          </View>
-          <AppButton
-          label="Back"
-          onPress={() => setView("music")}
-          style={styles.panelBackButton}
-          />
-        </>
+            <>
+              <View style={styles.placeholderContent}>
+                <Text style={styles.placeholderContentText}>
+                  CREDITS{"\n"}CONTENT PLACEHOLDER
+                </Text>
+              </View>
+              <AppButton
+                onPress={() => setView("music")}
+                style={styles.panelBackButton}
+                backgroundImage={require("../assets/Final/buttons/buttonBack.png")}
+              />
+            </>
           )}
         </View>
 
@@ -200,7 +203,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   backCircleImage: {
-    width: 60, 
+    width: 60,
     height: 60,
   },
   panel: {
@@ -208,17 +211,14 @@ const styles = StyleSheet.create({
     flex: 1,
     marginVertical: PANEL_VERTICAL_MARGIN,
     alignSelf: "center",
-    overflow: "hidden", 
+    overflow: "hidden",
     paddingVertical: CONTENT_PAD_Y,
     paddingHorizontal: CONTENT_PAD_X,
     alignItems: "center",
     justifyContent: "center",
   },
   backgroundImage: {
-    transform: [
-      { translateX: 20},
-      { translateY: -30},
-    ]
+    transform: [{ translateX: 20 }, { translateY: -30 }],
   },
   panelTitle: {
     fontSize: 28,
