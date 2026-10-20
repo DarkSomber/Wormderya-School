@@ -9,12 +9,10 @@ import {
   StyleSheet,
   View,
   Image,
+  ImageBackground,
   TouchableOpacity,
-  ScrollView,
-  StatusBar,
-  useWindowDimensions
-} from 'react-native';
-import Text from '../components/AppText';
+} from "react-native";
+import Text from "../components/AppText";
 
 const NO_UPGRADES = {
   ownedPermanent: new Set(),
@@ -28,6 +26,22 @@ const NO_UPGRADES = {
   startNewRound: () => {},
 };
 
+// Full-screen Bodega scene: forest background + stall (sign, Mr. Ratty, board).
+// If RattyStall.png already contains everything, you can delete SHOP_BACKGROUND.
+const SHOP_BACKGROUND = require("../assets/Final/RattyBodega/BackgroundRattyStall.png");
+const SHOP_STALL = require("../assets/Final/RattyBodega/RattyStall.png");
+const SHOP_RATTY = require("../assets/Final/RattyBodega/MrRatty.png");
+
+// Pick n random items (Fisher-Yates shuffle on a copy).
+function pickRandom(list, n) {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, n);
+}
+
 export default function StoreScreen({
   onBack,
   wallet,
@@ -36,30 +50,18 @@ export default function StoreScreen({
   onGoToLevelSelect,
 }) {
   const safeUpgrades = upgrades ?? NO_UPGRADES;
-  const { width, height } = useWindowDimensions();
 
   const [rattyOutcome, setRattyOutcome] = useState(null);
+  // Three random offers, chosen once per visit to the store.
   const [offers] = useState(() => pickRandom(UPGRADE_LIST, 3));
   const [selectedId, setSelectedId] = useState(offers[0].id);
-  const selected = offers.find((u) => u.id === selectedId) || offers[0];
   const [feedback, setFeedback] = useState(null); // last action result, shown in status line
 
-  const selected =
-    UPGRADE_LIST.find((u) => u.id === selectedId) || UPGRADE_LIST[0];
+  const selected = offers.find((u) => u.id === selectedId) || offers[0];
   const price = wallet.getEffectivePrice(selected.id, selected.price);
   const owned = safeUpgrades.ownedPermanent.has(selected.id);
   const active = safeUpgrades.isActive(selected.id);
   const affordable = wallet.currency >= price;
-
-  //random three boxes instead of scroll
-  function pickRandom(list, n) {
-  const a = [...list];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a.slice(0, n);
-}
 
   const handleBuy = () => {
     setFeedback(null);
@@ -120,9 +122,12 @@ export default function StoreScreen({
 
   const handleDecline = () => {
     audio.playSfx("ratty_ignore");
-    wallet.declineOffer(UPGRADE_LIST.map((u) => u.id));
+    wallet.declineOffer(offers.map((u) => u.id));
     setRattyOutcome("inflate");
   };
+
+  const priceArrow =
+    price < selected.price ? " ↓" : price > selected.price ? " ↑" : "";
 
   const statusLine = owned
     ? "OWNED"
@@ -130,17 +135,125 @@ export default function StoreScreen({
       ? "ACTIVE"
       : feedback
         ? feedback.text
-        : `${price} coins${!affordable ? " — not enough coins" : ""}`;
+        : `${price} coins${priceArrow}${!affordable ? " — not enough coins" : ""}`;
 
-  const statusColor = feedback
-    ? feedback.type === "ok"
-      ? "#2E7D32"
-      : "#7A2E2E"
-    : "#7A2E2E";
+  const statusColor =
+    feedback && feedback.type === "ok" ? "#2E7D32" : "#7A2E2E";
 
   return (
     <View style={styles.screenWrapper}>
-      <View style={styles.container}>
+      {/* One full-screen picture; everything below is laid over it by % */}
+      <ImageBackground
+        source={SHOP_BACKGROUND}
+        style={styles.container}
+        imageStyle={styles.stretch}
+      >
+        {/* Mr. Ratty sits behind the counter, so he goes under the stall layer */}
+        <Image source={SHOP_RATTY} style={styles.ratty} pointerEvents="none" />
+        <Image
+          source={SHOP_STALL}
+          style={[StyleSheet.absoluteFill, styles.stretch]}
+          pointerEvents="none"
+        />
+
+        {/* Coins */}
+        <View style={styles.coinHeader}>
+          <Text style={styles.coinText} numberOfLines={1} adjustsFontSizeToFit>
+            {formatCurrency(wallet.currency)}
+          </Text>
+          <Image
+            source={require("../assets/Placeholder/pixel_coins.png")}
+            style={styles.coinIcon}
+          />
+        </View>
+
+        {/* Three random offers, lined up with the boxes in the picture */}
+        <View style={styles.boxesRow}>
+          {offers.map((item) => {
+            const itemOwned = safeUpgrades.ownedPermanent.has(item.id);
+            const itemPrice = wallet.getEffectivePrice(item.id, item.price);
+            const onSale = itemPrice < item.price;
+            const pricedUp = itemPrice > item.price;
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.boxSlot}
+                activeOpacity={0.7}
+                onPress={() => {
+                  audio.playSfx("click");
+                  setSelectedId(item.id);
+                  setFeedback(null);
+                }}
+              >
+                <View
+                  style={[
+                    styles.boxHighlight,
+                    selectedId === item.id && styles.itemSelected,
+                  ]}
+                >
+                  {item.icon ? (
+                    <Image source={item.icon} style={styles.itemIcon} />
+                  ) : (
+                    <Text style={styles.itemSlotInitial}>
+                      {item.name.charAt(0)}
+                    </Text>
+                  )}
+                  {itemOwned && <Text style={styles.ownedBadge}>✓</Text>}
+                </View>
+                <View style={styles.priceContainer}>
+                  <Image
+                    source={require("../assets/Placeholder/pixel_coins.png")}
+                    style={styles.smallCoinIcon}
+                  />
+                  <Text style={styles.priceText}>
+                    {itemPrice}
+                    {onSale ? " ↓" : ""}
+                    {pricedUp ? " ↑" : ""}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Name, description, status */}
+        <View style={styles.textArea}>
+          <Text style={styles.descriptionText}>{selected.name}</Text>
+          <Text style={styles.affordabilityText}>{selected.description}</Text>
+          <Text style={[styles.affordabilityText, { color: statusColor }]}>
+            {statusLine}
+          </Text>
+        </View>
+
+        {/* Buy / No thank you, side by side at the bottom.
+            Buy is only hard-disabled when already owned; if not affordable it
+            still taps and shows a clear message. */}
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            onPress={handleBuy}
+            activeOpacity={0.8}
+            disabled={owned}
+            style={[styles.buttonHalf, owned && styles.buyButtonDisabled]}
+          >
+            <Image
+              source={require("../assets/Placeholder/BuyButton.png")}
+              style={styles.buttonImage}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleDecline}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={styles.buttonHalf}
+          >
+            <Image
+              source={require("../assets/Placeholder/DeclineButton.png")}
+              style={styles.buttonImage}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Back button, top left */}
         <TouchableOpacity
           onPress={() => {
             audio.playSfx("click");
@@ -150,172 +263,27 @@ export default function StoreScreen({
           style={styles.backButtonWrapper}
         >
           <Image
-            source={require("../assets/Final/buttons/buttonLevelSelectBack.png")}
+            source={require("../assets/Final/buttons/buttonBack.png")}
             style={styles.backButtonIcon}
           />
         </TouchableOpacity>
+      </ImageBackground>
 
-        <Image
-          source={require("../assets/Placeholder/TopBoard.png")}
-          style={styles.shopSign}
-        />
-
-        <Image
-          source={require("../assets/Final/RattyBodega/MrRatty.png")}
-          style={styles.ratMerchant}
-        />
-
-        <ImageBackground
-          source={require("../assets/Placeholder/Board.png")}
-          style={styles.shopPanel}
-          resizeMode="stretch"
-        >
-          <View style={styles.coinHeader}>
-            <Text
-              style={styles.coinText}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-            >
-              {formatCurrency(wallet.currency)}
-            </Text>
-            <Image
-              source={require("../assets/Placeholder/pixel_coins.png")}
-              style={styles.coinIcon}
-            />
-          </View>
-
-          return (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.boxSlot}
-              activeOpacity={0.7}
-              onPress={() => {
-                audio.playSfx('click');
-                setSelectedId(item.id);
-                setFeedback(null);
-              }}
-            >
-              <View
-                style={[
-                  styles.boxHighlight,
-                  selectedId === item.id && styles.itemSelected,
-                ]}
-              >
-                {item.icon ? (
-                    <Image source={item.icon} style={styles.itemIcon} />
-                  ) : (
-                    <Text style={styles.itemSlotInitial}>{item.name.charAt(0)}</Text>
-                  )}
-                {itemOwned && <Text style={styles.ownedBadge}>✓</Text>}
-              </View>
-
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.itemSlotContainer}
-                  onPress={() => {
-                    audio.playSfx("click");
-                    setSelectedId(item.id);
-                    setFeedback(null);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    style={[
-                      styles.itemSlotBox,
-                      selectedId === item.id && styles.itemSelected,
-                    ]}
-                  >
-                    <Text style={styles.itemSlotInitial}>
-                      {item.name.charAt(0)}
-                    </Text>
-                    {itemOwned && <Text style={styles.ownedBadge}>✓</Text>}
-                  </View>
-                  <View style={styles.priceContainer}>
-                    <Image
-                      source={require("../assets/Placeholder/pixel_coins.png")}
-                      style={styles.smallCoinIcon}
-                    />
-                    <Text style={styles.priceText}>
-                      {itemPrice}
-                      {onSale ? " ↓" : ""}
-                      {pricedUp ? " ↑" : ""}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-      {/* Name, description, status */}
-      <View style={styles.textArea}>
-        <Text style={styles.descriptionText}>{selected.name}</Text>
-        <Text style={styles.affordabilityText}>{selected.description}</Text>
-        <Text style={[styles.affordabilityText, { color: statusColor }]}>
-          {statusLine}
-        </Text>
-      </View>
-
-          {/* Buy is only hard-disabled when already owned. If not affordable,
-              it still taps and shows a clear message instead of silently
-              doing nothing. */}
-          <TouchableOpacity
-            onPress={handleBuy}
-            activeOpacity={0.8}
-            disabled={owned}
-            style={owned ? styles.buyButtonDisabled : undefined}
-          >
-            <Image
-              source={require("../assets/Placeholder/BuyButton.png")}
-              style={styles.buyButtonImage}
-            />
-          </TouchableOpacity>
-        </ImageBackground>
-
-        <TouchableOpacity
-          onPress={handleDecline}
-          activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={styles.buttonHalf}
-        >
-          <Image
-            source={require("../assets/Placeholder/DeclineButton.png")}
-            style={styles.backButtonImage}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Back button, top left, below the status bar */}
-      <TouchableOpacity
-        onPress={() => {
-          audio.playSfx('click');
-          onBack?.();
+      <ShopOutcomeModal
+        visible={rattyOutcome !== null}
+        outcome={rattyOutcome}
+        onDismiss={() => {
+          setRattyOutcome(null);
+          onGoToLevelSelect?.();
         }}
-        activeOpacity={0.7}
-        style={[styles.backButtonWrapper, { top: (StatusBar.currentHeight ?? 0) + 8 }]}
-      >
-        <Image
-          source={require('../assets/Final/buttons/buttonBack.png')}
-          style={styles.backButtonIcon}
-        />
-      </TouchableOpacity>
+      />
+      <AchievementModal
+        visible={achievements.currentAchievement !== null}
+        achievement={achievements.currentAchievement}
+        onDismiss={achievements.dismissAchievement}
+      />
     </View>
-
-    <ShopOutcomeModal
-      visible={rattyOutcome !== null}
-      outcome={rattyOutcome}
-      onDismiss={() => {
-        setRattyOutcome(null);
-        onGoToLevelSelect?.();
-      }}
-    />
-    <AchievementModal
-      visible={achievements.currentAchievement !== null}
-      achievement={achievements.currentAchievement}
-      onDismiss={achievements.dismissAchievement}
-    />
-  </View>
-);
+  );
 }
 
 const styles = StyleSheet.create({
@@ -329,107 +297,75 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "100%",
     maxWidth: 420,
-    backgroundColor: "#4A3B32",
-    alignItems: "center",
-    justifyContent: "flex-start",
   },
-  coinIcon: { width: 28, height: 28, resizeMode: 'contain' },
-  coinText: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
+  stretch: { width: "100%", height: "100%", resizeMode: "stretch" },
+  ratty: {
+    position: "absolute",
+    top: "25%",
+    left: "27%",
+    width: "46%",
+    height: "22%",
+    resizeMode: "contain",
+  },
+  backButtonWrapper: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    zIndex: 30,
+    elevation: 30,
+  },
+  backButtonIcon: {
+    width: 130,
+    height: 50,
+    resizeMode: "contain",
+  },
+
+  coinHeader: {
+    position: "absolute",
+    top: "49%",
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 9,
+  },
+  coinIcon: { width: 40, height: 40, resizeMode: "contain" },
+  coinText: {
+    flexShrink: 1,
+    maxWidth: "50%",
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#fff",
+  },
 
   // Lines up with the three boxes in the picture
   boxesRow: {
-    position: 'absolute',
-    top: '57.9%',
-    left: '4.5%',
-    right: '4.5%',
-    height: '10%',
-    flexDirection: 'row',
+    position: "absolute",
+    top: "57.9%",
+    left: "4.5%",
+    right: "4.5%",
+    height: "10%",
+    flexDirection: "row",
   },
-  backButtonIcon: {
-    width: 100,
-    height: 100,
-    resizeMode: "contain",
-  },
-  shopSign: {
-    width: "100%",
-    height: 150,
-    resizeMode: "stretch",
-  },
-  ratMerchant: {
-    width: 100,
-    height: 80,
-    resizeMode: "contain",
-    marginTop: -125,
-  },
-  shopPanel: {
-    width: "100%",
-    height: 430,
-    marginRight: 20,
-    paddingVertical: 25,
-    paddingHorizontal: 1,
-    alignItems: "center",
+  boxSlot: { flex: 1, alignItems: "center" },
+  boxHighlight: {
+    width: "90%",
+    height: "100%",
     borderRadius: 8,
-    justifyContent: "space-between",
-    marginTop: -100,
-    zIndex: 1,
-  },
-  coinHeader: {
-    flexDirection: "row",
-    marginTop: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    maxWidth: "80%",
-    gap: 9,
-  },
-  coinIcon: {
-    width: 40,
-    height: 40,
-    resizeMode: "contain",
-  },
-  coinText: {
-    flexShrink: 1,
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#000",
-  },
-  itemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    gap: 12,
-  },
-  itemSlotContainer: {
-    alignItems: "center",
-    width: 100,
-  },
-  itemSlotBox: {
-    width: 90,
-    height: 90,
-    backgroundColor: "#E8D6B0",
     borderWidth: 3,
-    borderColor: "#7A5230",
-    borderRadius: 10,
+    borderColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
-  itemSelected: {
-    borderColor: "#FFE194",
-    borderWidth: 4,
-  },
-  itemSlotInitial: {
-    fontSize: 44,
-    fontWeight: "bold",
-    color: "#5A3A1A",
-  },
-  itemSelected: { borderColor: '#FFE194', borderWidth: 4 },
-  itemSlotInitial: { fontSize: 30, fontWeight: 'bold', color: '#5A3A1A' },
-  itemIcon: { width: '80%', height: '80%', resizeMode: 'contain' },
+  itemSelected: { borderColor: "#FFE194", borderWidth: 4 },
+  itemSlotInitial: { fontSize: 30, fontWeight: "bold", color: "#5A3A1A" },
+  itemIcon: { width: "80%", height: "80%", resizeMode: "contain" },
   ownedBadge: {
     position: "absolute",
-    top: 4,
-    right: 6,
-    fontSize: 20,
+    top: 2,
+    right: 4,
+    fontSize: 18,
     color: "#2E7D32",
     fontWeight: "bold",
   },
@@ -439,26 +375,15 @@ const styles = StyleSheet.create({
     gap: 4,
     marginTop: 4,
   },
-  smallCoinIcon: {
-    width: 28,
-    height: 28,
-    resizeMode: "contain",
-  },
-  priceText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#000",
-  },
-  smallCoinIcon: { width: 18, height: 18, resizeMode: 'contain' },
-  priceText: { fontSize: 14, fontWeight: 'bold', color: '#000' },
+  smallCoinIcon: { width: 18, height: 18, resizeMode: "contain" },
+  priceText: { fontSize: 14, fontWeight: "bold", color: "#000" },
 
-  textArea: { position: 'absolute', top: '72%', left: '8%', right: '8%' },
+  textArea: { position: "absolute", top: "72%", left: "8%", right: "8%" },
   descriptionText: {
     fontSize: 20,
     fontWeight: "bold",
     textAlign: "center",
     color: "#000",
-    marginTop: -10,
     marginBottom: 4,
     paddingHorizontal: 10,
   },
@@ -470,25 +395,16 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     paddingHorizontal: 16,
   },
-  buyButtonImage: {
-    width: 170,
-    height: 55,
-    marginLeft: 15,
-    marginBottom: 15,
-    resizeMode: "stretch",
+
+  buttonRow: {
+    position: "absolute",
+    bottom: "1.5%",
+    left: "3%",
+    right: "3%",
+    flexDirection: "row",
+    gap: 8,
   },
-  buyButtonDisabled: {
-    opacity: 0.4,
-  },
-  declineButtonWrapper: {
-    width: "100%",
-    zIndex: 20,
-    elevation: 20,
-  },
-  backButtonImage: {
-    width: "100%",
-    height: 60,
-    resizeMode: "contain",
-    marginTop: 2,
-  },
+  buttonHalf: { flex: 1 },
+  buttonImage: { width: "100%", height: 60, resizeMode: "stretch" },
+  buyButtonDisabled: { opacity: 0.4 },
 });
