@@ -183,6 +183,214 @@ export const TAGALOG_WORD_LIST = [
   'PAANO',    // how
   'ALIN',     // which
   'GAANO',    // how much / how
+  'KASO',
+
+  'ABANG',    // wait / watch out / stay on guard
+  'ABOT',     // reach / hand over
+  'AGAW',     // snatch / grab
+  'AGAP',     // promptness / quickness
+  'ALAB',     // blaze / passion
+  'ALABOK',   // dust
+  'ALALAH',   // (skip - bad spelling)
+  'ALANGAN',  // uncertain / hesitant
+  'ALIN',     // which
+  'ALIS',     // leave / depart
+  'AMOY',     // smell / odor
+  'ANGAT',    // lifted / superior
+  'ANGKIN',   // claim / inherent property
+  'ANI',      // harvest
+  'ANINO',    // shadow
+  'ANTAY',    // wait
+  'APAW',     // overflow
+  'API',      // oppressed / maltreated
+  'APOG',     // lime / chalk
+  'ARUGA',    // tender care
+  'ASAP',     // smoke / vapor
+  'ASING',    // (skip)
+  'ATAS',     // order / decree
+  'AYOS',     // order / arrangement
+  'BAKAS',    // trace / mark
+  'BAKOD',    // fence
+  'BALA',     // bullet / warning
+  'BALI',     // fracture / broken
+  'BALOT',    // wrap / cover
+  'BANAL',    // holy / sacred
+  'BANTA',    // threat / warning
+  'BANTAY',   // guard / watcher
+  'BANTOG',   // famous / renowned
+  'BARO',     // clothes / dress
+  'BASAG',    // broken / shattered
+  'BASBAS',   // blessing
+  'BATI',     // greet / beat (egg)
+  'BATOC',    // nape
+  'BAWAT',    // each / every
+  'BIGKAS',   // pronounce / recite
+  'BIGKIS',   // tie / bind together
+  'BIGLA',    // sudden
+  'BINGI',    // deaf
+  'BIPOL',    // (skip)
+  'BIPOLAR',  // (too long)
+  'BITAW',    // let go / release
+  'BITIN',    // hanging short
+  'BITAG',    // trap / snare
+  'BUBUK',    // weevil (BUBOK)
+  'BUBOK',    // wood-borer / weevil
+  'BUBUAN',   // (too long)
+  'BUBOG',    // glass shard
+  'BUBUOT',   // (skip)
+  'BUKAS',    // open / tomorrow
+  'BUKID',    // farm / field
+  'BULAG',    // blind
+  'BULAK',    // cotton
+  'BUNOT',    // coconut husk / pull out
+  'BUNYAG',   // reveal / disclose
+  'DALI',     // quickness / instant
+  'DALANG',   // rare / infrequent
+  'DAMDAM',   // emotion / feeling
+  'DAMOH',    // (skip)
+  'DANAS',    // experience
+  'DANGAL',   // honor / dignity
+  'DAPAT',    // must / proper
+  'DILG',     // (skip - acronym)
+  'DIKIT',    // stick / paste / close
+  'DIPA',     // fathom / arm span
+  'DIWATA',   // fairy / nymph
+  'DUKHA',    // poor / destitute
+  'DULOS',    // trowel / weed cutter
+  'DURAN',    // spittoon
+  'GAOD',     // row / oar
+  'GAPANG',   // crawl
+  'GAPOS',    // tied up / bound
+  'GATAS',    // milk
+  'GAYAK',    // attire / decoration
+  'GITING',   // heroism / valor
+  'GUHIT',    // line / draw
+  'GULANG',   // age / maturity
+  'GUTOM',    // hunger
+  'HAGIS',    // throw
+  'HALA',     // warning / go ahead
+  'HALAL',    // elect / vote
+  'HALIK',    // kiss
+  'HALIP',    // instead
+  'HAMAK',    // humble / lowly
+  'HAMON',    // challenge
+  'HANGAD',   // wish / desire
+  'HAPIS',    // grief / sorrow
+  'HATOL',    // sentence / judgment
+  'HAWAK',    // hold / grasp
+  'HAYAG',    // manifest / public
+  'HILOM',    // healing
+  'HINTO',    // stop / halt
+  'HIPON',    // shrimp
+  'HUKOM',    // judge
+  'IBABAW',   // surface / top
+  'IBAYO',    // across / double
+  'IGTING',   // tension / intensity
+  'ILAP',     // wildness / shyness
+  'INAM',     // goodness
+  'INAT',     // stretch
+  'ISAGAD',   // push to limit
+  'KABAN',    // trunk / chest
+  'KAGAT',    // bite
+  'KAPWA',    // fellow person
+  'KILOS',    // movement / action
+  'KINIS',    // smoothness
+  'KIPOT',    // narrowness
+  'KUBLI',    // hidden / shelter
+  'KULOB',    // enclosed heat / sealed
+  'KUPAS',    // faded
+  'LAKAS',    // strength
+  'LAKBAY',   // travel / trip
+  'LAMAD',    // membrane
+  'LANDAS',   // path / trail
+  'LAPAD',    // width / wide
+  'LAPIT',    // approach / near
+  'LASAP',    // savor / taste
+  'LAYAG',    // sail
+  'LIGAYA',   // happiness / delight
+  'LIKHA',    // create / artwork
+  'LILOK',    // carve / sculpture
+  'LINGAP',   // caring protection
+  'LIPAD',    // fly
+  'LIPON',    // group / gathering
+  'LUBAY',    // loosen / relent
+  'LUMBAY',   // sadness
+  'LUNAS',    // remedy / cure
+  'LUNOD',    // drown
+  'LUTANG',   // float
+  'MALAY',    // awareness
+  'MANGHA',   // amazed
+  'MASID',    // observe / watch
+  'MAYARI',   // owner / master
+  'MITHI',    // goal / earnest desire
+  'MULAT',    // open eyes / aware
+  'NILAY',    // reflect / contemplate
+  'PAGOD',    // tired
+  'PALAD',    // palm / fate
+  'PANGO',    // flat-nosed
+  'PANGIL',   // fang / tusk
+  'PANTAY',   // level / equal
+  'PARUSA',   // penalty / punishment
+  'PATAK',    // drop of liquid
+  'PATAY',    // dead
+  'PAYAPA',   // peaceful
+  'PILAY',    // lame / sprained
+  'PINTIG',   // pulse / beat
+  'PISIL',    // squeeze
+  'PUPO',     // address respectfully
+  'PUTOL',    // cut / severed
+  'SABAY',    // together / simultaneous
+  'SABIK',    // eager
+  'SADYA',    // intentional
+  'SAGIP',    // rescue
+  'SAKIT',    // pain / sickness
+  'SALAG',    // parry / block
+  'SALOK',    // scoop up water
+  'SAMPAL',   // slap
+  'SANDAT',   // armed / full
+  'SANGGA',   // block / guard
+  'SAPA',     // creek / stream
+  'SAPIT',    // arrival / reach
+  'SAYAD',    // grounded / touching bottom
+  'SAYSAY',   // meaning / worth
+  'SIGAW',    // shout / scream
+  'SIKAP',    // diligence / effort
+  'SIKAT',    // rise (sun) / famous
+  'SILAY',    // glance / peek
+  'SIMOY',    // breeze
+  'SINTA',    // beloved / love
+  'SIPAG',    // hard work
+  'SIPAT',    // aim / check alignment
+  'SULYAP',   // quick glance
+  'TALAS',    // sharpness
+  'TALI',     // rope / string
+  'TAMPO',    // sulk / hurt feelings
+  'TAROK',    // comprehend / measure depth
+  'TAYOG',    // height / altitude
+  'TIGIL',    // stop
+  'TINIG',    // voice
+  'TIPON',    // gather
+  'TISOD',    // stumble
+  'TUKO',     // gecko
+  'TURING',   // regard / treat
+  'TUSOK',    // prick / pierce
+  'TUWIN',    // every time
+  'UDYOK',    // urge / prompt
+  'UGONG',    // reverberation / hum
+  'ULIT',     // repeat
+  'UNAW',     // understand (mula sa unawa)
+  'UNOS',     // storm / tempest
+  'USAP',     // conversation
+  'UYAM',     // sarcasm / mock
+  'WAKAS',    // end / conclusion
+  'WALAT',    // destroyed
+  'WANGIS',   // likeness / resemblance
+  'WASAK',    // ruined / smashed
+  'WASTO',    // correct / right
+  'YAKAP',    // embrace / hug
+  'YANGYANG', // dry in the air
+  'YUKO',      // bow / bend head
+  'DAYA',
 
   // --- Connectors and everyday particles ---
   'ANG',      // the (marker)
