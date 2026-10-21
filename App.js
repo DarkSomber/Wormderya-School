@@ -6,7 +6,7 @@ import {
   PixelifySans_600SemiBold,
   PixelifySans_700Bold,
 } from "@expo-google-fonts/pixelify-sans";
-import { View, StyleSheet, Modal, Platform } from "react-native";
+import { View, StyleSheet, Modal, Platform, BackHandler } from "react-native";
 import SplashScreen from "./screens/SplashScreen";
 import HomeScreen from "./screens/HomeScreen";
 import ModeSelectScreen from "./screens/ModeSelectScreen";
@@ -19,6 +19,7 @@ import BossGameplayScreen from "./screens/BossGameplayScreen";
 import { useWallet } from "./components/gameplayReusables/UseWallet";
 import { useAchievements } from "./components/gameplayReusables/UseAchievements.js";
 import { useUpgrades } from "./components/gameplayReusables/UseUpgrades";
+import { ACHIEVEMENTS } from "./components/gameplayReusables/Achievements.js";
 import {
   hasLevelPreset,
   getNextLevelId,
@@ -40,6 +41,13 @@ import PopupModal from "./components/PopupModal";
 import StoreScreen from "./screens/StoreScreen";
 
 const DEBUG_LEVEL_TOGGLE = true;
+
+// Normal-level wins -> achievement. The boss achievement is unlocked in BossGameplayScreen.
+const LEVEL_ACHIEVEMENTS = {
+  "level-1": ACHIEVEMENTS.FINISH_LEVEL_ONE,
+  "level-2": ACHIEVEMENTS.FINISH_LEVEL_TWO,
+  "level-3": ACHIEVEMENTS.FINISH_LEVEL_THREE,
+};
 
 const SCREENS = {
   SPLASH: "SPLASH",
@@ -218,6 +226,8 @@ function GameSession({ save, initialScreen, onReset }) {
   };
 
   const handleLevelComplete = (completedLevelId) => {
+    // Before the early returns below, so replays and the last level still count.
+    achievements.unlockAchievement(LEVEL_ACHIEVEMENTS[completedLevelId]);
     // The boss level leads to the ending (played when the boss screen's onBack fires).
     if (getLevelConfigById(completedLevelId).isBoss) setEndingPending(true);
     const nextId = getNextLevelId(completedLevelId);
@@ -256,6 +266,13 @@ function GameSession({ save, initialScreen, onReset }) {
   };
   const closeStore = () => setShowStore(false);
 
+  // Home-screen Quit. Android can exit; iOS has no API for it, so the popup just closes.
+  const exitApp = () => {
+    setShowQuit(false);
+    if (Platform.OS === "android") BackHandler.exitApp();
+    else if (Platform.OS === "web") window.close();
+  };
+
   const renderCurrentScreen = () => {
     switch (screen) {
       case SCREENS.SPLASH:
@@ -275,29 +292,6 @@ function GameSession({ save, initialScreen, onReset }) {
             onBack={() => setScreen(SCREENS.HOME)}
           />
         );
-
-      //temp for checking of ending screen
-      /*
-        case SCREENS.SPLASH:
-  return <SplashScreen onFinish={() => setScreen(SCREENS.STORY_ENDING)} />;
-        */
-
-      //temp for checking of level 4
-      /*
-        return (
-          <SplashScreen
-            onFinish={() => {
-              setGameMode("normal");
-              setCurrentLevelId(4);
-              setScreen(SCREENS.GAMEPLAY); // TEMP: jump straight to boss
-            }}
-          />
-        );
-        */
-
-      /*
-
-*/
 
       case SCREENS.SETTINGS:
         return (
@@ -428,7 +422,11 @@ function GameSession({ save, initialScreen, onReset }) {
         }}
       />
 
-      <QuitModal visible={showQuit} onQuit={() => setShowQuit(false)} />
+      <QuitModal
+        visible={showQuit}
+        onQuit={exitApp}
+        onCancel={() => setShowQuit(false)}
+      />
 
       <PopupModal
         visible={
