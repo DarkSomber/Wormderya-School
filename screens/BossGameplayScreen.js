@@ -302,6 +302,7 @@ function BossLevelSession({
   useEffect(() => {
     if (levelResult === "win" && !completionReportedRef.current) {
       completionReportedRef.current = true;
+      achievements.unlockAchievement(ACHIEVEMENTS.BOSS_LEVEL_FINISH);
       onLevelComplete?.(levelConfig.id);
     }
   }, [levelResult, onLevelComplete, levelConfig.id]);
@@ -321,20 +322,13 @@ function BossLevelSession({
 
   const handleIntroComplete = useCallback(() => setPhase("playing"), []);
 
-  const storeTimeoutRef = useRef(null);
-  useEffect(() => {
-    return () => {
-      if (storeTimeoutRef.current) clearTimeout(storeTimeoutRef.current);
-    };
-  }, []);
-
+  // Lose: retry the boss. Win: leave through onBack, which App routes to the
+  // ending (the boss has no shop visit afterwards).
   const handleEndComplete = () => {
     if (levelResult === "lose") {
       onRetry();
     } else {
-      storeTimeoutRef.current = setTimeout(() => {
-        onOpenStore?.();
-      }, 50);
+      onBack?.();
     }
   };
 

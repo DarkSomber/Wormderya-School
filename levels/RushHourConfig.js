@@ -1,27 +1,3 @@
-/**
- * rushHourConfig
- * --------------
- * Rush Hour is NOT a second gameplay implementation. It is GameplayScreen
- * running with `mode="rushHour"`, and this file is the only place that knows
- * what "Rush Hour difficulty" means. It produces ordinary LevelConfig objects
- * (via createLevelConfig), so the conveyor, word input, scoring, customers and
- * Ratty all keep reading the same fields they read in normal levels.
- *
- * Difficulty source
- *   Stages 1..N (N = number of presets) take their conveyor speed, score
- *   multiplier and word difficulty from LEVEL_PRESETS, so Rush Hour follows
- *   whatever the normal levels are tuned to. Presets are not monotonic (Level 2
- *   is slower than Level 1), so the anchors are made monotonic first
- *   (running-min speed, running-max everything else): Rush Hour only ever gets
- *   harder. Past the last preset, difficulty keeps scaling by small per-stage
- *   steps up to hard caps, so it never stops changing but stays playable.
- *
- * Every tunable number lives in RUSH_HOUR_SETTINGS below. GameplayScreen only
- * reads fields off the config it is given.
- *
- * Rush Hour state (stage, timer bonus, words served) lives inside the
- * GameplayScreen session. Nothing here touches unlockedLevels / currentLevelId.
- */
 import { createLevelConfig, DEFAULT_BELTS } from './LevelConfig';
 import { LEVEL_PRESETS } from './levelPresets';
 
@@ -56,6 +32,9 @@ export const RUSH_HOUR_SETTINGS = {
   stagesPerVowelFloorStep: 4, // each belt's vowel floor drops by 1 every this many stages
   minVowelFloorMiddleBelt: 1, // belt 2 is the vowel-rich belt; keep at least this many
 
+  // --- Syllable tiles (top belt only, like the normal levels) ---
+  extendedSyllablesFromStage: 2, // stage 1 uses the 'basic' pool; this stage and later use 'extended'
+
   // --- Mr. Ratty (see useLevelMaker: rate is rolled every interval, at most one
   //     encounter at a time, and never inside the cooldown window) ---
   rattySpawnRate: 0.08,        // normal levels: 0.15 - 0.25
@@ -76,7 +55,7 @@ function buildAnchors() {
   let multiplier = 0;
   let minLength = 0;
   let maxLength = 0;
-  for (const preset of LEVEL_PRESETS) {
+  for (const preset of LEVEL_PRESETS.filter((p) => !p.isBoss)) { // the boss level doesn't drive Rush Hour difficulty
     speed = Math.min(speed, preset.conveyorSpeed);
     multiplier = Math.max(multiplier, preset.scoreMultiplier);
     minLength = Math.max(minLength, preset.wordDifficulty.minLength);
@@ -134,6 +113,9 @@ export function getRushHourLevelConfig(stage = 1) {
     wordDifficulty: { minLength, maxLength: anchor.maxLength },
     belts,
     patienceDecayMs,
+
+    tileMode: 'syllable',
+    syllablePool: n >= s.extendedSyllablesFromStage ? 'extended' : 'basic',
 
     // Endless: no customer quota and no score target.
     totalCustomers: Number.POSITIVE_INFINITY,

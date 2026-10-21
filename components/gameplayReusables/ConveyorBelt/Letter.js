@@ -10,7 +10,7 @@ import { useSpawnAnimation } from './Animationsystem';
  * The belt-wide horizontal scroll is handled entirely by ConveyorBelt's
  * Animated transform — a Letter only knows its fixed slot position
  */
-export default function Letter({ letter, left, width, height, onPress }) {
+function Letter({ letter, left, width, height, onPress }) {
   const scale = useSpawnAnimation(letter.animState);
 
   if (!letter.active) {
@@ -40,6 +40,10 @@ export default function Letter({ letter, left, width, height, onPress }) {
     </Animated.View>
   );
 }
+
+// Memoized: a tile pick/return changes one letter object, so the other tiles
+// (same letter object, slot position and stable onPress) skip re-rendering.
+export default React.memo(Letter);
 
 const styles = StyleSheet.create({
   slot: {

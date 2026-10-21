@@ -56,6 +56,20 @@ export function getConsonantsInPool(pool = DEFAULT_LETTER_POOL) {
   return pool.filter((ch) => !VOWELS.includes(ch));
 }
 
+// Vowel/consonant split per pool array, computed once instead of on every
+// spawned tile. Keyed by the array itself, so a pool that is mutated in place
+// after first use would be stale; pools are treated as immutable everywhere.
+const poolSplitCache = new WeakMap();
+
+export function getPoolSplit(pool = DEFAULT_LETTER_POOL) {
+  let split = poolSplitCache.get(pool);
+  if (!split) {
+    split = { vowels: getVowelsInPool(pool), consonants: getConsonantsInPool(pool) };
+    poolSplitCache.set(pool, split);
+  }
+  return split;
+}
+
 /**
  * Named vowel-weight profiles a level's `letterDistribution` can reference
  * by name. Each is a [min, max] range — a random value inside it is drawn
@@ -143,8 +157,7 @@ export function pickRandomLetter(pool = DEFAULT_LETTER_POOL, vowelWeight = null)
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
-  const vowels = getVowelsInPool(pool);
-  const consonants = getConsonantsInPool(pool);
+  const { vowels, consonants } = getPoolSplit(pool);
 
   let source;
   if (vowels.length === 0) source = consonants;

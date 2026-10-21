@@ -1,24 +1,3 @@
-/**
- * levelPresets
- * ------------
- * One LevelConfig per stage. To add a level, create LEVEL_N_CONFIG and add
- * it to LEVEL_PRESETS.
- *
- * Flow: LevelSelectScreen -> App (levelId) -> GameplayScreen ->
- * getLevelConfigById(levelId).
- *
- * A preset's `id` is 'level-N', N being the number LevelSelectScreen uses.
- *
- * Letter distribution is per conveyor belt, not per level (see `belts` in
- * LevelConfig.js). To tweak one belt in one level, pass e.g.
- *   belts: [null, { minVisibleVowels: 4 }, null]
- *
- * Tile mode (see LevelConfig.js): Levels 1-2 put consonant-vowel SYLLABLE tiles
- * on ONE belt (`syllableBelts`, default the top belt) and single letters on the
- * rest; Level 3+ use single letters everywhere (the default, so new levels need
- * nothing). Input boxes are dynamic: none are drawn
- * up front, one appears per character picked, up to `inputBoxCount` (default 11).
- */
 import { createLevelConfig, parseLevelNumber } from './LevelConfig';
 
 export const LEVEL_1_CONFIG = createLevelConfig({
@@ -62,9 +41,29 @@ export const LEVEL_3_CONFIG = createLevelConfig({
   scoreMultiplier: 2,
   rattySpawnRate: 0.25,
   wordDifficulty: { minLength: 4, maxLength: 8 },
+  tileMode: 'syllable',
+  syllablePool: 'extended',
 });
 
-export const LEVEL_PRESETS = [LEVEL_1_CONFIG, LEVEL_2_CONFIG, LEVEL_3_CONFIG];
+// Boss level (Level 4 on LevelSelectScreen). `isBoss` keeps it out of Rush Hour's difficulty anchors
+// and marks it as the level that leads to the ending. No Ratty: the boss screen has no shop popup.
+export const LEVEL_4_CONFIG = createLevelConfig({
+  id: 'level-4',
+  title: 'Level 4 — Boss: The Critic',
+  isBoss: true,
+  conveyorSpeed: 900,
+  targetScore: 700,
+  timeLimitSeconds: 90,
+  totalCustomers: 10,
+  wordsPerCustomer: 3,
+  scoreMultiplier: 2.5,
+  rattySpawnRate: 0,
+  wordDifficulty: { minLength: 4, maxLength: 8 },
+  tileMode: 'syllable',
+  syllablePool: 'extended',
+});
+
+export const LEVEL_PRESETS = [LEVEL_1_CONFIG, LEVEL_2_CONFIG, LEVEL_3_CONFIG, LEVEL_4_CONFIG];
 
 /** 1, '2' or 'level-3' -> preset id ('level-N'); anything else -> null. */
 export function toLevelId(levelRef) {

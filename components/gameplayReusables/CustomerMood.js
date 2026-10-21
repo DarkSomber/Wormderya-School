@@ -15,6 +15,7 @@ const CustomerMood = forwardRef(({
   maxPatience = 100,
   decayRateMs = 4000,
   drainMultiplier = 1, // <1 slower drain, >1 faster. Applied to decayRateMs.
+  isPaused = false, // true while the timer is paused (Ratty popup, shop, achievement): patience holds still
   onCustomerLeft,
   onPatienceChange,
   style,
@@ -27,6 +28,10 @@ const CustomerMood = forwardRef(({
   const drainRef = useRef(drainMultiplier);
   drainRef.current = drainMultiplier;
 
+  // Same idea for pause: a ref, so pausing/resuming never resets the interval.
+  const pausedRef = useRef(isPaused);
+  pausedRef.current = isPaused;
+
   // Passive decay. Reschedules on every tick so a live multiplier change
   // is honored without remounting the customer.
   useEffect(() => {
@@ -38,10 +43,12 @@ const CustomerMood = forwardRef(({
       const mult = drainRef.current || 1;
       const base = Math.max(100, decayRateMs / mult);
       intervalId = setInterval(() => {
-        setPatience((prev) => {
-          if (prev <= 0) return prev;
-          return Math.max(0, prev - 10);
-        });
+        if (!pausedRef.current) {
+          setPatience((prev) => {
+            if (prev <= 0) return prev;
+            return Math.max(0, prev - 10);
+          });
+        }
         clearInterval(intervalId);
         schedule();
       }, base);

@@ -4,14 +4,7 @@ import { isValidWord } from './WordValidator';
 import { calculateScore } from './ScoreSystem';
 import { DEFAULT_LEVEL_CONFIG } from './LevelConfig';
 import audio from '../../../audio/AudioManager';
-/* global __DEV__ */ 
 
-// Maximum number of input boxes: how many characters the word being built can
-// hold. Boxes are NOT drawn up front: one appears for each character the player
-// picks (a syllable like 'BA' adds two), and the word auto-submits once the
-// maximum is reached. Independent of how many letters a conveyor belt holds.
-// Pass a different value as useWordInput's third argument (LevelConfig
-// `inputBoxCount`) to override it for one screen/level.
 export const DEFAULT_INPUT_BOX_COUNT = 11;
 
 // When the player taps a filled box to take its tile back, that box stays open
@@ -123,15 +116,17 @@ export function useWordInput(   //Constuctor
   //guard against double-selecting the same letter id 
   const selectedIdsRef = useRef(new Set());
 
+  // Returns true when the tile was taken, false when it was ignored (inactive,
+  // already picked, or a syllable that doesn't fit in the boxes left).
   const selectLetter = useCallback(
     (letter, beltIndex) => {
-      if (!letter || !letter.active) return;
-      if (selectedIdsRef.current.has(letter.id)) return;
+      if (!letter || !letter.active) return false;
+      if (selectedIdsRef.current.has(letter.id)) return false;
       const current = slotsRef.current;
       const holeIndex = findHoleIndex(current, targetRef.current);
       // One box per character: 'B' takes one box, a syllable 'BA' takes two ('B' then 'A').
       const parts = Array.from(letter.character);
-      if (current.filter(isTile).length + parts.length > inputBoxCount) return; // a syllable needs two boxes: don't half-fill
+      if (current.filter(isTile).length + parts.length > inputBoxCount) return false; // a syllable needs two boxes: don't half-fill
 
       selectedIdsRef.current.add(letter.id);
       const next = current.slice();
@@ -164,6 +159,7 @@ export function useWordInput(   //Constuctor
       // Animation for removing letter once tapped
       const belt = conveyorRefs[beltIndex]?.current;
       belt?.removeLetterById(letter.id);  //Return back letter
+      return true;
     },
     [conveyorRefs, commitSlots, inputBoxCount, clearHoldTimer, setTarget]
   );
@@ -188,10 +184,7 @@ export function useWordInput(   //Constuctor
         const match =
           available.find((l) => l.character === char) ??
           available.find((l) => l.character.startsWith(char));
-        if (match) {
-          selectLetter(match, i);
-          return true;
-        }
+        if (match && selectLetter(match, i)) return true; // false: didn't fit, try the next belt
       }
       return false; // requested letter isn't available right now
     },

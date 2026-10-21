@@ -10,7 +10,7 @@ import React, {
 import { Animated, View, StyleSheet, Easing } from 'react-native';
 import Letter from './Letter';
 import { DEFAULT_CONVEYOR_CONFIG } from './Conveyorconfig';
-import { pickRandomLetter, createVowelWeightPicker, getVowelsInPool, VOWELS } from './Letterpool';
+import { pickRandomLetter, createVowelWeightPicker, getPoolSplit, VOWELS } from './Letterpool';
 import { LETTER_ANIM_STATES } from './Animationsystem';
 
 let nextLetterId = 1;
@@ -18,11 +18,15 @@ let nextLetterId = 1;
 // (or undefined for the original uniform behavior).
 // `forceVowel` guarantees a vowel (used by the minVisibleVowels floor).
 function makeLetter(pool, getVowelWeight, forceVowel = false) {
-  const vowels = getVowelsInPool(pool);
+  const { vowels, consonants } = getPoolSplit(pool);
+  // Vowel weighting only means something when the pool has both kinds. CV
+  // (syllable) pools hold no single-letter vowels, so skip the weight draw there:
+  // the pick is the same uniform pick pickRandomLetter already made for them.
+  const weighted = vowels.length > 0 && consonants.length > 0;
   const character =
     forceVowel && vowels.length > 0
       ? vowels[Math.floor(Math.random() * vowels.length)]
-      : pickRandomLetter(pool, getVowelWeight ? getVowelWeight() : null);
+      : pickRandomLetter(pool, weighted && getVowelWeight ? getVowelWeight() : null);
 
   return {
     id: `letter-${nextLetterId++}`,
@@ -54,11 +58,29 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
   // One picker per mounted belt so a "mixed" distribution's streaks (see
   // createVowelWeightPicker) persist across the letters this belt spawns,
   // rather than rerolling fresh on every render.
-  const vowelWeightPickerRef = useRef(createVowelWeightPicker(letterDistribution));
+  // Keyed by value, not identity: a config rebuilt every render with the same
+  // distribution must not reset a mixed distribution's streak.
+  const vowelWeightPickerRef = useRef(null);
+  if (vowelWeightPickerRef.current === null) {
+    vowelWeightPickerRef.current = createVowelWeightPicker(letterDistribution);
+  }
+  const distributionKey =
+    letterDistribution !== null && typeof letterDistribution === 'object'
+      ? JSON.stringify(letterDistribution)
+      : String(letterDistribution);
   useEffect(() => {
     vowelWeightPickerRef.current = createVowelWeightPicker(letterDistribution);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [letterDistribution]);
+  }, [distributionKey]);
+
+  // Latest spawn settings and press handler, read through refs so
+  // rotateLetters and the per-letter onPress keep one identity across renders
+  // (a new identity would restart the belt tween / re-render every tile).
+  const spawnRef = useRef({ letterPool, minVisibleVowels });
+  spawnRef.current = { letterPool, minVisibleVowels };
+  const onLetterPressRef = useRef(onLetterPress);
+  onLetterPressRef.current = onLetterPress;
+  const handleLetterPress = useCallback((letter) => onLetterPressRef.current?.(letter), []);
 
   // Initial fill also respects the vowel floor so the first screen isn't vowel-starved.
   const [letters, setLetters] = useState(() => {
@@ -74,17 +96,21 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
   const translateX = useRef(new Animated.Value(0)).current;
   const runningRef = useRef(true);
   const tickRef = useRef(() => {});
+  // Set by a rotation so the layout effect below resets the belt only then.
+  const rotationPendingRef = useRef(false);
 
   const rotateLetters = useCallback(() => {
+    rotationPendingRef.current = true;
     setLetters((prev) => {
+      const { letterPool: pool, minVisibleVowels: minVowels } = spawnRef.current;
       const [, ...rest] = prev;
       const activeVowels = rest.filter(
         (l) => l.active && VOWELS.includes(l.character)
       ).length;
-      const needsVowel = activeVowels < (minVisibleVowels ?? 0);
-      return [...rest, makeLetter(letterPool, vowelWeightPickerRef.current, needsVowel)];
+      const needsVowel = activeVowels < (minVowels ?? 0);
+      return [...rest, makeLetter(pool, vowelWeightPickerRef.current, needsVowel)];
     });
-  }, [letterPool, minVisibleVowels]);
+  }, []);
 
   useEffect(() => {
     // While paused: make sure any in-flight tween is stopped (freezing
@@ -119,25 +145,26 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
     };
   }, [translateX, slotWidth, slotDurationMs, direction, rotateLetters, isPaused]);
 
-  const isFirstRender = useRef(true);
+  // Only a rotation moves every letter one slot left, so only a rotation resets the
+  // belt. Picking or returning a tile also changes `letters`; it must not rewind
+  // the slide in progress or restart its timer.
   useLayoutEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    if (isPaused) return; //Seamless transition even when paused
-    translateX.setValue(0);
-    tickRef.current();
+    if (!rotationPendingRef.current) return;
+    rotationPendingRef.current = false;
+    translateX.setValue(0); // also while paused, so the shifted letters don't sit a slot off
+    if (!isPaused) tickRef.current();
   }, [letters, translateX, isPaused]);
 
   const removeLetterById = useCallback((id) => { //Blank slot in conveyor
-    setLetters((prev) =>
-      prev.map((l) =>
-        l.id === id
+    setLetters((prev) => {
+      const index = prev.findIndex((l) => l.id === id);
+      if (index === -1 || !prev[index].active) return prev; // unknown or already removed: no change, no re-render
+      return prev.map((l, i) =>
+        i === index
           ? { ...l, active: false, animState: LETTER_ANIM_STATES.DISAPPEARING }
           : l
-      )
-    );
+      );
+    });
   }, []);
 
   // Gives a picked letter back to the belt. The SAME letter (matched by id) returns:
@@ -185,7 +212,7 @@ const ConveyorBelt = forwardRef(function ConveyorBelt(
             left={i * slotWidth}
             width={slotWidth}
             height={slotHeight}
-            onPress={onLetterPress} //Hook for letter input
+            onPress={handleLetterPress} //Hook for letter input
           />
         ))}
       </Animated.View>

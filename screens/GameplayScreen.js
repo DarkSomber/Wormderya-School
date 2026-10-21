@@ -99,6 +99,8 @@ const NO_ACHIEVEMENTS = {
  *                    levels/rushHourConfig.js, the clock is restored by correct
  *                    words, and onLevelComplete is never called.
  *   onLevelComplete  optional; called once when the level is won
+ *   onOpenStore      optional; opens Ratty's shop. Mid-level visits pass
+ *                    { resumeGameplay: true } so closing the shop returns here.
  *   wallet           the useWallet() instance from App.js (single shared balance)
  *   achievements     the achievements instance from App.js
  *   upgrades         the useUpgrades() instance from App.js
@@ -427,7 +429,7 @@ function LevelSession({
     } else {
       levelMakerRef.current.dismissRattyEvent();
       storeTimeoutRef.current = setTimeout(() => {
-        onOpenStore?.();
+        onOpenStore?.(); // post-win shop: leaving it goes to Level Select
       }, 50);
     }
   };
@@ -505,6 +507,14 @@ function LevelSession({
 
   const currentSprite = CUSTOMER_SPRITES[levelMaker.customerIndex % CUSTOMER_SPRITES.length];
 
+  // One pause flag for everything that must hold still while a modal is up
+  // (Ratty popup, shop, achievement): the level clock AND customer patience.
+  const isGameplayPaused =
+    levelResult !== null ||
+    levelMaker.showRattyEvent ||
+    achievements.currentAchievement !== null ||
+    !!isStoreOpen;
+
   return (
   <View style={styles.screenWrapper}>
     <Stage source={require('../assets/Final/GameplayUI/GameplayScreen.png')} w={w} h={h} scale={scale}>
@@ -554,6 +564,7 @@ function LevelSession({
         onPatienceChange={handlePatienceChange}
         decayRateMs={levelConfig.patienceDecayMs}
         drainMultiplier={patienceDrainMultiplier}
+        isPaused={isGameplayPaused}
         style={{ width: '100%', height: '100%' }}
         />
         </View>
@@ -565,12 +576,7 @@ function LevelSession({
       targetScore={levelConfig.targetScore}
       currentScore={score}
       initialTimeInSeconds={levelConfig.timeLimitSeconds}
-      isPaused={
-        levelResult !== null ||
-        levelMaker.showRattyEvent ||
-        achievements.currentAchievement !== null ||
-        isStoreOpen
-      }
+      isPaused={isGameplayPaused}
       onLevelEnd={handleLevelEnd}
       endless={isRushHour}
       timeBonus={isRushHour ? timeBonus : null}
@@ -651,12 +657,13 @@ function LevelSession({
       />
       <UpgradeHUD activeList={safeUpgrades.activeList} />
 
-      {/* Mr. Ratty popup (rolled by useLevelMaker) */}
+      {/* Mr. Ratty popup (rolled by useLevelMaker). Dismissing opens his shop
+          as a mid-level visit: closing it returns to this running level. */}
       <MrRattyDiscount
         visible={levelMaker.showRattyEvent}
         onDismiss={() => {
           levelMaker.dismissRattyEvent();
-          onOpenStore?.();
+          onOpenStore?.({ resumeGameplay: true });
         }}
       />
   </View>

@@ -29,6 +29,7 @@ import {
   loadGameData,
   saveGameData,
   clearGameData,
+  createDefaultSave,
   DEFAULT_SAVE,
 } from "./components/GameSave";
 import audio from "./audio/AudioManager";
@@ -80,9 +81,12 @@ function useGameSave() {
     saveGameData(next);
   }, []);
 
+  // In-memory snapshot first, so a patch that lands during the clear can't
+  // write the old data back. The caller must also remount whatever holds
+  // hook state (see ScreenSwitcher's onReset).
   const reset = useCallback(async () => {
+    snapshotRef.current = createDefaultSave();
     await clearGameData();
-    snapshotRef.current = { ...DEFAULT_SAVE };
   }, []);
 
   // Always the latest snapshot, for callbacks that outlive a render.
@@ -91,15 +95,49 @@ function useGameSave() {
   return { loaded, snapshot: snapshotRef.current, getSnapshot, patch, reset };
 }
 
+/**
+ * Loads the save, then mounts <GameSession>. The hooks inside it take their
+ * initial state from the save, and useState ignores a changed initial value,
+ * so they must not be created until the save has loaded. Bumping `session.key`
+ * (a save reset) remounts GameSession, so wallet, upgrades, achievements and
+ * levels all restart from the fresh defaults.
+ */
 function ScreenSwitcher() {
-  const { loaded, snapshot, getSnapshot, patch, reset } = useGameSave();
+  const save = useGameSave();
+  const [session, setSession] = useState({
+    key: 0,
+    screen: SCREENS.SPLASH,
+  });
 
-  const [screen, setScreen] = useState(SCREENS.SPLASH);
+  // While the save is loading, keep the splash on screen.
+  if (!save.loaded) {
+    return <SplashScreen onFinish={() => {}} />;
+  }
+
+  return (
+    <GameSession
+      key={session.key}
+      save={save}
+      initialScreen={session.screen}
+      onReset={() =>
+        setSession((s) => ({ key: s.key + 1, screen: SCREENS.LEVEL_SELECT }))
+      }
+    />
+  );
+}
+
+function GameSession({ save, initialScreen, onReset }) {
+  const { snapshot, getSnapshot, patch, reset } = save;
+
+  const [screen, setScreen] = useState(initialScreen);
 
   const [currentLevelId, setCurrentLevelId] = useState(snapshot.currentLevelId);
   const [unlockedLevels, setUnlockedLevels] = useState(snapshot.unlockedLevels);
   const [unlockNotice, setUnlockNotice] = useState(null);
   const [showStore, setShowStore] = useState(false);
+  // True when the store was opened mid-level (Mr. Ratty's visit): leaving it
+  // returns to the running level instead of going to Level Select.
+  const [storeResumesGameplay, setStoreResumesGameplay] = useState(false);
   const [showRushHour, setShowRushHour] = useState(false);
   const [gameMode, setGameMode] = useState("normal");
   const [showQuit, setShowQuit] = useState(false);
@@ -111,44 +149,51 @@ function ScreenSwitcher() {
     audio.init();
   }, []);
 
-  // Once the save is in, apply the saved slider values and let the Settings
-  // screen persist new ones.
+  // Apply the saved slider values and let the Settings screen persist new ones.
   useEffect(() => {
-    if (!loaded) return;
     audio.setVolumes(snapshot.settings);
     audio.setPersistHandler((volumes) => patch("settings", volumes));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, patch]);
+  }, [patch]);
 
   // Menu music everywhere except the splash and gameplay (LevelSession owns
   // the music while a level is running).
   const menuMusicOn =
-    loaded && screen !== SCREENS.SPLASH && screen !== SCREENS.GAMEPLAY;
+    screen !== SCREENS.SPLASH && screen !== SCREENS.GAMEPLAY;
   useEffect(() => {
     if (menuMusicOn) audio.setMusic("menu");
   }, [menuMusicOn]);
 
   // Push top-level changes into the save snapshot.
   useEffect(() => {
-    if (loaded) patch("unlockedLevels", unlockedLevels);
-  }, [unlockedLevels, loaded, patch]);
+    patch("unlockedLevels", unlockedLevels);
+  }, [unlockedLevels, patch]);
   useEffect(() => {
-    if (loaded) patch("currentLevelId", currentLevelId);
-  }, [currentLevelId, loaded, patch]);
+    patch("currentLevelId", currentLevelId);
+  }, [currentLevelId, patch]);
 
   // Wallet / achievements / upgrades. Each receives its slice of the save
   // and reports back via onChange, which we write to the snapshot.
+  // onChange handlers are memoized: the hooks re-save whenever their onChange
+  // changes identity, so an inline arrow here would re-write on every render.
+  const handleWalletChange = useCallback((w) => patch("wallet", w), [patch]);
+  const handleAchievementsChange = useCallback(
+    (a) => patch("achievements", a),
+    [patch],
+  );
+  const handleUpgradesChange = useCallback((u) => patch("upgrades", u), [patch]);
+
   const wallet = useWallet(0, {
     initialState: snapshot.wallet,
-    onChange: (w) => patch("wallet", w),
+    onChange: handleWalletChange,
   });
   const achievements = useAchievements(wallet, {
     initialState: snapshot.achievements,
-    onChange: (a) => patch("achievements", a),
+    onChange: handleAchievementsChange,
   });
   const upgrades = useUpgrades(wallet, {
     initialState: snapshot.upgrades,
-    onChange: (u) => patch("upgrades", u),
+    onChange: handleUpgradesChange,
   });
 
   const debugAllUnlocked = getAllLevelIds().every((id) =>
@@ -165,15 +210,16 @@ function ScreenSwitcher() {
     }
   };
 
+  // Clears the stored save, then remounts the session so every in-memory
+  // hook (wallet, upgrades, achievements, levels) restarts from the defaults.
   const handleDebugResetSave = async () => {
     await reset();
-    setUnlockedLevels([1]);
-    setCurrentLevelId(1);
-    setUnlockNotice(null);
+    onReset();
   };
 
   const handleLevelComplete = (completedLevelId) => {
-    if (completedLevelId === 4) setEndingPending(true);
+    // The boss level leads to the ending (played when the boss screen's onBack fires).
+    if (getLevelConfigById(completedLevelId).isBoss) setEndingPending(true);
     const nextId = getNextLevelId(completedLevelId);
     if (nextId === null || unlockedLevels.includes(nextId)) return;
     setUnlockedLevels((prev) =>
@@ -199,16 +245,16 @@ function ScreenSwitcher() {
     [getSnapshot, patch, scoreKey],
   );
 
-  const openStore = () => {
+  // openStore({ resumeGameplay: true }) = mid-level visit (Mr. Ratty): closing the
+  // store returns to the running level. Any other call (e.g. after a win, or
+  // from a press event) keeps the old behavior of going to Level Select.
+  const openStore = (opts) => {
+    console.log("[Store] opened with", opts);
     audio.playSfx("ratty_shop_appear");
+    setStoreResumesGameplay(opts?.resumeGameplay === true);
     setShowStore(true);
   };
   const closeStore = () => setShowStore(false);
-
-  // While the save is loading, keep the splash on screen.
-  if (!loaded) {
-    return <SplashScreen onFinish={() => {}} />;
-  }
 
   const renderCurrentScreen = () => {
     switch (screen) {
@@ -291,7 +337,7 @@ function ScreenSwitcher() {
         );
 
       case SCREENS.GAMEPLAY:
-        if (gameMode === "normal" && currentLevelId === 4) {
+        if (gameMode === "normal" && getLevelConfigById(currentLevelId).isBoss) {
           return (
             <BossGameplayScreen
               mode={gameMode}
@@ -305,6 +351,11 @@ function ScreenSwitcher() {
                   setScreen(SCREENS.LEVEL_SELECT);
                 }
               }}
+              wallet={wallet}
+              achievements={achievements}
+              upgrades={upgrades}
+              getBestScore={getBestScore}
+              onReportScore={reportScore}
             />
           );
         }
@@ -329,6 +380,9 @@ function ScreenSwitcher() {
             onReportScore={reportScore}
           />
         );
+
+      case SCREENS.STORY_ENDING:
+        return <StoryEndingScreen onFinish={() => setScreen(SCREENS.HOME)} />;
 
       case SCREENS.HOME:
       default:
@@ -358,7 +412,8 @@ function ScreenSwitcher() {
               upgrades={upgrades}
               onGoToLevelSelect={() => {
                 closeStore();
-                setScreen(SCREENS.LEVEL_SELECT);
+                // Mid-level Ratty visit: stay in the running level.
+                if (!storeResumesGameplay) setScreen(SCREENS.LEVEL_SELECT);
               }}
             />
           </View>
