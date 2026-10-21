@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react';
 
+const MONEY_RATE = 0.5;
+
 export function computeStars(finalScore, targetScore) {
   if (!targetScore || finalScore < targetScore) return 0;
   if (finalScore >= targetScore * 2) return 3;
@@ -7,12 +9,6 @@ export function computeStars(finalScore, targetScore) {
   return 1;
 }
 
-/**
- * useScoreSystem({ onCurrencyEarned, getRewardMultiplier })
- * Owns in-level SCORE only (can only go up). Currency lives in useWallet.
- * `getRewardMultiplier` is called fresh per word so live upgrade
- * multipliers apply without re-creating addScoreFromWord.
- */
 export const useScoreSystem = ({ onCurrencyEarned, getRewardMultiplier } = {}) => {
   const [score, setScore] = useState(0);
 
@@ -27,7 +23,7 @@ export const useScoreSystem = ({ onCurrencyEarned, getRewardMultiplier } = {}) =
       if (!(earnedPoints > 0)) return 0;
 
       setScore((prev) => prev + earnedPoints);
-      onCurrencyEarned?.(earnedPoints);
+      onCurrencyEarned?.(Math.max(1, Math.round(earnedPoints * MONEY_RATE)));
       return earnedPoints;
     },
     [onCurrencyEarned, getRewardMultiplier]

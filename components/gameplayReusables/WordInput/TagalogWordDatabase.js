@@ -157,7 +157,204 @@ export const TAGALOG_WORD_LIST = [
   'ANAY',     //
   'KADAMAY',  //
   'DAKIP',    //
-  
+  'AGOS',     // daloy
+'AKBAY',    // balikat o pag-alalay
+'ALON',     // alon sa tubig
+'ANLU',     // salitang nangangailangan ng pagpapatunay
+'ANTAS',    // baitang o lebel
+'ASAM',     // mithiin
+'AYON',     // alinsunod
+'BAGTING',  // tunog ng kampana
+'BAKAS',    // tanda
+'BALAK',    // layunin
+'BALINTA',  // nangangailangan ng pagpapatunay
+'BALISA',   // hindi mapalagay
+'BANAAG',   // bahagyang liwanag
+'BANAYAD',  // hindi marahas
+'BANGIS',   // kalupitan
+'BATID',    // nalalaman
+'BATOK',    // likod ng leeg
+'BAYAW',    // asawa ng kapatid
+'BIHIS',    // kasuotan
+'BILAD',    // ibilad
+'BILOG',    // hugis na pabilog
+'BINHI',    // buto ng halaman
+'BISIG',    // bahagi ng braso
+'BITAK',    // siwang
+'BUKAL',    // bukal ng tubig
+'BUKLOD',   // samahan
+'BUKOL',    // umbok
+'BULOS',    // tuloy-tuloy na daloy
+'BUNGO',    // bungo
+'BUHOS',    // pagbuhos
+'DALAG',    // uri ng isda
+'DALAW',    // pagdalaw
+'DAPIT',    // pook
+'DAPOG',    // kalan na yari sa lupa
+'DAYO',     // taong dumadalaw
+'DULAS',    // madulas
+'GABOK',    // alikabok
+'GALOS',    // gasgas
+'GANAP',    // lubos
+'GAPAS',    // hibla
+'GILAS',    // kinang o husay
+'GIMIK',    // pakana o palabas
+'GULOD',    // dalisdis
+'HAGOD',    // paghaplos
+'HAKOT',    // magdala ng maraming bagay
+'HALAW',    // hanguin
+'HAPDI',    // kirot
+'HAPIT',    // halos
+'HASIK',    // maghasik
+'HATID',    // magdala
+'HILIG',    // pagkahilig
+'HIRAM',    // pansamantalang gamitin
+'HULOG',    // pagbagsak
+'IGIB',     // kumuha ng tubig
+'KALAS',    // alisin ang pagkakakabit
+'KAPOS',    // kulang
+'KIBOT',    // bahagyang galaw
+'KIMAS',    // galaw ng kamay
+'KISAP',    // mabilis na pagkislap
+'KISIG',    // tindig o anyo
+'KUBOS',    // ubos
+'KUNAT',    // matigas at hindi madaling yumuko
+'KURAP',    // mabilis na pagpikit
+'KURIT',    // pangungulit
+'KUTOB',    // pakiramdam o hinala
+'KUTOS',    // palo
+'LAGDA',    // pirma
+'LAGOM',    // buod
+'LAGOT',    // pagkaputol
+'LAGUS',    // lagusan
+'LAHAD',    // lantad
+'LAPOT',    // malapot
+'LATAG',    // ilatag
+'LATAY',    // marka mula sa paghampas
+'LATIK',    // pagkaing gawa sa gata
+'LAYAS',    // umalis
+'LIKOT',    // liko
+'LIPAS',    // lumipas
+'LISAN',    // iwan
+'LISIK',    // tumalsik
+'LIYAB',    // liyab ng apoy
+'LUGOD',    // tuwa
+'LUKOT',    // lukot
+'LUSAW',    // matunaw
+'LUSOT',    // makalusot
+'LUTOK',    // pagputok
+'PABOR',    // pagkiling
+'PADRON',   // huwaran
+'PAHIMAK',  // huling habilin
+'PAHUPA',   // humuhupa
+'PALASAK',  // karaniwan
+'PALIHIM',  // lihim
+'PAMANA',   // iniwang ari-arian
+'PANDAY',   // manggagawa ng metal
+'PANATA',   // pangako
+'PANIG',    // panig
+'PANUKALA', // mungkahi
+'PAPURI',   // papuri
+'PASAK',    // pantusok
+'PASAN',    // dalahin
+'PASILYO',  // daanan
+'PASPAS',   // mabilis
+'PATAG',    // patag
+'PATAWAD',  // pagpapatawad
+'PAWIS',    // pawis
+'PILAS',    // piraso
+'PILIPIT',  // pilipit
+'PINTA',    // pintura
+'PIRASO',   // bahagi
+'PITAK',    // bahagi ng lupa
+'PITAS',    // pitasin
+'PITIK',    // maikling tunog
+'POOK',     // lugar
+'PUKAW',    // gisingin
+'PULOT',    // pulutin
+'PUNAS',    // punasan
+'PUNLA',    // batang halaman
+'PUSOD',    // gitna
+'PUTIK',    // basang lupa
+'PUYAT',    // kulang sa tulog
+'SABIT',    // nakasabit
+'SAGAD',    // hanggang dulo
+'SAGAP',    // kumuha ng impormasyon
+'SAKOP',    // nasasakupan
+'SALIN',    // pagsasalin
+'SALON',    // bulwagan
+'SAMBA',    // pagsamba
+'SAMPA',    // umakyat
+'SANDIG',   // sandigan
+'SANDOK',   // kasangkapan sa pagsalok
+'SAPIN',    // panakip
+'SARSA',    // sarsa
+'SIKIL',    // pigilan
+'SIKIP',    // siksik
+'SILAB',    // liyab
+'SILIP',    // sumilip
+'SIMOT',    // ubusin
+'SINAG',    // sinag ng liwanag
+'SINDAK',   // matinding takot
+'SINGIL',   // singilin
+'SINGIT',   // isingit
+'SINOP',    // kaayusan
+'SIPOL',    // sipol
+'SIRKO',    // sirko
+'SISID',    // sumisid
+'SUKLOB',   // takpan
+'SUKOL',    // sukat
+'SULID',    // sinulid
+'SULOK',    // sulok
+'SUMPA',    // sumpa
+'SUPIL',    // supilin
+'TABAS',    // tabasin
+'TADHANA',  // kapalaran
+'TADYAK',   // pagsipa
+'TAGAK',    // patak
+'TAGAS',    // pagtagas
+'TAGIS',    // tagisan
+'TAGOS',    // tumagos
+'TAGPI',    // tahiin
+'TAHAS',    // lantad
+'TAKAS',    // pagtakas
+'TAKDA',    // itinakdang bagay
+'TAKIP',    // takip
+'TALAB',    // bisa
+'TALAK',    // talakayan
+'TALIM',    // talim
+'TALOS',    // pagkaunawa
+'TAMIS',    // matamis
+'TANAW',    // tanawin
+'TANOD',    // bantay
+'TAPIS',    // kasuotang pambalot
+'TASAK',    // salitang nangangailangan ng pagpapatunay
+'TIBOK',    // tibok
+'TIKAS',    // tindig
+'TIKLOP',   // tiklop
+'TILAD',    // tipak
+'TIPAK',    // tipak
+'TIRIK',    // nakatirik
+'TITIG',    // titig
+'TUGON',    // tugon
+'TUKOD',    // tukod
+'TUKOY',    // tukuyin
+'TUKTOK',   // tuktok
+'TUMPAK',   // eksakto
+'TUPIG',    // pagkaing gawa sa kanin
+'TUPOK',    // tupukin
+'TUTOL',    // pagtutol
+'UBOD',     // pinakagitna
+'UKIT',     // ukit
+'ULING',    // uling
+'UPOS',     // maubos
+'USAD',     // usad
+'USIG',     // pagsisiyasat
+'WAGAS',    // dalisay
+'WAGSI',    // iwaksi
+'WALOG',    // bangin
+'YAMOT',    // pagkainis
+'YUGTO',    // bahagi
   
 
 
@@ -251,7 +448,6 @@ export const TAGALOG_WORD_LIST = [
   'DANAS',    // experience
   'DANGAL',   // honor / dignity
   'DAPAT',    // must / proper
-  'DILG',     // (skip - acronym)
   'DIKIT',    // stick / paste / close
   'DIPA',     // fathom / arm span
   'DIWATA',   // fairy / nymph

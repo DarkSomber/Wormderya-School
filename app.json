@@ -25,7 +25,7 @@
       "package": "com.darksomber.wormderyabeta"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       "expo-font",

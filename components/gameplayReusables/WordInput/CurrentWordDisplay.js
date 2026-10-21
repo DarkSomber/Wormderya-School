@@ -21,14 +21,7 @@ const RESULT_FADE_DURATION_MS = 300;
 const BUBBLE_W = 220;
 const BUBBLE_H = 36;
 
-/**
- * Purely presentational — renders one box per entry in `slots`. Boxes are
- * dynamic: there are no empty placeholders, a box appears only when the player
- * picks a character, plus "open" boxes (dashed outline) that the player just
- * emptied and can still refill. Reacts to `lastResult` through colors and shakes after resultFadeDelayMs.
- * useWordInput() doesn't know or care that this exists;
- * swap it for your own UI any time.
- */
+
 export default function CurrentWordDisplay({
   currentWord,
   slots: slotsProp, // fixed-length box list from useWordInput (preferred; keeps gaps)

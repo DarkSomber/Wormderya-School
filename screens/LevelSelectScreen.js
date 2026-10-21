@@ -1,7 +1,8 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Image,
+  Animated,
   StyleSheet,
   ScrollView,
   StatusBar,
@@ -46,6 +47,70 @@ const ENABLE_DEBUG_BUTTON = true;
 const DEBUG_TOP_RATIO = 0.17;
 
 const SHOW_DEBUG_BUTTON = ENABLE_DEBUG_BUTTON && __DEV__;
+
+// One full pass of LevelSelectionMainBG.gif (sum of its 65 frame delays).
+const BG_GIF_LOOP_MS = 16760;
+// Rest time with only the static background showing, then the GIF replays.
+const BG_GIF_PAUSE_MS = 5000;
+const BG_GIF_FADE_MS = 300;
+// Moves the GIF up by this fraction of the screen height. Raise it to go higher.
+const BG_GIF_RAISE_RATIO = 0.10;
+const BG_GIF_SCALE = 1;
+
+// Plays the animated GIF once, fades it out, waits, then replays it. Remounting
+// the Image (new key) restarts the GIF at frame 0 on every Android device,
+// because native GIF loop timing is not something JS can pause.
+function AnimatedBackdrop() {
+  const { height: screenHeight } = useWindowDimensions();
+  const raise = screenHeight * BG_GIF_RAISE_RATIO;
+  const [cycle, setCycle] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    let timer;
+    if (visible) {
+      opacity.setValue(1);
+      timer = setTimeout(() => {
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: BG_GIF_FADE_MS,
+          useNativeDriver: true,
+        }).start(({ finished }) => {
+          if (finished) setVisible(false);
+        });
+      }, BG_GIF_LOOP_MS - BG_GIF_FADE_MS);
+    } else {
+      timer = setTimeout(() => {
+        setCycle((c) => c + 1);
+        setVisible(true);
+      }, BG_GIF_PAUSE_MS);
+    }
+    return () => {
+      clearTimeout(timer);
+      opacity.stopAnimation();
+    };
+  }, [visible, opacity]);
+
+  if (!visible) return null;
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        StyleSheet.absoluteFill,
+        { opacity, transform: [{ translateY: -raise }, { scale: BG_GIF_SCALE }],},
+      ]}
+    >
+      <Image
+        key={cycle}
+        source={require("../assets/Final/Animations/LevelSelectionMainBG.gif")}
+        style={StyleSheet.absoluteFill}
+        resizeMode="cover"
+        fadeDuration={0}
+      />
+    </Animated.View>
+  );
+}
 
 function LevelImage({ level, locked, onPlay, width, height, drop }) {
   return (
@@ -151,6 +216,9 @@ export default function LevelSelectScreen({
       resizeMode="cover"
     >
       <StatusBar barStyle="dark-content" />
+
+      {/* Animated layer over the static background, under all the UI. */}
+      <AnimatedBackdrop />
 
       <TouchableOpacity
         activeOpacity={0.75}

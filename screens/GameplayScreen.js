@@ -16,6 +16,7 @@ import { ACHIEVEMENTS } from '../components/gameplayReusables/Achievements.js';
 import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount';
 import UpgradeToast from '../components/gameplayReusables/UpgradeToast';
 import UpgradeHUD from '../components/gameplayReusables/UpgradeHUD';
+import AnimatedNpc from '../components/gameplayReusables/AnimatedNpc.js';
 import { UPGRADE_LIST } from '../components/gameplayReusables/UseUpgrades';
 import { useStage, Stage, Slot, GAMEPLAY_RECTS as RECTS, PATIENCE_METER_BOX } from '../components/gameplayReusables/Stage';
 
@@ -213,6 +214,7 @@ function LevelSession({
   const conveyorRefs = useRef([beltRef0, beltRef1, beltRef2]).current;
 
   const customerRef = useRef(null);
+  const customerSpriteRef = useRef(null);
   const [healthRespawnKey, setHealthRespawnKey] = useState(0);
 
   // ---- Upgrade toast state ----
@@ -352,6 +354,7 @@ function LevelSession({
 
   // null | 'win' | 'lose'
   const [levelResult, setLevelResult] = useState(null);
+  const [isWorried, setIsWorried] = useState(false);
 
   // CustomerMood reports every patience change. Only a drop into a worse band
   // speaks ("ehem" at impatient, a sigh at angry); a fresh customer starts happy.
@@ -362,6 +365,10 @@ function LevelSession({
     const band = patienceBand(patience);
     const previous = patienceBandRef.current;
     patienceBandRef.current = band;
+    if (band !== previous) {
+      customerSpriteRef.current?.jump();
+      setIsWorried(band === 'angry')
+    }
     if (PATIENCE_RANK[band] > PATIENCE_RANK[previous]) {
       customerVoice.patience(voiceIdRef.current, band);
     }
@@ -583,8 +590,13 @@ function LevelSession({
   </Slot>
 
       <Slot rect={RECTS.customer} scale={scale} style={{ alignItems: 'center', justifyContent: 'flex-end' }}>
-        <Image source={currentSprite.source}
-               style={{ width: '115%', height: '100%', resizeMode: 'contain' }} />
+        <AnimatedNpc
+          ref={customerSpriteRef}
+          source={currentSprite.source}
+          npcKey={levelMaker.customerIndex}
+          unit={scale}
+          imageStyle={{ width: '115%', height: '100%', resizeMode: 'contain' }}
+        />
       </Slot>
 
       <Slot rect={RECTS.word} scale={scale}>
@@ -604,8 +616,13 @@ function LevelSession({
       </Slot>
 
       <Slot rect={RECTS.chef} scale={scale}>
-        <Image source={require('../assets/Final/MainCharacter.png')}
-               style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
+        <AnimatedNpc
+          source={require('../assets/Final/MainCharacter.png')}
+          npcKey="main-character"
+          unit={scale}
+          worried={isWorried}
+          imageStyle={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+        />
       </Slot>
 
       <Slot rect={RECTS.conveyors} scale={scale}>

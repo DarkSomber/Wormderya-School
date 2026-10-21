@@ -32,6 +32,7 @@ import { ACHIEVEMENTS } from "../components/gameplayReusables/Achievements.js";
 import UpgradeToast from "../components/gameplayReusables/UpgradeToast";
 import UpgradeHUD from "../components/gameplayReusables/UpgradeHUD";
 import { UPGRADE_LIST } from "../components/gameplayReusables/UseUpgrades";
+import AnimatedNpc from "../components/gameplayReusables/AnimatedNpc.js";
 
 import {
   useStage,
@@ -172,6 +173,7 @@ function BossLevelSession({
   const conveyorRefs = useRef([beltRef0, beltRef1, beltRef2]).current;
 
   const customerRef = useRef(null);
+  const customerSpriteRef = useRef(null);
   const [healthRespawnKey, setHealthRespawnKey] = useState(0);
 
   const toastedIdsRef = useRef(new Set());
@@ -291,6 +293,7 @@ function BossLevelSession({
     const band = patienceBand(patience);
     const previous = patienceBandRef.current;
     patienceBandRef.current = band;
+    if (band !== previous) customerSpriteRef.current?.jump();
     if (PATIENCE_RANK[band] > PATIENCE_RANK[previous]) {
       customerVoice.patience(voiceIdRef.current, band);
     }
@@ -516,9 +519,12 @@ function BossLevelSession({
           rect={RECTS.customer}
           style={{ alignItems: "center", justifyContent: "flex-end" }}
         >
-          <Image
+          <AnimatedNpc
+            ref={customerSpriteRef}
             source={currentBossSprite.source}
-            style={{ width: "115%", height: "100%", resizeMode: "contain" }}
+            npcKey={levelMaker.customerIndex}
+            unit={scale}
+            imageStyle={{ width: "115%", height: "100%", resizeMode: "contain" }}
           />
         </Slot>
 
@@ -538,12 +544,15 @@ function BossLevelSession({
           <PlateButton style={{ flex: 1 }} onPress={handleServePlate} />
         </Slot>
 
-        <Slot rect={RECTS.chef}>
-          <Image
-            source={require("../assets/Final/MainCharacter.png")}
-            style={{ width: "100%", height: "100%", resizeMode: "contain" }}
-          />
-        </Slot>
+      <Slot rect={RECTS.chef} scale={scale}>
+        <AnimatedNpc
+          source={require('../assets/Final/MainCharacter.png')}
+          npcKey="main-character"
+          unit={scale}
+          worried={isWorried}
+          imageStyle={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+        />
+      </Slot>
 
         <Slot rect={RECTS.conveyors}>
           <Image

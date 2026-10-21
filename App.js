@@ -18,7 +18,11 @@ import GameplayScreen from "./screens/GameplayScreen";
 import BossGameplayScreen from "./screens/BossGameplayScreen";
 import { useWallet } from "./components/gameplayReusables/UseWallet";
 import { useAchievements } from "./components/gameplayReusables/UseAchievements.js";
-import { useUpgrades } from "./components/gameplayReusables/UseUpgrades";
+import {
+  useUpgrades,
+  UPGRADES,
+} from "./components/gameplayReusables/UseUpgrades";
+import { Asset } from "expo-asset";
 import { ACHIEVEMENTS } from "./components/gameplayReusables/Achievements.js";
 import {
   hasLevelPreset,
@@ -48,6 +52,87 @@ const LEVEL_ACHIEVEMENTS = {
   "level-2": ACHIEVEMENTS.FINISH_LEVEL_TWO,
   "level-3": ACHIEVEMENTS.FINISH_LEVEL_THREE,
 };
+
+// Splash stays up for this long after the images finish preloading.
+const SPLASH_EXTRA_DELAY_MS = 3000;
+// Safety net so a hung image request can never keep the splash up forever.
+const PRELOAD_TIMEOUT_MS = 15000;
+
+// Images used by the screens, preloaded while the splash GIF plays. Metro gives
+// the same module id to a repeated require(), so this adds no extra bundled files.
+// Icons from ACHIEVEMENTS / UPGRADES are reused from their own definitions.
+const PRELOAD_IMAGES = [
+  ...Object.values(ACHIEVEMENTS).map((a) => a.icon),
+  ...Object.values(UPGRADES).map((u) => u.icon),
+  require("./assets/Final/MainBackground.png"),
+  require("./assets/Final/WormderyaLogo.png"),
+  require("./assets/Final/MainCharacter.png"),
+  require("./assets/Final/LevelSelectionMainBG.png"),
+  require("./assets/Final/Animations/LevelSelectionMainBG.gif"),
+  require("./assets/Final/SettingsPanel.png"),
+  require("./assets/Final/card_closed.png"),
+  require("./assets/Final/card_open.png"),
+  require("./assets/Final/buttons/buttonStart1.png"),
+  require("./assets/Final/buttons/buttonSettings.png"),
+  require("./assets/Final/buttons/buttonQuit.png"),
+  require("./assets/Final/buttons/buttonStorymode.png"),
+  require("./assets/Final/buttons/buttonRushHourmode.png"),
+  require("./assets/Final/buttons/buttonBack.png"),
+  require("./assets/Final/buttons/buttonLevelSelectBack.png"),
+  require("./assets/Final/buttons/buttonSettings-Achievements.png"),
+  require("./assets/Final/buttons/buttonSettings-Credits.png"),
+  require("./assets/Final/buttons/buttonSettings-Back.png"),
+  require("./assets/Final/levels/Level_1_Sinangag.png"),
+  require("./assets/Final/levels/Level_2_Adobo.png"),
+  require("./assets/Final/levels/Level_3_Sinigang-na-Bangus.png"),
+  require("./assets/Final/levels/Level_4_Boss_kare-kare.png"),
+  require("./assets/Final/BackstoryScreens/Backstory-Panel-1.1.png"),
+  require("./assets/Final/BackstoryScreens/Backstory-Panel-1.2.png"),
+  require("./assets/Final/BackstoryScreens/Backstory-Panel-2.png"),
+  require("./assets/Final/BackstoryScreens/Backstory-Panel-3.png"),
+  require("./assets/Final/BackstoryScreens/Backstory-Panel-4.png"),
+  require("./assets/Final/EndingScreens/EndingPanel1.png"),
+  require("./assets/Final/EndingScreens/EndingPanel2.png"),
+  require("./assets/Final/EndingScreens/EndingPanel3.png"),
+  require("./assets/Final/EndingScreens/EndingPanel4.png"),
+  require("./assets/Final/Customers/Customer1.png"),
+  require("./assets/Final/Customers/CustomerPicky.png"),
+  require("./assets/Final/Customers/CustomerBoss.png"),
+  require("./assets/Final/GameplayUI/GameplayScreen.png"),
+  require("./assets/Final/GameplayUI/quit-sign.png"),
+  require("./assets/Final/GameplayUI/CoinPatience.png"),
+  require("./assets/Final/GameplayUI/conveyors.png"),
+  require("./assets/Final/GameplayUI/serve-button.png"),
+  require("./assets/Final/GameplayUI/Patience_High.png"),
+  require("./assets/Final/GameplayUI/Patience_Moderate.png"),
+  require("./assets/Final/GameplayUI/Patience_Low.png"),
+  require("./assets/Final/RattyBodega/BackgroundRattyStall.png"),
+  require("./assets/Final/RattyBodega/RattyStall.png"),
+  require("./assets/Final/RattyBodega/MrRatty.png"),
+  require("./assets/Placeholder/pixel_coins.png"),
+  require("./assets/Placeholder/BuyButton.png"),
+  require("./assets/Placeholder/DeclineButton.png"),
+  require("./assets/Placeholder/BlankRectangle.png"),
+].filter(Boolean);
+
+// Resolves once every image has loaded or failed. One bad image is ignored,
+// and the timeout resolves it anyway if a request hangs.
+function preloadImages() {
+  let timeoutId;
+  const loading = Promise.all(
+    PRELOAD_IMAGES.map((img) =>
+      Asset.loadAsync(img).catch((e) =>
+        console.warn("[Splash] image preload failed:", e?.message ?? e),
+      ),
+    ),
+  );
+  const timeout = new Promise((resolve) => {
+    timeoutId = setTimeout(resolve, PRELOAD_TIMEOUT_MS);
+  });
+  return Promise.race([loading, timeout]).finally(() =>
+    clearTimeout(timeoutId),
+  );
+}
 
 const SCREENS = {
   SPLASH: "SPLASH",
@@ -114,12 +199,32 @@ function ScreenSwitcher() {
   const save = useGameSave();
   const [session, setSession] = useState({
     key: 0,
-    screen: SCREENS.SPLASH,
+    screen: SCREENS.HOME,
   });
+  const [assetsReady, setAssetsReady] = useState(false);
+  const [delayDone, setDelayDone] = useState(false);
 
-  // While the save is loading, keep the splash on screen.
-  if (!save.loaded) {
-    return <SplashScreen onFinish={() => {}} />;
+  // Preload images in parallel with the save load.
+  useEffect(() => {
+    let cancelled = false;
+    preloadImages().then(() => {
+      if (!cancelled) setAssetsReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Extra splash time starts only after the images are done.
+  useEffect(() => {
+    if (!assetsReady) return undefined;
+    const timer = setTimeout(() => setDelayDone(true), SPLASH_EXTRA_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [assetsReady]);
+
+  // Keep the splash up until the save, images and extra delay are all done.
+  if (!(save.loaded && assetsReady && delayDone)) {
+    return <SplashScreen />;
   }
 
   return (
@@ -275,9 +380,6 @@ function GameSession({ save, initialScreen, onReset }) {
 
   const renderCurrentScreen = () => {
     switch (screen) {
-      case SCREENS.SPLASH:
-        return <SplashScreen onFinish={() => setScreen(SCREENS.HOME)} />;
-
       case SCREENS.MODE_SELECT:
         return (
           <ModeSelectScreen
