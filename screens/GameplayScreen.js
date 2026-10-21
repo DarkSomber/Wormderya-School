@@ -17,7 +17,7 @@ import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount';
 import UpgradeToast from '../components/gameplayReusables/UpgradeToast';
 import UpgradeHUD from '../components/gameplayReusables/UpgradeHUD';
 import { UPGRADE_LIST } from '../components/gameplayReusables/UseUpgrades';
-import { useStage, Stage, Slot } from '../components/gameplayReusables/Stage';
+import { useStage, Stage, Slot, GAMEPLAY_RECTS as RECTS, PATIENCE_METER_BOX } from '../components/gameplayReusables/Stage';
 
 import { getLevelConfigById } from '../levels/levelPresets';
 import { getBeltConfig } from '../levels/LevelConfig';
@@ -29,18 +29,6 @@ import { getRushHourLevelConfig, getRushHourStageForWords } from '../levels/Rush
 import audio from '../audio/AudioManager';
 import { customerVoice } from '../audio/customerVoice';
 
-const RECTS = {
-  quit:      { x: 3,   y: 0,   w: 171, h: 147 },
-  coin:      { x: 326, y: 0,   w: 186, h: 300 }, // board + patience meter (one PNG)
-  customer:  { x: 0,  y: 125, w: 230, h: 250 },
-  word:      { x: 30,  y: 380, w: 452, h: 100 },
-  serve:     { x: 175, y: 460, w: 161, h: 84  },
-  chef:      { x: 330, y: 480, w: 200, h: 200 },
-  conveyors: { x: 0,   y: 665, w: 512, h: 328 }, // the brown belt bars image
-  belt0:     { x: 0,   y: 663, w: 512, h: 94  },
-  belt1:     { x: 0,   y: 777, w: 512, h: 94  },
-  belt2:     { x: 0,   y: 885, w: 512, h: 94  },
-};
 const BELT_ROWS = [0, 1, 2]; // belt rows
 const COIN_SPOTS = [
   { x: 0, y: 0.15, size: 9, delay: 0 },
@@ -543,7 +531,7 @@ function LevelSession({
   >
     {/* TOP PART: the number */}
     <View style={{ 
-      position: 'absolute', left: '50%', top: '10%', height: '15%', justifyContent: 'center',
+      position: 'absolute', left: '46%', width: '48%', top: '10%', height: '15%', justifyContent: 'center',
      }}>
       <Animated.View style={{ transform: [{ scale: coinPop.scale }] }}>
         <Text
@@ -565,10 +553,7 @@ function LevelSession({
     </View>
 
     {/* BOTTOM PART: the patience meter */}
-    <View style={{
-        position: 'absolute', left: '8%', top: '25%', width: '84%', height: '55%',
-        transform: [{ translateX: 5 }, { translateY: 111 }],
-      }}>
+    <View style={{ position: 'absolute', ...PATIENCE_METER_BOX }}>
       <CustomerMood
         key={`customer-${levelMaker.customerIndex}-${healthRespawnKey}`}
         ref={customerRef}
@@ -577,7 +562,8 @@ function LevelSession({
         decayRateMs={levelConfig.patienceDecayMs}
         drainMultiplier={patienceDrainMultiplier}
         isPaused={isGameplayPaused}
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: '100%', height: '100%', marginTop: 0 }}
+        resizeMode="stretch"
         />
         </View>
       </ImageBackground>
@@ -638,7 +624,7 @@ function LevelSession({
             config={{
               slotDurationMs: levelConfig.conveyorSpeed,
               slotWidth: 100 * scale,  // see note below
-              slotHeight: 94 * scale,
+              slotHeight: 94 * scaleY,
               ...getBeltConfig(levelConfig, row),
             }}
             onLetterPress={(letter) => wordInput.selectLetter(letter, row)}

@@ -4,24 +4,46 @@ import { View, Image, Text, useWindowDimensions } from 'react-native';
 export const ART_W = 512;
 export const ART_H = 1088;
 
+// Slot rectangles (art units) shared by the normal and boss gameplay screens.
+export const GAMEPLAY_RECTS = {
+  quit:      { x: 3,   y: 0,   w: 171, h: 147 },
+  coin:      { x: 326, y: 0,   w: 186, h: 300 }, // board + patience meter (one PNG)
+  customer:  { x: 20,   y: 141, w: 230, h: 250 }, // bottom (386) = counter top edge (384)
+  word:      { x: 30,  y: 380, w: 452, h: 100 },
+  serve:     { x: 175, y: 460, w: 161, h: 84  },
+  chef:      { x: 330, y: 480, w: 200, h: 200 },
+  conveyors: { x: 0,   y: 665, w: 512, h: 328 }, // the brown belt bars image
+  belt0:     { x: 0,   y: 663, w: 512, h: 94  },
+  belt1:     { x: 0,   y: 777, w: 512, h: 94  },
+  belt2:     { x: 0,   y: 885, w: 512, h: 94  },
+};
+
+// Patience meter box inside the coin slot, as fractions of the slot. It covers the
+// holder (circle + stem) drawn in CoinPatience.png, so it follows the art at any size.
+export const PATIENCE_METER_BOX = { left: '29.63%', top: '38.67%', width: '48.15%', height: '57.33%' };
+
 const DEBUG = true; // set to false when everything is placed
 
 export function useStage() {
   const { width, height } = useWindowDimensions();
-  const scaleX = width / ART_W;
-  const scaleY = height / ART_H;
+  // One uniform scale that fits the whole art inside the window (letterboxed,
+  // centered by the parent). Art and sprites then scale together on every device.
+  const scale = Math.min(width / ART_W, height / ART_H);
   return {
-    scale: scaleX,        // kept so existing code using `scale` still works
-    scaleX,
-    scaleY,
-    w: width,
-    h: height,
+    scale,
+    scaleX: scale,
+    scaleY: scale,
+    w: ART_W * scale,
+    h: ART_H * scale,
   };
 }
 
 export const Slot = ({ rect, scale, scaleX, scaleY, style, children }) => {
-  const sx = scaleX ?? scale;
-  const sy = scaleY ?? scale;
+  // The background is stretched to the window, so positions must use the same
+  // per-axis scale. Falling back to the width scale for Y made sprites drift on tall phones.
+  const stage = useStage();
+  const sx = scaleX ?? stage.scaleX;
+  const sy = scaleY ?? stage.scaleY;
   return (
     <View
       pointerEvents="box-none"

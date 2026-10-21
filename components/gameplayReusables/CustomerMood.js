@@ -15,6 +15,7 @@ const CustomerMood = forwardRef(({
   maxPatience = 100,
   decayRateMs = 4000,
   drainMultiplier = 1, // <1 slower drain, >1 faster. Applied to decayRateMs.
+  resizeMode = 'contain', // 'stretch' to fill its box exactly (used over the board's holder art)
   isPaused = false, // true while the timer is paused (Ratty popup, shop, achievement): patience holds still
   onCustomerLeft,
   onPatienceChange,
@@ -93,7 +94,7 @@ const CustomerMood = forwardRef(({
     <Image
       source={getMoodImageSource(patience)}
       style={[styles.patienceMeter, style]}
-      resizeMode="contain"
+      resizeMode={resizeMode}
     />
   );
 });

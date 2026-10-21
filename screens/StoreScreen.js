@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import ShopOutcomeModal from "./ShopOutcomeModal.js";
 import { formatCurrency } from "../components/gameplayReusables/UseWallet";
 import AchievementModal from "../components/gameplayReusables/AchievementModal";
 import { ACHIEVEMENTS } from "../components/gameplayReusables/Achievements.js";
 import { UPGRADE_LIST } from "../components/gameplayReusables/UseUpgrades";
+import { useStage } from "../components/gameplayReusables/Stage";
 import audio from "../audio/AudioManager";
 import {
   StyleSheet,
@@ -13,6 +14,9 @@ import {
   TouchableOpacity,
 } from "react-native";
 import Text from "../components/AppText";
+
+// Sizes below were authored for a ~400 wide screen; they scale with the box.
+const DESIGN_WIDTH = 400;
 
 const NO_UPGRADES = {
   ownedPermanent: new Set(),
@@ -50,6 +54,11 @@ export default function StoreScreen({
   onGoToLevelSelect,
 }) {
   const safeUpgrades = upgrades ?? NO_UPGRADES;
+
+  // The shop art is 512x1088 like the gameplay art. Everything is laid out inside a box
+  // of exactly that shape, fitted to the window, so the art and the UI never drift apart.
+  const { w, h } = useStage();
+  const styles = useMemo(() => createStyles(w / DESIGN_WIDTH, w, h), [w, h]);
 
   const [rattyOutcome, setRattyOutcome] = useState(null);
   // Three random offers, chosen once per visit to the store.
@@ -286,125 +295,124 @@ export default function StoreScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  screenWrapper: {
-    flex: 1,
-    backgroundColor: "#222",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  container: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 420,
-  },
-  stretch: { width: "100%", height: "100%", resizeMode: "stretch" },
-  ratty: {
-    position: "absolute",
-    top: "25%",
-    left: "27%",
-    width: "46%",
-    height: "22%",
-    resizeMode: "contain",
-  },
-  backButtonWrapper: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    zIndex: 30,
-    elevation: 30,
-  },
-  backButtonIcon: {
-    width: 130,
-    height: 50,
-    resizeMode: "contain",
-  },
+// `s` scales the fixed sizes (fonts, icons, borders); positions are % of the box.
+function createStyles(s, w, h) {
+  return StyleSheet.create({
+    screenWrapper: {
+      flex: 1,
+      backgroundColor: "#222",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    container: { width: w, height: h },
+    stretch: { width: "100%", height: "100%", resizeMode: "stretch" },
+    ratty: {
+      position: "absolute",
+      top: "25%",
+      left: "27%",
+      width: "46%",
+      height: "22%",
+      resizeMode: "contain",
+    },
+    backButtonWrapper: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      zIndex: 30,
+      elevation: 30,
+    },
+    backButtonIcon: {
+      width: 130 * s,
+      height: 50 * s,
+      resizeMode: "contain",
+    },
 
-  coinHeader: {
-    position: "absolute",
-    top: "49%",
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 9,
-  },
-  coinIcon: { width: 40, height: 40, resizeMode: "contain" },
-  coinText: {
-    flexShrink: 1,
-    maxWidth: "50%",
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#fff",
-  },
+    coinHeader: {
+      position: "absolute",
+      top: "49%",
+      left: 0,
+      right: 0,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 9 * s,
+    },
+    coinIcon: { width: 40 * s, height: 40 * s, resizeMode: "contain" },
+    coinText: {
+      flexShrink: 1,
+      maxWidth: "50%",
+      fontSize: 28 * s,
+      fontWeight: "bold",
+      color: "#fff",
+    },
 
-  // Lines up with the three boxes in the picture
-  boxesRow: {
-    position: "absolute",
-    top: "57.9%",
-    left: "4.5%",
-    right: "4.5%",
-    height: "10%",
-    flexDirection: "row",
-  },
-  boxSlot: { flex: 1, alignItems: "center" },
-  boxHighlight: {
-    width: "90%",
-    height: "100%",
-    borderRadius: 8,
-    borderWidth: 3,
-    borderColor: "transparent",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  itemSelected: { borderColor: "#FFE194", borderWidth: 4 },
-  itemSlotInitial: { fontSize: 30, fontWeight: "bold", color: "#5A3A1A" },
-  itemIcon: { width: "80%", height: "80%", resizeMode: "contain" },
-  ownedBadge: {
-    position: "absolute",
-    top: 2,
-    right: 4,
-    fontSize: 18,
-    color: "#2E7D32",
-    fontWeight: "bold",
-  },
-  priceContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 4,
-  },
-  smallCoinIcon: { width: 18, height: 18, resizeMode: "contain" },
-  priceText: { fontSize: 14, fontWeight: "bold", color: "#000" },
+    // Lines up with the three boxes in the picture
+    boxesRow: {
+      position: "absolute",
+      top: "57.9%",
+      left: "4.5%",
+      right: "4.5%",
+      height: "10%",
+      flexDirection: "row",
+    },
+    boxSlot: { flex: 1, alignItems: "center" },
+    boxHighlight: {
+      width: "90%",
+      height: "100%",
+      borderRadius: 8 * s,
+      borderWidth: 3 * s,
+      borderColor: "transparent",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    itemSelected: { borderColor: "#FFE194", borderWidth: 4 * s },
+    itemSlotInitial: { fontSize: 30 * s, fontWeight: "bold", color: "#5A3A1A" },
+    itemIcon: { width: "80%", height: "80%", resizeMode: "contain" },
+    ownedBadge: {
+      position: "absolute",
+      top: 2 * s,
+      right: 4 * s,
+      fontSize: 18 * s,
+      color: "#2E7D32",
+      fontWeight: "bold",
+    },
+    priceContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4 * s,
+      marginTop: 4 * s,
+    },
+    smallCoinIcon: { width: 18 * s, height: 18 * s, resizeMode: "contain" },
+    priceText: { fontSize: 14 * s, fontWeight: "bold", color: "#000" },
 
-  textArea: { position: "absolute", top: "72%", left: "8%", right: "8%" },
-  descriptionText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    textAlign: "center",
-    color: "#000",
-    marginBottom: 4,
-    paddingHorizontal: 10,
-  },
-  affordabilityText: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#7A2E2E",
-    textAlign: "center",
-    marginBottom: 6,
-    paddingHorizontal: 16,
-  },
+    textArea: { position: "absolute", top: "72%", left: "8%", right: "8%" },
+    descriptionText: {
+      fontSize: 20 * s,
+      fontWeight: "bold",
+      textAlign: "center",
+      color: "#000",
+      marginBottom: 4 * s,
+      paddingHorizontal: 10 * s,
+    },
+    affordabilityText: {
+      fontSize: 13 * s,
+      fontWeight: "bold",
+      color: "#7A2E2E",
+      textAlign: "center",
+      marginBottom: 6 * s,
+      paddingHorizontal: 16 * s,
+    },
 
-  buttonRow: {
-    position: "absolute",
-    bottom: "1.5%",
-    left: "3%",
-    right: "3%",
-    flexDirection: "row",
-    gap: 8,
-  },
-  buttonHalf: { flex: 1 },
-  buttonImage: { width: "100%", height: 60, resizeMode: "stretch" },
-  buyButtonDisabled: { opacity: 0.4 },
-});
+    buttonRow: {
+      position: "absolute",
+      bottom: "1.5%",
+      left: "3%",
+      right: "3%",
+      flexDirection: "row",
+      gap: 8 * s,
+    },
+    buttonHalf: { flex: 1 },
+    buttonImage: { width: "100%", height: 60 * s, resizeMode: "stretch" },
+    buyButtonDisabled: { opacity: 0.4 },
+  });
+}

@@ -28,11 +28,9 @@ export function useAchievements(wallet, { initialState, onChange } = {}) {
     (achievement) => {
       if (!achievement || unlockedRef.current.has(achievement.id)) return;
 
-      setUnlockedIds((prev) => {
-        const next = new Set(prev);
-        next.add(achievement.id);
-        return next;
-      });
+      // Mark immediately so a duplicate call before re-render can't re-award.
+      unlockedRef.current = new Set(unlockedRef.current).add(achievement.id);
+      setUnlockedIds(unlockedRef.current);
       setQueue((prev) => [...prev, achievement]);
 
       if (achievement.coinReward) {

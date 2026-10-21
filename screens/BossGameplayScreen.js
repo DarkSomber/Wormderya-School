@@ -13,7 +13,6 @@ import {
   Image,
   ImageBackground,
   TouchableOpacity,
-  useWindowDimensions,
 } from "react-native";
 import Text from "../components/AppText";
 import { ConveyorBelt } from "../components/gameplayReusables/ConveyorBelt";
@@ -34,6 +33,13 @@ import UpgradeToast from "../components/gameplayReusables/UpgradeToast";
 import UpgradeHUD from "../components/gameplayReusables/UpgradeHUD";
 import { UPGRADE_LIST } from "../components/gameplayReusables/UseUpgrades";
 
+import {
+  useStage,
+  Stage,
+  Slot,
+  GAMEPLAY_RECTS as RECTS,
+  PATIENCE_METER_BOX,
+} from "../components/gameplayReusables/Stage";
 import { getLevelConfigById } from "../levels/levelPresets";
 import { getBeltConfig } from "../levels/LevelConfig";
 import { useLevelMaker } from "../levels/useLevelMaker";
@@ -53,15 +59,10 @@ const COIN_SPOTS = [
   { x: 0.5, y: -0.05, size: 8, delay: 240 },
 ];
 
-// Customer / Boss area layout tuning
-const SPRITE_TOP = -26;
-const PATIENCE_OFFSET_X = 72;
-
 // Boss Customer Configuration
 const BOSS_SPRITES = [
   {
     source: require("../assets/Final/Customers/CustomerBoss.png"),
-    bottom: -10,
     voice: 2,
   },
 ];
@@ -163,7 +164,7 @@ function BossLevelSession({
 }) {
   const safeUpgrades = upgrades ?? NO_UPGRADES;
   const [phase, setPhase] = useState("intro");
-  const { width: winW, height: winH } = useWindowDimensions();
+  const { scale, w, h } = useStage();
 
   const beltRef0 = useRef(null);
   const beltRef1 = useRef(null);
@@ -403,146 +404,192 @@ function BossLevelSession({
 
   return (
     <View style={styles.screenWrapper}>
-      <ImageBackground
+      <Stage
         source={require("../assets/Final/GameplayUI/GameplayScreen.png")}
-        style={[styles.container, { width: winW, height: winH }]}
-        resizeMode="stretch"
+        w={w}
+        h={h}
       >
-        {/* Boss Stage Header Banner */}
-        <View style={styles.headerBackground}>
+        <Slot rect={RECTS.quit}>
           <TouchableOpacity
+            style={{ flex: 1 }}
             onPress={() => {
               audio.playSfx("click");
               onBack?.();
             }}
-            activeOpacity={0.7}
-            style={styles.quitWrapper}
           >
             <Image
               source={require("../assets/Final/GameplayUI/quit-sign.png")}
-              style={styles.quitButton}
+              style={{ width: "100%", height: "100%", resizeMode: "contain" }}
             />
           </TouchableOpacity>
+        </Slot>
 
+        {/* Coin board + patience meter (one PNG, same layout as GameplayScreen) */}
+        <Slot rect={RECTS.coin}>
           <ImageBackground
             source={require("../assets/Final/GameplayUI/CoinPatience.png")}
-            style={styles.patienceCoinBoard}
+            style={{ width: "100%", height: "100%" }}
             resizeMode="stretch"
           >
-            <Animated.View
-              style={[styles.coinPop, { transform: [{ scale: coinPop.scale }] }]}
+            <View
+              style={{
+                position: "absolute",
+                left: "46%",
+                width: "48%",
+                top: "10%",
+                height: "15%",
+                justifyContent: "center",
+              }}
             >
-              <Text
-                style={styles.coinText}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-              >
-                {formatCurrency(currency)}
-              </Text>
+              <Animated.View style={{ transform: [{ scale: coinPop.scale }] }}>
+                <Text
+                  style={{
+                    fontSize: 50 * scale,
+                    fontWeight: "bold",
+                    color: "#fff",
+                    textShadowColor: "#000",
+                    textShadowRadius: 2,
+                    textShadowOffset: { width: 1, height: 1 },
+                  }}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {formatCurrency(currency)}
+                </Text>
+              </Animated.View>
               {coinPop.burst > 0 && (
                 <Twinkle key={coinPop.burst} loop={false} spots={COIN_SPOTS} />
               )}
-            </Animated.View>
-          </ImageBackground>
-        </View>
+            </View>
 
-        <LevelTimer
-          targetScore={levelConfig.targetScore}
-          currentScore={score}
-          initialTimeInSeconds={levelConfig.timeLimitSeconds}
-          isPaused={
-            levelResult !== null ||
-            achievements.currentAchievement !== null ||
-            isStoreOpen
-          }
-          onLevelEnd={handleLevelEnd}
-        />
-
-        {/* Boss Stage Title Indicator */}
-        <View style={styles.bossTitleOverlay} pointerEvents="none">
-          <Text style={styles.bossTitleText}>BOSS STAGE</Text>
-        </View>
-
-        {/* Boss Character Area (Maintains Patience System) */}
-        <View style={styles.customerArea}>
-          <View style={styles.customerBox}>
-            <Image
-              source={currentBossSprite.source}
-              style={[
-                styles.characterBoss,
-                { top: SPRITE_TOP - currentBossSprite.bottom },
-              ]}
-            />
-          </View>
-
-          <CustomerMood
-            key={`boss-${levelMaker.customerIndex}-${healthRespawnKey}`}
-            ref={customerRef}
-            onCustomerLeft={handleCustomerLeft}
-            onPatienceChange={handlePatienceChange}
-            decayRateMs={levelConfig.patienceDecayMs}
-            drainMultiplier={patienceDrainMultiplier}
-            style={[
-              styles.patienceMeter,
-              { left: winW / 2 + PATIENCE_OFFSET_X },
-            ]}
-          />
-        </View>
-
-        <CurrentWordDisplay
-          currentWord={wordInput.currentWord}
-          slots={wordInput.slots}
-          onSlotPress={wordInput.returnLetterFromSlot}
-          onHolePress={wordInput.selectHoleSlot}
-          targetHoleId={wordInput.targetHoleId}
-          lastResult={wordInput.lastResult}
-          inputBoxCount={wordInput.inputBoxCount}
-        />
-
-        {/* Plate / Serve action */}
-        <View style={styles.table}>
-          <PlateButton onPress={handleServePlate} style={styles.plate} />
-        </View>
-
-        {/* Chef Player Character */}
-        <View style={styles.chefBar}>
-          <Image
-            source={require("../assets/Final/MainCharacter.png")}
-            style={styles.characterChef}
-          />
-        </View>
-
-        {/* Conveyor Belts */}
-        <ImageBackground
-          source={require("../assets/Final/GameplayUI/conveyors.png")}
-          style={styles.conveyorGroup}
-          resizeMode="stretch"
-        >
-          {BELT_ROWS.map((row) => (
-            <View key={row} style={styles.conveyorRow}>
-              <ConveyorBelt
-                ref={conveyorRefs[row]}
-                style={styles.conveyorBelt}
-                config={{
-                  slotDurationMs: levelConfig.conveyorSpeed,
-                  slotWidth: 70,
-                  slotHeight: 60,
-                  ...getBeltConfig(levelConfig, row),
-                }}
-                onLetterPress={(letter) => wordInput.selectLetter(letter, row)}
+            <View style={{ position: "absolute", ...PATIENCE_METER_BOX }}>
+              <CustomerMood
+                key={`boss-${levelMaker.customerIndex}-${healthRespawnKey}`}
+                ref={customerRef}
+                onCustomerLeft={handleCustomerLeft}
+                onPatienceChange={handlePatienceChange}
+                decayRateMs={levelConfig.patienceDecayMs}
+                drainMultiplier={patienceDrainMultiplier}
+                style={{ width: "100%", height: "100%", marginTop: 0 }}
+                resizeMode="stretch"
               />
             </View>
-          ))}
-        </ImageBackground>
+          </ImageBackground>
+        </Slot>
+
+        <Slot rect={{ x: 175, y: 120, w: 512, h: 1088 }}>
+          <LevelTimer
+            targetScore={levelConfig.targetScore}
+            currentScore={score}
+            initialTimeInSeconds={levelConfig.timeLimitSeconds}
+            isPaused={
+              levelResult !== null ||
+              achievements.currentAchievement !== null ||
+              isStoreOpen
+            }
+            onLevelEnd={handleLevelEnd}
+          />
+        </Slot>
+
+        {/* Boss Stage Title Indicator */}
+        <Slot
+          rect={{ x: 175, y: 8, w: 162, h: 50 }}
+          style={{ alignItems: "center", justifyContent: "center" }}
+        >
+          <Text
+            style={{
+              fontSize: 28 * scale,
+              fontWeight: "bold",
+              color: "#FF4D4D",
+              textShadowColor: "#000",
+              textShadowRadius: 3,
+              textShadowOffset: { width: 1, height: 1 },
+            }}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            BOSS STAGE
+          </Text>
+        </Slot>
+
+        <Slot
+          rect={RECTS.customer}
+          style={{ alignItems: "center", justifyContent: "flex-end" }}
+        >
+          <Image
+            source={currentBossSprite.source}
+            style={{ width: "115%", height: "100%", resizeMode: "contain" }}
+          />
+        </Slot>
+
+        <Slot rect={RECTS.word}>
+          <CurrentWordDisplay
+            currentWord={wordInput.currentWord}
+            slots={wordInput.slots}
+            onSlotPress={wordInput.returnLetterFromSlot}
+            onHolePress={wordInput.selectHoleSlot}
+            targetHoleId={wordInput.targetHoleId}
+            lastResult={wordInput.lastResult}
+            inputBoxCount={wordInput.inputBoxCount}
+          />
+        </Slot>
+
+        <Slot rect={RECTS.serve}>
+          <PlateButton style={{ flex: 1 }} onPress={handleServePlate} />
+        </Slot>
+
+        <Slot rect={RECTS.chef}>
+          <Image
+            source={require("../assets/Final/MainCharacter.png")}
+            style={{ width: "100%", height: "100%", resizeMode: "contain" }}
+          />
+        </Slot>
+
+        <Slot rect={RECTS.conveyors}>
+          <Image
+            source={require("../assets/Final/GameplayUI/conveyors.png")}
+            style={{ width: "100%", height: "100%" }}
+            resizeMode="stretch"
+          />
+        </Slot>
+
+        {BELT_ROWS.map((row) => (
+          <Slot key={row} rect={RECTS[`belt${row}`]}>
+            <ConveyorBelt
+              ref={conveyorRefs[row]}
+              style={{ width: "100%", height: "100%" }}
+              config={{
+                slotDurationMs: levelConfig.conveyorSpeed,
+                slotWidth: 100 * scale,
+                slotHeight: 94 * scale,
+                ...getBeltConfig(levelConfig, row),
+              }}
+              onLetterPress={(letter) => wordInput.selectLetter(letter, row)}
+            />
+          </Slot>
+        ))}
 
         {extraHealth > 0 && (
-          <View style={styles.statusOverlay} pointerEvents="none">
-            <Text style={styles.healthText}>♥ Extra Health: {extraHealth}</Text>
-          </View>
+          <Slot
+            rect={{ x: 0, y: 60, w: 512, h: 40 }}
+            style={{ alignItems: "center" }}
+          >
+            <Text
+              style={{
+                fontSize: 22 * scale,
+                fontWeight: "bold",
+                color: "#FFD6E0",
+                textShadowColor: "#000",
+                textShadowRadius: 2,
+                textShadowOffset: { width: 1, height: 1 },
+              }}
+            >
+              ♥ Extra Health: {extraHealth}
+            </Text>
+          </Slot>
         )}
-
-        <StatusBar style="light" />
-      </ImageBackground>
+      </Stage>
+      <StatusBar style="light" />
 
       <UpgradeToast
         messages={toastMessages}
@@ -560,110 +607,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#000",
   },
-  container: {
-    alignItems: "center",
-  },
-  headerBackground: {
-    width: "100%",
-    flex: 130,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  quitWrapper: { alignItems: "center", justifyContent: "center" },
-  quitButton: { width: 130, height: 100, resizeMode: "contain" },
-  patienceCoinBoard: {
-    width: 130,
-    height: 200,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  coinPop: { marginTop: -125, marginLeft: 50, maxWidth: 80 },
-  coinText: {
-    flexShrink: 1,
-    fontSize: 40,
-    fontWeight: "bold",
-    color: "#fff",
-    textShadowColor: "#000",
-    textShadowRadius: 2,
-    textShadowOffset: { width: 1, height: 1 },
-  },
-
-  bossTitleOverlay: {
-    position: "absolute",
-    top: 12,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-  },
-  bossTitleText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#FF4D4D",
-    textShadowColor: "#000",
-    textShadowRadius: 3,
-    textShadowOffset: { width: 1, height: 1 },
-  },
-
-  statusOverlay: {
-    position: "absolute",
-    top: 36,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-  },
-  healthText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#FFD6E0",
-    textShadowColor: "#000",
-    textShadowRadius: 2,
-    textShadowOffset: { width: 1, height: 1 },
-  },
-
-  customerArea: { flex: 150, width: "100%" },
-  customerBox: { flex: 1, alignItems: "center", justifyContent: "center" },
-  characterBoss: { width: 180, height: 180, resizeMode: "contain", left: -72, marginBottom: 10 },
-  patienceMeter: {
-    position: "absolute",
-    top: "50%",
-    marginTop: -150,
-    width: 130,
-    height: 150,
-  },
-
-  table: {
-    width: "100%",
-    flex: 150,
-    marginTop: -60,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  plate: { width: 120, height: 60, marginTop: 60 },
-
-  chefBar: {
-    flex: 130,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 20,
-    paddingHorizontal: 15,
-  },
-  characterChef: {
-    width: 115,
-    height: 115,
-    resizeMode: "contain",
-    left: 125,
-    bottom: 60,
-  },
-
-  conveyorGroup: {
-    width: "100%",
-    flex: 240,
-    flexDirection: "column",
-    bottom: 75,
-  },
-  conveyorRow: { justifyContent: "center", alignItems: "center", bottom: 10 },
-  conveyorBelt: { marginTop: 20 },
 });
