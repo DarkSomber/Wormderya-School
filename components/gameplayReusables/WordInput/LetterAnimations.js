@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated } from 'react-native';
 
 /**
@@ -45,14 +45,21 @@ export function useResultFeedbackAnimation() {
   const flashColor = useRef(new Animated.Value(0)).current; // 0 = invalid, 1 = valid
   const rippleScale = useRef(new Animated.Value(0)).current;
   const rippleOpacity = useRef(new Animated.Value(0)).current;
+  const popScale = useRef(new Animated.Value(1)).current;
 
   const playValid = () => {
     flashColor.setValue(1);
     flashOpacity.setValue(0.55);
     rippleScale.setValue(0);
     rippleOpacity.setValue(0.5);
+    popScale.setValue(1);
 
     Animated.parallel([
+      // Quick pop on the row for a valid word.
+      Animated.sequence([
+        Animated.timing(popScale, { toValue: 1.08, duration: 80, useNativeDriver: true }),
+        Animated.spring(popScale, { toValue: 1, friction: 4, useNativeDriver: true }),
+      ]),
       Animated.timing(flashOpacity, {
         toValue: 0,
         duration: 450,
@@ -97,7 +104,30 @@ export function useResultFeedbackAnimation() {
     flashColor,
     rippleScale,
     rippleOpacity,
+    popScale,
     playValid,
     playInvalid,
   };
+}
+
+// Pulses `scale` and bumps `burst` whenever `value` goes up (first render and
+// decreases are ignored). Render <Twinkle key={burst} loop={false} /> only when burst > 0.
+export function useValuePop(value) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const prev = useRef(value);
+  const [burst, setBurst] = useState(0);
+
+  useEffect(() => {
+    if (value > prev.current) {
+      scale.setValue(1);
+      Animated.sequence([
+        Animated.timing(scale, { toValue: 1.25, duration: 90, useNativeDriver: true }),
+        Animated.spring(scale, { toValue: 1, friction: 4, useNativeDriver: true }),
+      ]).start();
+      setBurst((b) => b + 1);
+    }
+    prev.current = value;
+  }, [value, scale]);
+
+  return { scale, burst };
 }

@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Animated, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import Text from '../../AppText';
 import { getLetterSprite } from './Spriteloader';
-import { useSpawnAnimation } from './Animationsystem';
+import { useSpawnAnimation, LETTER_ANIM_STATES } from './Animationsystem';
 
 /**A `letter` tile is a small, self-contained data object:
  *   { id, character, active, animState }
@@ -11,9 +11,23 @@ import { useSpawnAnimation } from './Animationsystem';
  * Animated transform — a Letter only knows its fixed slot position
  */
 function Letter({ letter, left, width, height, onPress }) {
-  const scale = useSpawnAnimation(letter.animState);
+  // Set once the removal animation has finished; the tile is only then unmounted.
+  const [vanished, setVanished] = useState(!letter.active);
+  const scale = useSpawnAnimation(letter.animState, () => setVanished(true));
+  const opacity = useMemo(
+    () => scale.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 1], extrapolate: 'clamp' }),
+    [scale]
+  );
 
-  if (!letter.active) {
+  useEffect(() => {
+    if (letter.active) setVanished(false); // restored: allow the next removal to animate
+  }, [letter.active]);
+
+  // A removed tile stays drawn (non-tappable) while it plays its exit animation.
+  const showTile =
+    letter.active || (letter.animState === LETTER_ANIM_STATES.DISAPPEARING && !vanished);
+
+  if (!showTile) {
     // Reserve the slot (keeps spacing stable) without rendering a tile —
     // this is the "removed" state the future Word Input System will use,
     // e.g. [A] [B] [ ] [D] [E] after the player selects "C".
@@ -23,10 +37,13 @@ function Letter({ letter, left, width, height, onPress }) {
   const sprite = getLetterSprite(letter.character);
 
   return (
-    <Animated.View style={[styles.slot, { left, width, height, transform: [{ scale }] }]}>
+    <Animated.View
+      pointerEvents={letter.active ? 'auto' : 'none'}
+      style={[styles.slot, { left, width, height, opacity, transform: [{ scale }] }]}
+    >
       <TouchableOpacity
         activeOpacity={0.7}
-        onPress={() => onPress && onPress(letter)}
+        onPress={() => letter.active && onPress && onPress(letter)}
         style={styles.tileTouchable}
       >
         {sprite ? (

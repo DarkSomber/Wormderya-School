@@ -1,12 +1,15 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Text, View, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, View, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import LetterTile, { TILE_SIZE, BLANK_RECTANGLE } from './LetterTile';
 import { useResultFeedbackAnimation } from './LetterAnimations';
-import { FONT_WARNING } from '../Font';
+import SpeechBubble from '../../SpeechBubble';
+import Twinkle from '../../Twinkle';
 import { DEFAULT_INPUT_BOX_COUNT } from './UseWordInput';
 
 const VALID_COLOR = '#2e7d32';
 const INVALID_COLOR = '#c62828';
+const VALID_BG = '#E8F5E9';
+const INVALID_BG = '#FDECEA';
 
 // "WORD — +score" line stays fully
 // visible before it fades out. Edit here for a global change, or pass a
@@ -14,12 +17,16 @@ const INVALID_COLOR = '#c62828';
 export const DEFAULT_RESULT_FADE_DELAY_MS = 2000;
 const RESULT_FADE_DURATION_MS = 300;
 
+// Fixed-size result bubble: text shrinks to fit instead of overflowing.
+const BUBBLE_W = 220;
+const BUBBLE_H = 36;
+
 /**
  * Purely presentational — renders one box per entry in `slots`. Boxes are
  * dynamic: there are no empty placeholders, a box appears only when the player
  * picks a character, plus "open" boxes (dashed outline) that the player just
- * emptied and can still refill. Reacts to `lastResult` through colors and shakes after resultFadeDelayMs. 
- * useWordInput() doesn't know or care that this exists; 
+ * emptied and can still refill. Reacts to `lastResult` through colors and shakes after resultFadeDelayMs.
+ * useWordInput() doesn't know or care that this exists;
  * swap it for your own UI any time.
  */
 export default function CurrentWordDisplay({
@@ -38,12 +45,15 @@ export default function CurrentWordDisplay({
     flashColor,
     rippleScale,
     rippleOpacity,
+    popScale,
     playValid,
     playInvalid,
   } = useResultFeedbackAnimation();
 
   const resultOpacity = useRef(new Animated.Value(0)).current;
+  const bubbleScale = useRef(new Animated.Value(1)).current;
   const fadeTimeoutRef = useRef(null);
+  const [resultKey, setResultKey] = useState(0); // remounts the bubble twinkle per result
 
   // Track the specific result object we've already animated for, so we
   // only fire once per submit rather than on every re-render.
@@ -58,10 +68,19 @@ export default function CurrentWordDisplay({
       playInvalid();
     }
 
-    // Show the result line fully, then fade it out after the configured
+    // Show the result bubble fully, then fade it out after the configured
     // delay so it doesn't just sit there forever.
     if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
+    setResultKey((k) => k + 1);
+    resultOpacity.stopAnimation();
     resultOpacity.setValue(1);
+    bubbleScale.setValue(0.7);
+    Animated.spring(bubbleScale, {
+      toValue: 1,
+      friction: 5,
+      tension: 160,
+      useNativeDriver: true,
+    }).start();
     fadeTimeoutRef.current = setTimeout(() => {
       Animated.timing(resultOpacity, {
         toValue: 0,
@@ -69,7 +88,7 @@ export default function CurrentWordDisplay({
         useNativeDriver: true,
       }).start();
     }, resultFadeDelayMs);
-  }, [lastResult, playValid, playInvalid, resultOpacity, resultFadeDelayMs]);
+  }, [lastResult, playValid, playInvalid, resultOpacity, bubbleScale, resultFadeDelayMs]);
 
   // Clear any pending fade if the component unmounts mid-timeout.
   useEffect(() => () => {
@@ -88,7 +107,7 @@ export default function CurrentWordDisplay({
 
   return (
     <View style={styles.wrapper}>
-      <Animated.View style={[styles.row, { transform: [{ translateX: shakeX }] }]}>
+      <Animated.View style={[styles.row, { transform: [{ translateX: shakeX }, { scale: popScale }] }]}>
         {slots.map((letter, i) =>
           letter && letter.held ? (
             // Open box: its tile was just sent back. Stays here for a few
@@ -142,30 +161,37 @@ export default function CurrentWordDisplay({
         />
       </Animated.View>
 
-      {/* Result line — absolutely positioned directly on top of the tile
-          row (a sibling of `row`, not a child, so it isn't clipped by
-          row's overflow:hidden) stops the tiles from shifting up/down every
-          time this text fades in or out. */}
+      {/* Result bubble — floats just above the tile row (a sibling of `row`,
+          so it isn't clipped by row's overflow:hidden) and never covers the
+          tiles the player starts picking for the next word. */}
       {lastResult ? (
-        <View pointerEvents="none" style={styles.resultWrap}>
-          <Animated.Text
-            style={[
-              styles.resultText,
-              lastResult.valid ? styles.validText : styles.invalidText,
-              { opacity: resultOpacity },
-            ]}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.bubbleWrap, { opacity: resultOpacity, transform: [{ scale: bubbleScale }] }]}
+        >
+          <SpeechBubble
+            width={BUBBLE_W}
+            height={BUBBLE_H}
+            text={
+              lastResult.valid
+                ? `${lastResult.word} +${lastResult.score}`
+                : lastResult.word
+                  ? `${lastResult.word}? Not a word`
+                  : 'No letters!'
+            }
+            textColor={lastResult.valid ? VALID_COLOR : INVALID_COLOR}
+            backgroundColor={lastResult.valid ? VALID_BG : INVALID_BG}
           >
-            {lastResult.valid
-              ? `${lastResult.word} — +${lastResult.score}`
-              : `${lastResult.word || '(empty)'} — Not a word/No Letters`}
-          </Animated.Text>
-        </View>
+            {lastResult.valid ? <Twinkle key={resultKey} loop={false} color="#F9A825" /> : null}
+          </SpeechBubble>
+        </Animated.View>
       ) : null}
     </View>
   );
 }
 
 const ROW_MIN_HEIGHT = 46;
+const BUBBLE_TAIL_GAP = 8; // tail height + a little air above the row
 
 const styles = StyleSheet.create({
   wrapper: {
@@ -229,28 +255,12 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
   },
-  resultWrap: {
+  bubbleWrap: {
     position: 'absolute',
-    top: 4, // matches wrapper's paddingVertical, so it lines up over the row
+    top: -(BUBBLE_H + BUBBLE_TAIL_GAP),
     left: 0,
     right: 0,
-    height: ROW_MIN_HEIGHT,
-    zIndex: 4, // above the row's own flash/ripple overlays
-  },
-  resultText: {
-    height: ROW_MIN_HEIGHT,
-    lineHeight: ROW_MIN_HEIGHT, // vertically centers the single line of text over the row
-    textAlign: 'center',
-    fontFamily: FONT_WARNING,
-    fontSize: 12,
-    // Faint backdrop so the text stays legible over whatever tiles/blanks
-    // it's overlapping, without fully hiding them.
-    backgroundColor: 'rgba(255,255,255,0.85)',
-  },
-  validText: {
-    color: VALID_COLOR,
-  },
-  invalidText: {
-    color: INVALID_COLOR,
+    alignItems: 'center',
+    zIndex: 4,
   },
 });
