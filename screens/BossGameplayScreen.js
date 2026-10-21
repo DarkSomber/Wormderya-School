@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { StatusBar } from "expo-status-bar";
 import {
+  Animated,
   StyleSheet,
   View,
   Image,
@@ -20,6 +21,9 @@ import {
   useWordInput,
   CurrentWordDisplay,
 } from "../components/gameplayReusables/WordInput";
+import { useValuePop } from "../components/gameplayReusables/WordInput/LetterAnimations";
+import PlateButton from "../components/PlateButton";
+import Twinkle from "../components/Twinkle";
 import CustomerMood from "../components/gameplayReusables/CustomerMood";
 import LevelTimer from "../components/gameplayReusables/LevelTimer";
 import { useScoreSystem } from "../components/gameplayReusables/UseScoreSystem";
@@ -43,6 +47,11 @@ import audio from "../audio/AudioManager";
 import { customerVoice } from "../audio/customerVoice";
 
 const BELT_ROWS = [0, 1, 2];
+const COIN_SPOTS = [
+  { x: 0, y: 0.15, size: 9, delay: 0 },
+  { x: 1, y: 0.3, size: 7, delay: 120 },
+  { x: 0.5, y: -0.05, size: 8, delay: 240 },
+];
 
 // Customer / Boss area layout tuning
 const SPRITE_TOP = -26;
@@ -212,6 +221,7 @@ function BossLevelSession({
   ]);
 
   const { currency, addCurrency } = wallet;
+  const coinPop = useValuePop(currency);
   const {
     rewardMultiplier,
     patienceDrainMultiplier,
@@ -419,13 +429,20 @@ function BossLevelSession({
             style={styles.patienceCoinBoard}
             resizeMode="stretch"
           >
-            <Text
-              style={styles.coinText}
-              numberOfLines={1}
-              adjustsFontSizeToFit
+            <Animated.View
+              style={[styles.coinPop, { transform: [{ scale: coinPop.scale }] }]}
             >
-              {formatCurrency(currency)}
-            </Text>
+              <Text
+                style={styles.coinText}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {formatCurrency(currency)}
+              </Text>
+              {coinPop.burst > 0 && (
+                <Twinkle key={coinPop.burst} loop={false} spots={COIN_SPOTS} />
+              )}
+            </Animated.View>
           </ImageBackground>
         </View>
 
@@ -484,12 +501,7 @@ function BossLevelSession({
 
         {/* Plate / Serve action */}
         <View style={styles.table}>
-          <TouchableOpacity onPress={handleServePlate} activeOpacity={0.7}>
-            <Image
-              source={require("../assets/Final/GameplayUI/serve-button.png")}
-              style={styles.plate}
-            />
-          </TouchableOpacity>
+          <PlateButton onPress={handleServePlate} style={styles.plate} />
         </View>
 
         {/* Chef Player Character */}
@@ -566,6 +578,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  coinPop: { marginTop: -125, marginLeft: 50, maxWidth: 80 },
   coinText: {
     flexShrink: 1,
     fontSize: 40,
@@ -574,8 +587,6 @@ const styles = StyleSheet.create({
     textShadowColor: "#000",
     textShadowRadius: 2,
     textShadowOffset: { width: 1, height: 1 },
-    marginTop: -125,
-    marginLeft: 50,
   },
 
   bossTitleOverlay: {
@@ -612,7 +623,7 @@ const styles = StyleSheet.create({
 
   customerArea: { flex: 150, width: "100%" },
   customerBox: { flex: 1, alignItems: "center", justifyContent: "center" },
-  characterBoss: { width: 180, height: 180, resizeMode: "contain", left: -72 },
+  characterBoss: { width: 180, height: 180, resizeMode: "contain", left: -72, marginBottom: 10 },
   patienceMeter: {
     position: "absolute",
     top: "50%",
@@ -629,7 +640,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  plate: { width: 120, height: 60, marginTop: 60, resizeMode: "stretch" },
+  plate: { width: 120, height: 60, marginTop: 60 },
 
   chefBar: {
     flex: 130,

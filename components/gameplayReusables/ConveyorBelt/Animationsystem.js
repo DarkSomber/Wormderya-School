@@ -10,27 +10,39 @@ export const LETTER_ANIM_STATES = {
   DISAPPEARING: 'disappearing',
 };
 
-//reusable animation 
-export function useSpawnAnimation(animState) {
+//reusable animation
+// `onDisappeared` fires only when the removal animation ran to the end
+// (not when a restore interrupts it), so the Letter can then unmount the tile.
+export function useSpawnAnimation(animState, onDisappeared) {
   const scale = useRef(
     new Animated.Value(animState === LETTER_ANIM_STATES.SPAWNING ? 0 : 1)
   ).current;
+  const onDisappearedRef = useRef(onDisappeared);
+  onDisappearedRef.current = onDisappeared;
 
   useEffect(() => {
+    let anim = null;
     if (animState === LETTER_ANIM_STATES.SPAWNING) {
       scale.setValue(0);
-      Animated.spring(scale, {
+      anim = Animated.spring(scale, {
         toValue: 1,
         friction: 2, //2 shows best animation
         useNativeDriver: true,
-      }).start();
+      });
     } else if (animState === LETTER_ANIM_STATES.DISAPPEARING) {
-      Animated.timing(scale, {
-        toValue: 0,
-        duration: 180,
-        useNativeDriver: true,
-      }).start();
+      // Quick pop, then shrink away.
+      anim = Animated.sequence([
+        Animated.timing(scale, { toValue: 1.2, duration: 70, useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 0, duration: 130, useNativeDriver: true }),
+      ]);
     }
+    if (!anim) return undefined;
+
+    const isRemoval = animState === LETTER_ANIM_STATES.DISAPPEARING;
+    anim.start(({ finished }) => {
+      if (finished && isRemoval) onDisappearedRef.current?.();
+    });
+    return () => anim.stop();
   }, [animState, scale]);
 
   return scale;

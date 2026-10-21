@@ -1,9 +1,12 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Image, ImageBackground, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { Animated, StyleSheet, View, Image, ImageBackground, TouchableOpacity, useWindowDimensions } from 'react-native';
 import Text from '../components/AppText';
 import { ConveyorBelt } from '../components/gameplayReusables/ConveyorBelt';
 import { useWordInput, CurrentWordDisplay } from '../components/gameplayReusables/WordInput';
+import { useValuePop } from '../components/gameplayReusables/WordInput/LetterAnimations';
+import PlateButton from '../components/PlateButton.js';
+import Twinkle from '../components/Twinkle.js';
 import CustomerMood from '../components/gameplayReusables/CustomerMood';
 import LevelTimer from '../components/gameplayReusables/LevelTimer';
 import { useScoreSystem } from '../components/gameplayReusables/UseScoreSystem';
@@ -39,6 +42,11 @@ const RECTS = {
   belt2:     { x: 0,   y: 885, w: 512, h: 94  },
 };
 const BELT_ROWS = [0, 1, 2]; // belt rows
+const COIN_SPOTS = [
+  { x: 0, y: 0.15, size: 9, delay: 0 },
+  { x: 1, y: 0.3, size: 7, delay: 120 },
+  { x: 0.5, y: -0.05, size: 8, delay: 240 },
+];
 
 // Customer area tuning. These are the only numbers you need to touch to move
 // the sprite or the patience meter.
@@ -278,6 +286,7 @@ function LevelSession({
   // Score lives here (per attempt, can only go up). Currency lives ONLY in
   // the App-level wallet; every scored word is forwarded to it once.
   const { currency, addCurrency } = wallet;
+  const coinPop = useValuePop(currency);
   const {
     rewardMultiplier,
     patienceDrainMultiplier,
@@ -536,20 +545,23 @@ function LevelSession({
     <View style={{ 
       position: 'absolute', left: '50%', top: '10%', height: '15%', justifyContent: 'center',
      }}>
-      <Text
-        style={{
-          fontSize: 50 * scale,
-          fontWeight: 'bold',
-          color: '#fff',
-          textShadowColor: '#000',
-          textShadowRadius: 2,
-          textShadowOffset: { width: 1, height: 1 },
-        }}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-      >
-        {formatCurrency(currency)}
-      </Text>
+      <Animated.View style={{ transform: [{ scale: coinPop.scale }] }}>
+        <Text
+          style={{
+            fontSize: 50 * scale,
+            fontWeight: 'bold',
+            color: '#fff',
+            textShadowColor: '#000',
+            textShadowRadius: 2,
+            textShadowOffset: { width: 1, height: 1 },
+          }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {formatCurrency(currency)}
+        </Text>
+      </Animated.View>
+      {coinPop.burst > 0 && <Twinkle key={coinPop.burst} loop={false} spots={COIN_SPOTS} />}
     </View>
 
     {/* BOTTOM PART: the patience meter */}
@@ -586,7 +598,7 @@ function LevelSession({
 
       <Slot rect={RECTS.customer} scale={scale} style={{ alignItems: 'center', justifyContent: 'flex-end' }}>
         <Image source={currentSprite.source}
-               style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
+               style={{ width: '115%', height: '100%', resizeMode: 'contain' }} />
       </Slot>
 
       <Slot rect={RECTS.word} scale={scale}>
@@ -602,10 +614,7 @@ function LevelSession({
       </Slot>
 
       <Slot rect={RECTS.serve} scale={scale}>
-        <TouchableOpacity style={{ flex: 1 }} onPress={handleServePlate}>
-          <Image source={require('../assets/Final/GameplayUI/serve-button.png')}
-                 style={{ width: '100%', height: '100%', resizeMode: 'stretch' }} />
-        </TouchableOpacity>
+        <PlateButton style={{ flex: 1 }} onPress={handleServePlate} />
       </Slot>
 
       <Slot rect={RECTS.chef} scale={scale}>

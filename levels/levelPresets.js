@@ -52,7 +52,7 @@ export const LEVEL_4_CONFIG = createLevelConfig({
   title: 'Level 4 — Boss: The Critic',
   isBoss: true,
   conveyorSpeed: 900,
-  targetScore: 700,
+  targetScore: 50,
   timeLimitSeconds: 90,
   totalCustomers: 10,
   wordsPerCustomer: 3,
