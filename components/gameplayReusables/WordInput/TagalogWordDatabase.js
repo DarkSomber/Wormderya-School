@@ -391,6 +391,9 @@ export const TAGALOG_WORD_LIST = [
   'YANGYANG', // dry in the air
   'YUKO',      // bow / bend head
   'DAYA',
+  'PANA', 
+  'DATI',
+  'PAYO',
 
   // --- Connectors and everyday particles ---
   'ANG',      // the (marker)
