@@ -4,8 +4,8 @@ export const LEVEL_1_CONFIG = createLevelConfig({
   id: 'level-1',
   title: 'Level 1 — Warm Up',
   conveyorSpeed: 1000, // Testing; original: 1300
-  targetScore: 50,// Testing; original: 150
-  timeLimitSeconds: 180, // Testing; original: 180 (3 min)
+  targetScore: 150,// Testing; original: 150
+  timeLimitSeconds: 300, 
   totalCustomers: 2,// Testing; original: 3
   wordsPerCustomer: 1,// Testing; original: 2
   scoreMultiplier: 1,
@@ -35,7 +35,7 @@ export const LEVEL_3_CONFIG = createLevelConfig({
   title: 'Level 3 — Rush Hour',
   conveyorSpeed: 1000,
   targetScore: 500,
-  timeLimitSeconds: 180,
+  timeLimitSeconds: 300,
   totalCustomers: 8,
   wordsPerCustomer: 3,
   scoreMultiplier: 2,
@@ -53,7 +53,7 @@ export const LEVEL_4_CONFIG = createLevelConfig({
   isBoss: true,
   conveyorSpeed: 900,
   targetScore: 700,
-  timeLimitSeconds: 180,
+  timeLimitSeconds: 300,
   totalCustomers: 10,
   wordsPerCustomer: 3,
   scoreMultiplier: 2.5,

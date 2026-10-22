@@ -68,7 +68,10 @@ const PRELOAD_IMAGES = [
   require("./assets/Final/WormderyaLogo.png"),
   require("./assets/Final/MainCharacter.png"),
   require("./assets/Final/LevelSelectionMainBG.png"),
-  require("./assets/Final/Animations/LevelSelectionMainBG.gif"),
+  require("./assets/Final/levels/LevelSelectionMainBGAnim.gif"),
+  require("./assets/Final/levels/Bubong.png"),
+  require("./assets/Final/levels/table.png"),
+  require("./assets/Final/MainCharacterWorryAnim.gif"),
   require("./assets/Final/SettingsPanel.png"),
   require("./assets/Final/card_closed.png"),
   require("./assets/Final/card_open.png"),
@@ -188,13 +191,6 @@ function useGameSave() {
   return { loaded, snapshot: snapshotRef.current, getSnapshot, patch, reset };
 }
 
-/**
- * Loads the save, then mounts <GameSession>. The hooks inside it take their
- * initial state from the save, and useState ignores a changed initial value,
- * so they must not be created until the save has loaded. Bumping `session.key`
- * (a save reset) remounts GameSession, so wallet, upgrades, achievements and
- * levels all restart from the fresh defaults.
- */
 function ScreenSwitcher() {
   const save = useGameSave();
   const [session, setSession] = useState({
@@ -255,6 +251,11 @@ function GameSession({ save, initialScreen, onReset }) {
   const [gameMode, setGameMode] = useState("normal");
   const [showQuit, setShowQuit] = useState(false);
   const [endingPending, setEndingPending] = useState(false);
+  const [tutorialSeen, setTutorialSeen] = useState(snapshot.tutorialSeen);
+  const markTutorialSeen = useCallback(() => {
+    setTutorialSeen(true);
+    patch("tutorialSeen", true);
+  }, [patch]);
 
   // ---- Audio ----
   // Start the audio engine once.
@@ -271,8 +272,7 @@ function GameSession({ save, initialScreen, onReset }) {
 
   // Menu music everywhere except the splash and gameplay (LevelSession owns
   // the music while a level is running).
-  const menuMusicOn =
-    screen !== SCREENS.SPLASH && screen !== SCREENS.GAMEPLAY;
+  const menuMusicOn = screen !== SCREENS.SPLASH && screen !== SCREENS.GAMEPLAY;
   useEffect(() => {
     if (menuMusicOn) audio.setMusic("menu");
   }, [menuMusicOn]);
@@ -285,16 +285,15 @@ function GameSession({ save, initialScreen, onReset }) {
     patch("currentLevelId", currentLevelId);
   }, [currentLevelId, patch]);
 
-  // Wallet / achievements / upgrades. Each receives its slice of the save
-  // and reports back via onChange, which we write to the snapshot.
-  // onChange handlers are memoized: the hooks re-save whenever their onChange
-  // changes identity, so an inline arrow here would re-write on every render.
   const handleWalletChange = useCallback((w) => patch("wallet", w), [patch]);
   const handleAchievementsChange = useCallback(
     (a) => patch("achievements", a),
     [patch],
   );
-  const handleUpgradesChange = useCallback((u) => patch("upgrades", u), [patch]);
+  const handleUpgradesChange = useCallback(
+    (u) => patch("upgrades", u),
+    [patch],
+  );
 
   const wallet = useWallet(0, {
     initialState: snapshot.wallet,
@@ -375,7 +374,10 @@ function GameSession({ save, initialScreen, onReset }) {
   const exitApp = () => {
     setShowQuit(false);
     if (Platform.OS === "android") BackHandler.exitApp();
-    else if (Platform.OS === "web") window.close();
+    else if (Platform.OS === "web") {
+      window.close();
+      window.location.replace("about:blank");
+    }
   };
 
   const renderCurrentScreen = () => {
@@ -433,7 +435,10 @@ function GameSession({ save, initialScreen, onReset }) {
         );
 
       case SCREENS.GAMEPLAY:
-        if (gameMode === "normal" && getLevelConfigById(currentLevelId).isBoss) {
+        if (
+          gameMode === "normal" &&
+          getLevelConfigById(currentLevelId).isBoss
+        ) {
           return (
             <BossGameplayScreen
               mode={gameMode}
@@ -484,11 +489,16 @@ function GameSession({ save, initialScreen, onReset }) {
       default:
         return (
           <HomeScreen
-            onStart={() => setScreen(SCREENS.MODE_SELECT)}
+            onStart={() => {
+              markTutorialSeen();
+              setScreen(SCREENS.MODE_SELECT);
+            }}
             onOpenSettings={() => setScreen(SCREENS.SETTINGS)}
             onQuit={() => {
               setShowQuit(true);
             }}
+            showGranny={!tutorialSeen}
+            onGrannySeen={markTutorialSeen}
           />
         );
     }

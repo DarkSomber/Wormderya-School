@@ -1,18 +1,31 @@
-import React from 'react';
+import { useState } from 'react';
 import PopupModal from './PopupModal';
+import VolumeSlider from './VolumeSlider';
+import audio from '../audio/AudioManager';
+import GrannyTutorial from './GrannyTutorial';
 
-/**
- * PauseModal
- * -----------
- * Same PopupModal base as QuitModal — "Resume" is the primary button
- * (closes the modal, nothing else), "Quit" is the secondary/cancel-
- * styled button. Tapping "Quit" here does NOT quit immediately — it
- * hands off to onQuitPress so the caller can show the existing
- * QuitModal confirmation on top of it, same as tapping the header Quit
- * button would. That way there's still exactly one quit confirmation
- * step, not two stacked modals or a quit with no confirmation at all.
- */
-export default function PauseModal({ visible, onResume, onQuitPress }) {
+function PauseVolumes() {
+  const [vols, setVols] = useState(() => audio.getVolumes());
+
+  const live = (kind) => (value) => {
+    setVols((v) => ({ ...v, [kind]: value }));
+    audio.setVolume(kind, value);
+  };
+  const save = (preview) => () => {
+    audio.commitVolumes();
+    if (preview) audio.playSfx('click');
+  };
+
+  return (
+    <>
+      <VolumeSlider label="Master Volume" value={vols.master} onValueChange={live('master')} onSlidingComplete={save(true)} style={{ marginBottom: 8 }} />
+      <VolumeSlider label="Music Volume" value={vols.music} onValueChange={live('music')} onSlidingComplete={save(false)} style={{ marginBottom: 8 }} />
+      <VolumeSlider label="Sound Effects (SFX)" value={vols.sfx} onValueChange={live('sfx')} onSlidingComplete={save(true)} style={{ marginBottom: 8 }} />
+    </>
+  );
+}
+
+export default function PauseModal({ visible, onResume, onExit }) {
   return (
     <PopupModal
       visible={visible}
@@ -20,8 +33,12 @@ export default function PauseModal({ visible, onResume, onQuitPress }) {
       buttonText="Resume"
       buttonColor="#B7E4A7"
       onPress={onResume}
-      cancelText="Quit"
-      onCancel={onQuitPress}
-    />
+      cancelText="Exit"
+      onCancel={onExit}
+      cancelColor="#FFB3B3"
+      overlayChildren={<GrannyTutorial />}
+    >
+      <PauseVolumes />
+    </PopupModal>
   );
 }

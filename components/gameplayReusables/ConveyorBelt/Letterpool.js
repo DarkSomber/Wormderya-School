@@ -91,28 +91,6 @@ function weightForProfileName(name) {
   return randomInRange(range);
 }
 
-/**
- * Turns a LevelConfig's `letterDistribution` into a `getVowelWeight()`
- * function that ConveyorBelt calls once per spawned letter. This is the
- * one place that decides how the profiles behave over time, so
- * ConveyorBelt itself never needs to know what a "profile" is.
- *
- * Accepted `letterDistribution` shapes:
- *   - null / undefined        -> uniform pick across the whole pool
- *                                 (legacy behavior; returned getter yields null)
- *   - a number (0-1)          -> fixed vowel weight, used every pick
- *   - a profile name string   -> 'balanced' | 'vowelHeavy' | 'consonantHeavy';
- *                                 a fresh weight is drawn from that profile's
- *                                 range on every pick
- *   - { profiles: [...names], minStreak?, maxStreak? }
- *                              -> "mixed": one named profile is chosen at
- *                                 random and held for a short run of
- *                                 letters (minStreak–maxStreak, default 3–5)
- *                                 before rerolling, so the belt produces
- *                                 stretches that read as balanced, then
- *                                 vowel-heavy, then consonant-heavy,
- *                                 instead of shuffling every tile
- */
 export function createVowelWeightPicker(letterDistribution) {
   if (letterDistribution === undefined || letterDistribution === null) {
     return () => null;
@@ -143,15 +121,6 @@ export function createVowelWeightPicker(letterDistribution) {
   return () => null;
 }
 
-/**
- * Picks one letter from `pool`.
- *
- * `vowelWeight`:
- *   - null/undefined -> uniform pick across the whole pool (original,
- *     unweighted behavior — unchanged for any caller that doesn't pass it)
- *   - a number 0-1 -> that fraction of picks are drawn from the pool's
- *     vowels, the rest from its consonants
- */
 export function pickRandomLetter(pool = DEFAULT_LETTER_POOL, vowelWeight = null) {
   if (vowelWeight === null || vowelWeight === undefined) {
     return pool[Math.floor(Math.random() * pool.length)];

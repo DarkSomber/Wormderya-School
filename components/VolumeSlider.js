@@ -18,7 +18,10 @@ import Slider from "@react-native-community/slider";
 export default function VolumeSlider({ label, value, onValueChange, onSlidingComplete, style }) {
   return (
     <View style={[styles.row, style]}>
-      <Text style={styles.label}>{label}</Text>
+      <View style={styles.header}>
+        <Text style={styles.label}>{label}</Text>
+        <Text style={styles.percent}>{Math.round(value * 100)}%</Text>
+      </View>
       <Slider
         style={styles.slider}
         minimumValue={0}
@@ -38,11 +41,22 @@ const styles = StyleSheet.create({
   row: {
     width: "100%",
   },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
   label: {
     fontSize: 20,
     fontWeight: "700",
     color: "#5c3a21",
-    marginBottom: 10,
+  },
+  // Lightest weight loaded (Regular).
+  percent: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#5c3a21",
   },
   slider: {
     width: "80%",

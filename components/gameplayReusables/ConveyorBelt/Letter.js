@@ -4,12 +4,8 @@ import Text from '../../AppText';
 import { getLetterSprite } from './Spriteloader';
 import { useSpawnAnimation, LETTER_ANIM_STATES } from './Animationsystem';
 
-/**A `letter` tile is a small, self-contained data object:
- *   { id, character, active, animState }
- *
- * The belt-wide horizontal scroll is handled entirely by ConveyorBelt's
- * Animated transform — a Letter only knows its fixed slot position
- */
+const PLATE = require('../../../assets/Final/GameplayUI/plate.png')
+
 function Letter({ letter, left, width, height, onPress }) {
   // Set once the removal animation has finished; the tile is only then unmounted.
   const [vanished, setVanished] = useState(!letter.active);
@@ -20,7 +16,7 @@ function Letter({ letter, left, width, height, onPress }) {
   );
 
   useEffect(() => {
-    if (letter.active) setVanished(false); // restored: allow the next removal to animate
+    if (letter.active) setVanished(false); 
   }, [letter.active]);
 
   // A removed tile stays drawn (non-tappable) while it plays its exit animation.
@@ -46,12 +42,11 @@ function Letter({ letter, left, width, height, onPress }) {
         onPress={() => letter.active && onPress && onPress(letter)}
         style={styles.tileTouchable}
       >
-        {sprite ? (
-          <Image source={sprite} style={styles.tileImage} resizeMode="contain" />
-        ) : (
-          <View style={styles.tileFallback}>
-            <Text style={styles.tileText}>{letter.character}</Text>
-          </View>
+        <Image source={PLATE} style={styles.plateImage} resizeMode="contain" />
+           {sprite ? (
+              <Image source={sprite} style={styles.foodImage} resizeMode="contain" />
+           ) : (
+         <Text style={styles.tileText}>{letter.character}</Text>
         )}
       </TouchableOpacity>
     </Animated.View>
@@ -79,19 +74,18 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  tileFallback: {
+  plateImage: {
+    position: 'absolute',
     width: '100%',
     height: '100%',
-    borderRadius: 10,
-    backgroundColor: '#f4d9a0',
-    borderWidth: 2,
-    borderColor: '#8a5a2b',
-    alignItems: 'center',
-    justifyContent: 'center',
+  },
+  foodImage: {
+    width: '70%',
+    height: '70%',
   },
   tileText: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '400',
     color: '#4a2e0f',
   },
 });

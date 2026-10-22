@@ -6,17 +6,20 @@ import { ConveyorBelt } from '../components/gameplayReusables/ConveyorBelt';
 import { useWordInput, CurrentWordDisplay } from '../components/gameplayReusables/WordInput';
 import { useValuePop } from '../components/gameplayReusables/WordInput/LetterAnimations';
 import PlateButton from '../components/PlateButton.js';
+import PauseModal from '../components/PauseModal';
 import Twinkle from '../components/Twinkle.js';
 import CustomerMood from '../components/gameplayReusables/CustomerMood';
 import LevelTimer from '../components/gameplayReusables/LevelTimer';
 import { useScoreSystem } from '../components/gameplayReusables/UseScoreSystem';
 import { formatCurrency } from '../components/gameplayReusables/UseWallet';
 import AchievementModal from '../components/gameplayReusables/AchievementModal';
-import { ACHIEVEMENTS } from '../components/gameplayReusables/Achievements.js';
 import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount';
 import UpgradeToast from '../components/gameplayReusables/UpgradeToast';
 import UpgradeHUD from '../components/gameplayReusables/UpgradeHUD';
 import AnimatedNpc from '../components/gameplayReusables/AnimatedNpc.js';
+import HintBubble from '../components/gameplayReusables/HintBubble';
+import { useHint } from '../components/gameplayReusables/UseHint';
+import { HINT_BONUS_RATIO, HINT_TIME_RATIO } from '../components/gameplayReusables/hints';
 import { UPGRADE_LIST } from '../components/gameplayReusables/UseUpgrades';
 import { useStage, Stage, Slot, GAMEPLAY_RECTS as RECTS, PATIENCE_METER_BOX } from '../components/gameplayReusables/Stage';
 
@@ -47,7 +50,7 @@ const PATIENCE_OFFSET_X = 72;   // meter's left edge, in px right of screen cent
 // When the third customer sprite is added, give it `voice: 3`.
 const CUSTOMER_SPRITES = [
   { source: require('../assets/Final/Customers/Customer1.png'), voice: 1 },
-  { source: require('../assets/Final/Customers/CustomerPicky.png'), bottom: -10, voice: 2 },
+  { source: require('../assets/Final/Customers/CustomerPicky.png'), bottom: -10, voice: 2, picky: true },
 ];
 
 // Patience meter bands (same thresholds CustomerMood uses for its face).
@@ -80,30 +83,6 @@ const NO_ACHIEVEMENTS = {
   unlockAchievement: () => {},
 };
 
-/**
- * GameplayScreen
- * --------------
- * Thin shell that owns `sessionId` and the level -> difficulty lookup.
- * Bumping sessionId on retry (or changing level) remounts <LevelSession>,
- * resetting every hook inside it. A full remount can't miss state the way
- * manual resets did (stale `lastResult`, useLevelMaker state).
- *
- * Props:
- *   levelId          number | string  preset to load (default 1)
- *   levelConfig      optional; a ready-made LevelConfig, wins over levelId
- *   mode             'normal' (default) | 'rushHour'. rushHour ignores levelId /
- *                    levelConfig and runs endless: stages come from
- *                    levels/rushHourConfig.js, the clock is restored by correct
- *                    words, and onLevelComplete is never called.
- *   onLevelComplete  optional; called once when the level is won
- *   onOpenStore      optional; opens Ratty's shop. Mid-level visits pass
- *                    { resumeGameplay: true } so closing the shop returns here.
- *   wallet           the useWallet() instance from App.js (single shared balance)
- *   achievements     the achievements instance from App.js
- *   upgrades         the useUpgrades() instance from App.js
- *   getBestScore     () => number; the best score before this run (for the "new record" jingle)
- *   onReportScore    (score) => void; called once when a run counts (a win, or any Rush Hour run)
- */
 export default function GameplayScreen({
   onOpenStore,
   onBack,
@@ -191,6 +170,7 @@ function LevelSession({
   const safeUpgrades = upgrades ?? NO_UPGRADES;
 
   const [phase, setPhase] = useState('intro'); // 'intro' | 'playing' | 'end'
+  const [showPause, setShowPause] = useState(false); // pause menu up
   const { scale, scaleX, scaleY, w, h } = useStage();
 
   // --- Rush Hour session state (all reset by the remount on retry) ---
@@ -284,12 +264,21 @@ function LevelSession({
     consumeExtraHealth,
   } = safeUpgrades;
 
-  const { score, addScoreFromWord } = useScoreSystem({
+  const { score, addScoreFromWord, addBonusScore } = useScoreSystem({
     onCurrencyEarned: addCurrency,
     getRewardMultiplier: () => rewardMultiplier,
   });
 
-  const levelMaker = useLevelMaker(levelConfig, isStoreOpen);
+  const levelMaker = useLevelMaker(levelConfig, isStoreOpen || showPause);
+
+  const isPicky = !!CUSTOMER_SPRITES[levelMaker.customerIndex % CUSTOMER_SPRITES.length].picky;
+  const hint = useHint({
+    rules: {
+      minLength: levelConfig.wordDifficulty.minLength,
+      maxLength: levelConfig.wordDifficulty.maxLength,
+      inputBoxCount: levelConfig.inputBoxCount,
+    },
+  });
 
   // Always points at the latest levelMaker, so effects and callbacks can call
   // its methods without depending on the object's identity (which may change
@@ -300,9 +289,6 @@ function LevelSession({
   // Which customer is up decides whose voice lines play.
   const customerVoiceId = CUSTOMER_SPRITES[levelMaker.customerIndex % CUSTOMER_SPRITES.length].voice;
 
-  // Runs on every submitted word (auto-submit or Plate button). Plain function
-  // that always sees fresh props/state; it's reached through a ref below so
-  // useWordInput never holds a stale copy.
   const onWordSubmit = (result) => {
     if (result.word.length > 0) audio.playSfx('serve_word');
 
@@ -311,15 +297,23 @@ function LevelSession({
       customerVoice.served(customerVoiceId, {
         lastForCustomer: levelMaker.wordsServedForCustomer + 1 >= levelConfig.wordsPerCustomer,
       });
-      addScoreFromWord(result.word, 1, levelConfig.scoreMultiplier);
+      const earned = addScoreFromWord(result.word, 1, levelConfig.scoreMultiplier);
+      const hintHit = hint.isMatch(result.word);
+      const bonus = hintHit
+        ? addBonusScore(Math.round(earned * HINT_BONUS_RATIO[isPicky ? 'picky' : 'normal']))
+        : 0;
+      hint.advance(bonus);
       customerRef.current?.restorePatience(100);
       levelMakerRef.current.registerServedWord();
-      achievements.unlockAchievement(ACHIEVEMENTS.FIRST_WORD); // Achievement trigger
 
       if (isRushHour) {
-        // Restore some time (LevelTimer applies it once per id and caps it),
-        // then advance the stage every wordsPerStage correct words.
-        setTimeBonus((prev) => ({ id: (prev ? prev.id : 0) + 1, seconds: levelConfig.timeBonusSeconds }));
+        const extraSeconds = hintHit
+          ? Math.max(1, Math.round(levelConfig.timeBonusSeconds * HINT_TIME_RATIO))
+          : 0;
+        setTimeBonus((prev) => ({
+          id: (prev ? prev.id : 0) + 1,
+          seconds: levelConfig.timeBonusSeconds + extraSeconds,
+        }));
         rushHourWordsRef.current += 1;
         setRushHourStage(getRushHourStageForWords(rushHourWordsRef.current));
       }
@@ -517,6 +511,7 @@ function LevelSession({
     levelResult !== null ||
     levelMaker.showRattyEvent ||
     achievements.currentAchievement !== null ||
+    showPause ||
     !!isStoreOpen;
 
   return (
@@ -524,9 +519,9 @@ function LevelSession({
     <Stage source={require('../assets/Final/GameplayUI/GameplayScreen.png')} w={w} h={h} scale={scale}>
 
       <Slot rect={RECTS.quit} scale={scale} scaleX={scaleX} scaleY={scaleY}>
-        <TouchableOpacity style={{ flex: 1 }} onPress={() => { audio.playSfx('click'); onBack?.(); }}>
+        <TouchableOpacity style={{ flex: 1 }} onPress={() => { audio.playSfx('click'); setShowPause(true); }}>
           <Image source={require('../assets/Final/GameplayUI/quit-sign.png')}
-                 style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
+                 style={{ width: '100%', height: '100%', resizeMode: 'contain', bottom: 5}} />
         </TouchableOpacity>
       </Slot>
 
@@ -599,6 +594,10 @@ function LevelSession({
         />
       </Slot>
 
+      <Slot rect={RECTS.hint} scale={scale}>
+        <HintBubble text={hint.hint.text} reward={hint.reward} scale={scale} picky={isPicky} />
+      </Slot>
+
       <Slot rect={RECTS.word} scale={scale}>
         <CurrentWordDisplay
           currentWord={wordInput.currentWord}
@@ -615,14 +614,29 @@ function LevelSession({
         <PlateButton style={{ flex: 1 }} onPress={handleServePlate} />
       </Slot>
 
-      <Slot rect={RECTS.chef} scale={scale}>
-        <AnimatedNpc
+            <Slot rect={RECTS.chef} scale={scale}>
+        {/* Normal pose, hidden while the worry animation plays. */}
+        <Image
           source={require('../assets/Final/MainCharacter.png')}
-          npcKey="main-character"
-          unit={scale}
-          worried={isWorried}
-          imageStyle={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+          style={{ width: '100%', height: '100%', opacity: isWorried ? 0 : 1 }}
+          resizeMode="contain"
         />
+        {isWorried && (
+          <AnimatedNpc
+            source={require('../assets/Final/MainCharacterWorryAnim.gif')}
+            npcKey="chef"
+            unit={scale}
+            worried
+            imageStyle={{
+              position: 'absolute',
+              left: '-23.4375%',
+              top: '-18.75%',
+              width: '137.5%',
+              height: '125%',
+              resizeMode: 'stretch',
+            }}
+          />
+        )}
       </Slot>
 
       <Slot rect={RECTS.conveyors} scale={scale}>
@@ -645,6 +659,7 @@ function LevelSession({
               ...getBeltConfig(levelConfig, row),
             }}
             onLetterPress={(letter) => wordInput.selectLetter(letter, row)}
+            isPaused={showPause}
           />
         </Slot>
       ))}
@@ -671,6 +686,12 @@ function LevelSession({
 
       {/* Mr. Ratty popup (rolled by useLevelMaker). Dismissing opens his shop
           as a mid-level visit: closing it returns to this running level. */}
+      <PauseModal
+        visible={showPause}
+        onExit={() => { setShowPause(false); onBack?.(); }}
+        onResume={() => setShowPause(false)}
+      />
+
       <MrRattyDiscount
         visible={levelMaker.showRattyEvent}
         onDismiss={() => {

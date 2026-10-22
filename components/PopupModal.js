@@ -18,11 +18,11 @@ export default function PopupModal({
   buttonText,
   buttonColor = '#FFE194', // Default color
   onPress,
-  // Optional second button — omit cancelText/onCancel to keep the
-  // original single-button behavior (every existing caller still works
-  // unchanged). Pass both to get a "Never mind" style second option.
   cancelText,
   onCancel,
+  cancelColor,
+  children, 
+  overlayChildren,
 }) {
   return (
     <Modal
@@ -38,6 +38,8 @@ export default function PopupModal({
 
           {/* Divider Line */}
           <View style={styles.divider} />
+
+          {children}
 
           {/* Body Content */}
           <View style={styles.body}>
@@ -59,7 +61,7 @@ export default function PopupModal({
           <View style={styles.buttonRow}>
             {cancelText && onCancel ? (
               <TouchableOpacity
-                style={[styles.button, styles.cancelButton]}
+                style={[styles.button, styles.cancelButtonm, cancelColor && { backgroundColor: cancelColor}]}
                 onPress={withClick(onCancel)}
               >
                 <Text style={styles.buttonText}>{cancelText}</Text>
@@ -75,6 +77,7 @@ export default function PopupModal({
           </View>
 
         </View>
+        {overlayChildren}
       </View>
     </Modal>
   );

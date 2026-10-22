@@ -29,10 +29,23 @@ export const useScoreSystem = ({ onCurrencyEarned, getRewardMultiplier } = {}) =
     [onCurrencyEarned, getRewardMultiplier]
   );
 
+  // Hint/riddle bonus on top of a scored word. Returns the points added so
+  // callers can flash the reward. Score only goes up, same as addScoreFromWord.
+  const addBonusScore = useCallback(
+    (points) => {
+      const bonus = Math.round(Number(points));
+      if (!(bonus > 0)) return 0;
+      setScore((prev) => prev + bonus);
+      onCurrencyEarned?.(Math.max(1, Math.round(bonus * MONEY_RATE)));
+      return bonus;
+    },
+    [onCurrencyEarned]
+  );
+
   const getStarRating = useCallback(
     (targetScore) => computeStars(score, targetScore),
     [score]
   );
 
-  return { score, addScoreFromWord, getStarRating };
+  return { score, addScoreFromWord, addBonusScore, getStarRating };
 };

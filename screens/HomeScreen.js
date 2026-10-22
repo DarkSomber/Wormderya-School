@@ -8,8 +8,10 @@ import {
   ImageBackground,
 } from "react-native";
 import AppButton from "../components/AppButton";
+import GrannyTutorial from "../components/GrannyTutorial";
 
-export default function HomeScreen({ onStart, onOpenSettings, onQuit }) {
+
+export default function HomeScreen({ onStart, onOpenSettings, onQuit, showGranny, onGrannySeen }) {
   const handleStart = onStart ?? (() => Alert.alert("Start pressed"));
   const handleSettings =
     onOpenSettings ?? (() => Alert.alert("Settings pressed"));
@@ -30,6 +32,8 @@ export default function HomeScreen({ onStart, onOpenSettings, onQuit }) {
           style={styles.titleImage}
           resizeMode="contain"
         />
+
+
 
         {/* ---------- CHARACTER  ---------- */}
         <View style={styles.characterPlaceholder}>
@@ -58,6 +62,7 @@ export default function HomeScreen({ onStart, onOpenSettings, onQuit }) {
           />
         </View>
       </View>
+      {showGranny && <GrannyTutorial onClose={onGrannySeen}  style={{ bottom: 20}}/>}
     </ImageBackground>
   );
 }

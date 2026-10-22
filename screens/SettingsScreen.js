@@ -6,12 +6,14 @@ import {
   StatusBar,
   ImageBackground,
   TouchableOpacity,
+  ScrollView,
 } from "react-native";
 import Text from "../components/AppText";
 import AppButton from "../components/AppButton";
 import VolumeSlider from "../components/VolumeSlider";
 import audio from "../audio/AudioManager";
 import AchievementList from "../components/AchievementList";
+import GrannyTutorial from "../components/GrannyTutorial";
 
 const PANEL_TITLES = {
   music: "Settings",
@@ -124,31 +126,53 @@ export default function SettingsScreen({ onBack, achievements }) {
           )}
 
           {view === "achievements" && (
-            <>
-              <AchievementList unlockedIds={achievements?.unlockedIds} />
-              <View>
-                <AppButton
-                  onPress={() => setView("music")}
-                  style={styles.panelBackButton}
-                  backgroundImage={require("../assets/Final/buttons/buttonBack.png")}
-                />
-              </View>
-            </>
+            <AchievementList unlockedIds={achievements?.unlockedIds} />
           )}
 
           {view === "credits" && (
-            <>
-              <View style={styles.placeholderContent}>
-                <Text style={styles.placeholderContentText}>
-                  CREDITS{"\n"}CONTENT PLACEHOLDER
-                </Text>
+            <ScrollView
+              style={styles.creditsScrollView}
+              contentContainerStyle={styles.creditsContentContainer}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.creditsTitleText}>DEVELOPMENT TEAM</Text>
+
+              <View style={styles.creditItem}>
+                <Text style={styles.roleText}>Lead Developer</Text>
+                <Text style={styles.nameText}>Palas, James T.</Text>
               </View>
-              <AppButton
-                onPress={() => setView("music")}
-                style={styles.panelBackButton}
-                backgroundImage={require("../assets/Final/buttons/buttonBack.png")}
-              />
-            </>
+
+              <View style={styles.creditItem}>
+                <Text style={styles.roleText}>Gameplay Programmer</Text>
+                <Text style={styles.nameText}>Lantin, Jose Gabriel</Text>
+              </View>
+
+              <View style={styles.creditItem}>
+                <Text style={styles.roleText}>UI/UX</Text>
+                <Text style={styles.nameText}>Rota, Ysabella Dylan M.</Text>
+              </View>
+
+              <View style={styles.creditItem}>
+                <Text style={styles.roleText}>
+                  Level/Content Designer-Programmer & Sound Design
+                </Text>
+                <Text style={styles.nameText}>Erese, Daniel Noel</Text>
+              </View>
+
+              <View style={styles.creditItem}>
+                <Text style={styles.roleText}>QA/Systems Programmer</Text>
+                <Text style={styles.nameText}>Domingo, Marc Gerard M.</Text>
+              </View>
+
+              <Text style={[styles.creditsTitleText, { marginTop: 12 }]}>
+                Third-Party Assets
+              </Text>
+
+              <View style={styles.creditItem}>
+                <Text style={styles.roleText}>Game Font PixelifySans</Text>
+                <Text style={styles.nameText}>Stefie Justprince</Text>
+              </View>
+            </ScrollView>
           )}
         </View>
 
@@ -159,7 +183,8 @@ export default function SettingsScreen({ onBack, achievements }) {
             activeOpacity={0.75}
             onPress={() => {
               audio.playSfx("click");
-              onBack?.();
+              if (view !== "music") setView("music");
+              else onBack?.();
             }}
             style={styles.backCircle}
           >
@@ -170,6 +195,7 @@ export default function SettingsScreen({ onBack, achievements }) {
             />
           </TouchableOpacity>
         </View>
+        <GrannyTutorial style={{ bottom: 20 }}/>
       </View>
     </ImageBackground>
   );
@@ -268,5 +294,28 @@ const styles = StyleSheet.create({
   panelBackButton: {
     width: 200,
     height: 60,
+  },
+  creditsScrollView: { width: "100%", flex: 1 },
+  creditsContentContainer: { paddingVertical: 8, alignItems: "center" },
+  creditsTitleText: {
+    textAlign: "center",
+    color: "#8a5a30",
+    fontWeight: "700",
+    fontSize: 24,
+    marginBottom: 15,
+  },
+  creditItem: { alignItems: "center", marginBottom: 25 },
+  roleText: {
+    textAlign: "center",
+    color: "#8a5a30",
+    fontWeight: "700",
+    fontSize: 16,
+    marginBottom: 2,
+  },
+  nameText: {
+    textAlign: "center",
+    color: "#5c3a1e",
+    fontWeight: "500",
+    fontSize: 13,
   },
 });

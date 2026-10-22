@@ -28,11 +28,15 @@ import LevelTimer from "../components/gameplayReusables/LevelTimer";
 import { useScoreSystem } from "../components/gameplayReusables/UseScoreSystem";
 import { formatCurrency } from "../components/gameplayReusables/UseWallet";
 import AchievementModal from "../components/gameplayReusables/AchievementModal";
+import PauseModal from "../components/PauseModal";
 import { ACHIEVEMENTS } from "../components/gameplayReusables/Achievements.js";
 import UpgradeToast from "../components/gameplayReusables/UpgradeToast";
 import UpgradeHUD from "../components/gameplayReusables/UpgradeHUD";
 import { UPGRADE_LIST } from "../components/gameplayReusables/UseUpgrades";
 import AnimatedNpc from "../components/gameplayReusables/AnimatedNpc.js";
+import HintBubble from "../components/gameplayReusables/HintBubble";
+import { useHint } from "../components/gameplayReusables/UseHint";
+import { HINT_BONUS_RATIO } from "../components/gameplayReusables/hints";
 
 import {
   useStage,
@@ -165,6 +169,7 @@ function BossLevelSession({
 }) {
   const safeUpgrades = upgrades ?? NO_UPGRADES;
   const [phase, setPhase] = useState("intro");
+  const [showPause, setShowPause] = useState(false); // pause menu up
   const { scale, w, h } = useStage();
 
   const beltRef0 = useRef(null);
@@ -232,14 +237,23 @@ function BossLevelSession({
     consumeExtraHealth,
   } = safeUpgrades;
 
-  const { score, addScoreFromWord } = useScoreSystem({
+  const { score, addScoreFromWord, addBonusScore } = useScoreSystem({
     onCurrencyEarned: addCurrency,
     getRewardMultiplier: () => rewardMultiplier,
   });
 
-  const levelMaker = useLevelMaker(levelConfig, isStoreOpen);
+  const levelMaker = useLevelMaker(levelConfig, isStoreOpen || showPause);
   const levelMakerRef = useRef(levelMaker);
   levelMakerRef.current = levelMaker;
+
+  const hint = useHint({
+    riddle: true,
+    rules: {
+      minLength: levelConfig.wordDifficulty.minLength,
+      maxLength: levelConfig.wordDifficulty.maxLength,
+      inputBoxCount: levelConfig.inputBoxCount,
+    },
+  });
 
   const customerVoiceId =
     BOSS_SPRITES[levelMaker.customerIndex % BOSS_SPRITES.length].voice;
@@ -253,10 +267,13 @@ function BossLevelSession({
         lastForCustomer:
           levelMaker.wordsServedForCustomer + 1 >= levelConfig.wordsPerCustomer,
       });
-      addScoreFromWord(result.word, 1, levelConfig.scoreMultiplier);
+      const earned = addScoreFromWord(result.word, 1, levelConfig.scoreMultiplier);
+      const bonus = hint.isMatch(result.word)
+        ? addBonusScore(Math.round(earned * HINT_BONUS_RATIO.boss))
+        : 0;
+      hint.advance(bonus);
       customerRef.current?.restorePatience(100);
       levelMakerRef.current.registerServedWord();
-      achievements.unlockAchievement(ACHIEVEMENTS.FIRST_WORD);
     } else if (result.word.length > 0) {
       audio.playSfx("wrong");
       customerVoice.wrong(customerVoiceId);
@@ -285,6 +302,7 @@ function BossLevelSession({
   );
 
   const [levelResult, setLevelResult] = useState(null);
+    const [isWorried, setIsWorried] = useState(false);
 
   const patienceBandRef = useRef("happy");
   const voiceIdRef = useRef(customerVoiceId);
@@ -293,7 +311,10 @@ function BossLevelSession({
     const band = patienceBand(patience);
     const previous = patienceBandRef.current;
     patienceBandRef.current = band;
-    if (band !== previous) customerSpriteRef.current?.jump();
+    if (band !== previous) {
+      customerSpriteRef.current?.jump();
+      setIsWorried(band === "angry");
+    }
     if (PATIENCE_RANK[band] > PATIENCE_RANK[previous]) {
       customerVoice.patience(voiceIdRef.current, band);
     }
@@ -417,12 +438,12 @@ function BossLevelSession({
             style={{ flex: 1 }}
             onPress={() => {
               audio.playSfx("click");
-              onBack?.();
+              setShowPause(true);
             }}
           >
             <Image
               source={require("../assets/Final/GameplayUI/quit-sign.png")}
-              style={{ width: "100%", height: "100%", resizeMode: "contain" }}
+              style={{ width: "100%", height: "100%", resizeMode: "contain", bottom: 5 }}
             />
           </TouchableOpacity>
         </Slot>
@@ -473,6 +494,7 @@ function BossLevelSession({
                 onPatienceChange={handlePatienceChange}
                 decayRateMs={levelConfig.patienceDecayMs}
                 drainMultiplier={patienceDrainMultiplier}
+                isPaused={showPause || levelResult !== null || achievements.currentAchievement !== null || !!isStoreOpen}
                 style={{ width: "100%", height: "100%", marginTop: 0 }}
                 resizeMode="stretch"
               />
@@ -488,6 +510,7 @@ function BossLevelSession({
             isPaused={
               levelResult !== null ||
               achievements.currentAchievement !== null ||
+              showPause ||
               isStoreOpen
             }
             onLevelEnd={handleLevelEnd}
@@ -528,6 +551,10 @@ function BossLevelSession({
           />
         </Slot>
 
+        <Slot rect={RECTS.hint}>
+          <HintBubble text={hint.hint.text} reward={hint.reward} scale={scale} boss />
+        </Slot>
+
         <Slot rect={RECTS.word}>
           <CurrentWordDisplay
             currentWord={wordInput.currentWord}
@@ -545,13 +572,28 @@ function BossLevelSession({
         </Slot>
 
       <Slot rect={RECTS.chef} scale={scale}>
-        <AnimatedNpc
+        {/* Normal pose, hidden while the worry animation plays. */}
+        <Image
           source={require('../assets/Final/MainCharacter.png')}
-          npcKey="main-character"
-          unit={scale}
-          worried={isWorried}
-          imageStyle={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+          style={{ width: '100%', height: '100%', opacity: isWorried ? 0 : 1 }}
+          resizeMode="contain"
         />
+        {isWorried && (
+          <AnimatedNpc
+            source={require('../assets/Final/MainCharacterWorryAnim.gif')}
+            npcKey="chef"
+            unit={scale}
+            worried
+            imageStyle={{
+              position: 'absolute',
+              left: '-23.4375%',
+              top: '-18.75%',
+              width: '137.5%',
+              height: '125%',
+              resizeMode: 'stretch',
+            }}
+          />
+        )}
       </Slot>
 
         <Slot rect={RECTS.conveyors}>
@@ -574,6 +616,7 @@ function BossLevelSession({
                 ...getBeltConfig(levelConfig, row),
               }}
               onLetterPress={(letter) => wordInput.selectLetter(letter, row)}
+            isPaused={showPause}
             />
           </Slot>
         ))}
@@ -599,6 +642,15 @@ function BossLevelSession({
         )}
       </Stage>
       <StatusBar style="light" />
+
+      <PauseModal
+        visible={showPause}
+        onExit={() => {
+          setShowPause(false);
+          onBack?.();
+        }}
+        onResume={() => setShowPause(false)}
+      />
 
       <UpgradeToast
         messages={toastMessages}

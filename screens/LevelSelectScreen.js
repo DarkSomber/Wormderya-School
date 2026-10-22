@@ -28,10 +28,12 @@ const LEVELS = [
   {
     id: 3,
     image: require("../assets/Final/levels/Level_3_Sinigang-na-Bangus.png"),
+    scale: 1.3, // wide art renders shorter; enlarge to close the gap
   },
   {
     id: 4,
     image: require("../assets/Final/levels/Level_4_Boss_kare-kare.png"),
+    scale: 1.3,
   },
 ];
 
@@ -48,21 +50,21 @@ const DEBUG_TOP_RATIO = 0.17;
 
 const SHOW_DEBUG_BUTTON = ENABLE_DEBUG_BUTTON && __DEV__;
 
-// One full pass of LevelSelectionMainBG.gif (sum of its 65 frame delays).
+// One full pass of levels/LevelSelectionMainBGAnim.gif (sum of its 65 frame delays).
 const BG_GIF_LOOP_MS = 16760;
 // Rest time with only the static background showing, then the GIF replays.
 const BG_GIF_PAUSE_MS = 5000;
 const BG_GIF_FADE_MS = 300;
-// Moves the GIF up by this fraction of the screen height. Raise it to go higher.
-const BG_GIF_RAISE_RATIO = 0.10;
-const BG_GIF_SCALE = 1;
 
-// Plays the animated GIF once, fades it out, waits, then replays it. Remounting
-// the Image (new key) restarts the GIF at frame 0 on every Android device,
-// because native GIF loop timing is not something JS can pause.
-function AnimatedBackdrop() {
-  const { height: screenHeight } = useWindowDimensions();
-  const raise = screenHeight * BG_GIF_RAISE_RATIO;
+// The scene is drawn on this canvas (art size), then scaled to cover the screen.
+const SCENE_W = 512;
+const SCENE_H = 1088;
+const ROOF_H = 280; // levels/Bubong.png, pinned to the top
+const TABLE_H = 352; // levels/table.png, pinned to the bottom
+const BG_GIF_SCALE = 1; // GIF shares the static BG's 512x1088 canvas
+const BG_GIF_SHIFT_Y = 0;
+
+function AnimatedBackdrop({ sceneWidth, sceneHeight }) {
   const [cycle, setCycle] = useState(0);
   const [visible, setVisible] = useState(true);
   const opacity = useRef(new Animated.Value(1)).current;
@@ -92,27 +94,96 @@ function AnimatedBackdrop() {
     };
   }, [visible, opacity]);
 
-  if (!visible) return null;
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        StyleSheet.absoluteFill,
-        { opacity, transform: [{ translateY: -raise }, { scale: BG_GIF_SCALE }],},
-      ]}
-    >
-      <Image
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {visible && (
+        <Animated.View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { opacity }]}
+        >
+          <Image
         key={cycle}
-        source={require("../assets/Final/Animations/LevelSelectionMainBG.gif")}
-        style={StyleSheet.absoluteFill}
-        resizeMode="cover"
+        source={require("../assets/Final/levels/LevelSelectionMainBGAnim.gif")}
+        style={[
+          {
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: sceneWidth,
+            height: sceneHeight,
+            transform: [
+              { translateY: BG_GIF_SHIFT_Y * sceneHeight },
+              { scale: BG_GIF_SCALE },
+            ],
+          },
+        ]}
+        resizeMode="stretch"
         fadeDuration={0}
       />
-    </Animated.View>
+        </Animated.View>
+      )}
+      <Image
+        source={require("../assets/Final/levels/Bubong.png")}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: `${(ROOF_H / SCENE_H) * 100}%`,
+        }}
+        resizeMode="stretch"
+      />
+      <Image
+        source={require("../assets/Final/levels/table.png")}
+        style={{
+          position: "absolute",
+          bottom: -50,
+          left: 0,
+          width: "100%",
+          height: `${(TABLE_H / SCENE_H) * 120}%`,
+        }}
+        resizeMode="stretch"
+      />
+    </View>
   );
 }
 
+function LevelSelectScene({ width, height }) {
+  const k = width / SCENE_W;
+  const w = width;
+  const h = Math.max(SCENE_H * k, height);
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <View
+        style={{
+          position: "absolute",
+          width: w,
+          height: h,
+          left: (width - w) / 2,
+          top: (height - h) / 2,
+        }}
+      >
+        <Image
+          source={require("../assets/Final/LevelSelectionMainBG.png")}
+          style={{ position: "absolute", top: 0, left: 0, width: w, height: h }}
+          resizeMode="stretch"
+        />
+        <AnimatedBackdrop sceneWidth={w} sceneHeight={h} />
+      </View>
+    </View>
+  );
+}
+
+const fittedHeight = (img, width, height) => {
+  const src = Image.resolveAssetSource(img);
+  return Math.min(height, (width * src.height) / src.width);
+};
+
 function LevelImage({ level, locked, onPlay, width, height, drop }) {
+  const scale = level.scale ?? 1;
+  const refH = fittedHeight(LEVELS[0].image, width, height);
+  const ownH = fittedHeight(level.image, width, height);
+  const lift = (refH - ownH * scale) / 2;
   return (
     <TouchableOpacity
       activeOpacity={0.85}
@@ -127,19 +198,17 @@ function LevelImage({ level, locked, onPlay, width, height, drop }) {
     >
       <Image
         source={level.image}
-        style={styles.levelImage}
+        style={[
+          styles.levelImage,
+          { transform: [{ translateY: lift }, { scale }] },
+        ]}
         resizeMode="contain"
       />
     </TouchableOpacity>
   );
 }
 
-// [TEMP] Shows which level is currently selected in the carousel.
-const TEMP_INDICATOR_HEIGHT = 64; // space reserved above the carousel for the indicator
-// Para sa mga arts (Level indicator badge: a small plaque/banner art that shows the
-// level number, e.g. "LEVEL 1" - one version per level or a blank plaque we put the number on.
-// Optional: active/inactive page-dot icons for the carousel position).
-// When the art is ready, replace the body of this component with an <Image> and keep the same props.
+const TEMP_INDICATOR_HEIGHT = 64; 
 function TempLevelIndicator({ index, total }) {
   const level = LEVELS[index];
   return (
@@ -210,15 +279,11 @@ export default function LevelSelectScreen({
   };
 
   return (
-    <ImageBackground
-      source={require("../assets/Final/LevelSelectionMainBG.png")}
-      style={styles.background}
-      resizeMode="cover"
-    >
+    <View style={styles.background}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Animated layer over the static background, under all the UI. */}
-      <AnimatedBackdrop />
+      {/* Background pieces: GIF plays behind the roof and the table. */}
+      <LevelSelectScene width={width} height={height} />
 
       <TouchableOpacity
         activeOpacity={0.75}
@@ -299,7 +364,7 @@ export default function LevelSelectScreen({
           />
         </View>
       )}
-    </ImageBackground>
+    </View >
   );
 }
 
@@ -318,9 +383,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    top: 560,
+    top: 565,
   },
-  // Clips the scrolling pages; split from `carousel` so the indicator can sit above it
   carouselClip: {
     flex: 1,
     overflow: "hidden",
@@ -335,12 +399,11 @@ const styles = StyleSheet.create({
     height: "100%",
   },
 
-  // [TEMP] selected-level indicator (remove when art is added)
   tempIndicatorWrap: {
     position: "absolute",
     left: 0,
     right: 0,
-    top: -TEMP_INDICATOR_HEIGHT,
+    top: -TEMP_INDICATOR_HEIGHT - 25,
     height: TEMP_INDICATOR_HEIGHT,
     justifyContent: "flex-end",
     alignItems: "center",

@@ -8,6 +8,7 @@ const SAVE_VERSION = 1;
 
 export const DEFAULT_SAVE = {
   version: SAVE_VERSION,
+  tutorialSeen: false,
   unlockedLevels: [1],
   currentLevelId: 1,
   wallet: { currency: 0, priceStates: {} },
@@ -115,6 +116,7 @@ function mergeWithDefaults(saved) {
     : [];
   return {
     version: SAVE_VERSION,
+    tutorialSeen: saved.tutorialSeen === undefined ? true : saved.tutorialSeen === true,
     unlockedLevels: levels.length ? levels : base.unlockedLevels,
     currentLevelId: Number.isInteger(saved.currentLevelId) ? saved.currentLevelId : base.currentLevelId,
     wallet: {
