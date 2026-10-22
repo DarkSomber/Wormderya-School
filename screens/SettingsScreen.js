@@ -6,6 +6,7 @@ import {
   StatusBar,
   ImageBackground,
   TouchableOpacity,
+  ScrollView,
 } from "react-native";
 import Text from "../components/AppText";
 import AppButton from "../components/AppButton";
@@ -138,11 +139,51 @@ export default function SettingsScreen({ onBack, achievements }) {
 
           {view === "credits" && (
             <>
-              <View style={styles.placeholderContent}>
-                <Text style={styles.placeholderContentText}>
-                  CREDITS{"\n"}CONTENT PLACEHOLDER
+              <ScrollView
+                style={styles.creditsScrollView}
+                contentContainerStyle={styles.creditsContentContainer}
+                showsVerticalScrollIndicator={false}
+              >
+                <Text style={styles.creditsTitleText}>DEVELOPMENT TEAM</Text>
+
+                {/* Team Member Entries */}
+                <View style={styles.creditItem}>
+                  <Text style={styles.roleText}>Lead Developer</Text>
+                  <Text style={styles.nameText}>Palas, James T.</Text>
+                </View>
+
+                <View style={styles.creditItem}>
+                  <Text style={styles.roleText}>Gameplay Programmer</Text>
+                  <Text style={styles.nameText}>Lantin, Jose Gabriel</Text>
+                </View>
+
+                <View style={styles.creditItem}>
+                  <Text style={styles.roleText}>UI/UX</Text>
+                  <Text style={styles.nameText}>Rota, Ysabella Dylan M.</Text>
+                </View>
+
+                <View style={styles.creditItem}>
+                  <Text style={styles.roleText}>
+                    Level/Content Designer-Programmer & Sound Design
+                  </Text>
+                  <Text style={styles.nameText}>Erese, Daniel Noel</Text>
+                </View>
+
+                <View style={styles.creditItem}>
+                  <Text style={styles.roleText}>QA/Systems Programmer</Text>
+                  <Text style={styles.nameText}>Domingo, Marc Gerard M.</Text>
+                </View>
+
+                <Text style={[styles.creditsTitleText, { marginTop: 12 }]}>
+                  Third-Party Assets
                 </Text>
-              </View>
+
+                <View style={styles.creditItem}>
+                  <Text style={styles.roleText}>Game Font PixelifySans</Text>
+                  <Text style={styles.nameText}>Stefie Justprince</Text>
+                </View>
+              </ScrollView>
+
               <AppButton
                 onPress={() => setView("music")}
                 style={styles.panelBackButton}
@@ -248,22 +289,44 @@ const styles = StyleSheet.create({
     width: 230,
     height: 64,
   },
-  placeholderContent: {
+  creditsContent: {
     width: "100%",
     flex: 1,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: "#8a5a30",
-    borderStyle: "dashed",
-    backgroundColor: "rgba(255,255,255,0.35)",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 18,
   },
-  placeholderContentText: {
+  creditsTitleText: {
     textAlign: "center",
     color: "#8a5a30",
     fontWeight: "700",
+    fontSize: 24,
+    marginBottom: 15,
+  },
+  creditsContentText: {
+    textAlign: "left",
+    color: "#502b0a",
+    fontWeight: "700",
+    lineHeight: 50,
+  },
+  creditItem: {
+    alignItems: "center", // Centers the role and name horizontally
+    marginBottom: 25, // Space between different team member entries
+  },
+  // Role styling (Centered)
+  roleText: {
+    textAlign: "center",
+    color: "#8a5a30",
+    fontWeight: "700",
+    fontSize: 14,
+    marginBottom: 2, // Gap between the role and the name right below it
+  },
+  // Name styling (Centered)
+  nameText: {
+    textAlign: "center",
+    color: "#5c3a1e",
+    fontWeight: "500",
+    fontSize: 13,
   },
   panelBackButton: {
     width: 200,
