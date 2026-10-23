@@ -19,7 +19,7 @@ import UpgradeHUD from '../components/gameplayReusables/UpgradeHUD';
 import AnimatedNpc from '../components/gameplayReusables/AnimatedNpc.js';
 import HintBubble from '../components/gameplayReusables/HintBubble';
 import { useHint } from '../components/gameplayReusables/UseHint';
-import { HINT_BONUS_RATIO, HINT_TIME_RATIO } from '../components/gameplayReusables/hints';
+import { HINT_BONUS_RATIO, HINT_TIME_RATIO } from '../components/gameplayReusables/hints.js';
 import { UPGRADE_LIST } from '../components/gameplayReusables/UseUpgrades';
 import { useStage, Stage, Slot, GAMEPLAY_RECTS as RECTS, PATIENCE_METER_BOX } from '../components/gameplayReusables/Stage';
 
@@ -666,23 +666,15 @@ function LevelSession({
 
         {/* Floating status: absolutely positioned, so it takes no layout space
             and can never push the rows (or the background art alignment). */}
-        {(isRushHour || extraHealth > 0) && (
+        { isRushHour && (
           <View style={styles.statusOverlay} pointerEvents="none">
             {isRushHour && <Text style={styles.stageText}>Stage {rushHourStage}</Text>}
-            {extraHealth > 0 && (
-              <Text style={styles.healthText}>♥ Extra Health: {extraHealth}</Text>
-            )}
           </View>
         )}
         </Stage>
         <StatusBar style="light" />
 
-      {/* Upgrade overlays sit after the game board so they draw on top of it. */}
-      <UpgradeToast
-        messages={toastMessages}
-        onDone={() => setToastMessages([])}
-      />
-      <UpgradeHUD activeList={safeUpgrades.activeList} />
+      <UpgradeHUD upgrades={safeUpgrades} scale={scale} />
 
       {/* Mr. Ratty popup (rolled by useLevelMaker). Dismissing opens his shop
           as a mid-level visit: closing it returns to this running level. */}

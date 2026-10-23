@@ -30,13 +30,12 @@ import { formatCurrency } from "../components/gameplayReusables/UseWallet";
 import AchievementModal from "../components/gameplayReusables/AchievementModal";
 import PauseModal from "../components/PauseModal";
 import { ACHIEVEMENTS } from "../components/gameplayReusables/Achievements.js";
-import UpgradeToast from "../components/gameplayReusables/UpgradeToast";
 import UpgradeHUD from "../components/gameplayReusables/UpgradeHUD";
 import { UPGRADE_LIST } from "../components/gameplayReusables/UseUpgrades";
 import AnimatedNpc from "../components/gameplayReusables/AnimatedNpc.js";
 import HintBubble from "../components/gameplayReusables/HintBubble";
 import { useHint } from "../components/gameplayReusables/UseHint";
-import { HINT_BONUS_RATIO } from "../components/gameplayReusables/hints";
+import { HINT_BONUS_RATIO } from "../components/gameplayReusables/hints.js";
 
 import {
   useStage,
@@ -169,7 +168,7 @@ function BossLevelSession({
 }) {
   const safeUpgrades = upgrades ?? NO_UPGRADES;
   const [phase, setPhase] = useState("intro");
-  const [showPause, setShowPause] = useState(false); // pause menu up
+  const [showPause, setShowPause] = useState(false); 
   const { scale, w, h } = useStage();
 
   const beltRef0 = useRef(null);
@@ -620,26 +619,6 @@ function BossLevelSession({
             />
           </Slot>
         ))}
-
-        {extraHealth > 0 && (
-          <Slot
-            rect={{ x: 0, y: 60, w: 512, h: 40 }}
-            style={{ alignItems: "center" }}
-          >
-            <Text
-              style={{
-                fontSize: 22 * scale,
-                fontWeight: "bold",
-                color: "#FFD6E0",
-                textShadowColor: "#000",
-                textShadowRadius: 2,
-                textShadowOffset: { width: 1, height: 1 },
-              }}
-            >
-              ♥ Extra Health: {extraHealth}
-            </Text>
-          </Slot>
-        )}
       </Stage>
       <StatusBar style="light" />
 
@@ -652,11 +631,7 @@ function BossLevelSession({
         onResume={() => setShowPause(false)}
       />
 
-      <UpgradeToast
-        messages={toastMessages}
-        onDone={() => setToastMessages([])}
-      />
-      <UpgradeHUD activeList={safeUpgrades.activeList} />
+      <UpgradeHUD upgrades={safeUpgrades} scale={scale} />
     </View>
   );
 }
