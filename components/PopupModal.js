@@ -21,9 +21,13 @@ export default function PopupModal({
   cancelText,
   onCancel,
   cancelColor,
+  extraText, // optional third button, shown between cancel and the main button
+  onExtra,
+  extraColor = '#FFE194',
   children, 
   overlayChildren,
 }) {
+  const hasExtra = !!(extraText && onExtra);
   return (
     <Modal
       visible={visible}
@@ -58,18 +62,27 @@ export default function PopupModal({
             )}
 
           {/* Action Button(s) */}
-          <View style={styles.buttonRow}>
+          <View style={[styles.buttonRow, hasExtra && styles.buttonRowCompact]}>
             {cancelText && onCancel ? (
               <TouchableOpacity
-                style={[styles.button, styles.cancelButtonm, cancelColor && { backgroundColor: cancelColor}]}
+                style={[styles.button, hasExtra && styles.buttonCompact, styles.cancelButtonm, cancelColor && { backgroundColor: cancelColor}]}
                 onPress={withClick(onCancel)}
               >
                 <Text style={styles.buttonText}>{cancelText}</Text>
               </TouchableOpacity>
             ) : null}
 
+            {hasExtra ? (
+              <TouchableOpacity
+                style={[styles.button, styles.buttonCompact, { backgroundColor: extraColor }]}
+                onPress={withClick(onExtra)}
+              >
+                <Text style={styles.buttonText}>{extraText}</Text>
+              </TouchableOpacity>
+            ) : null}
+
             <TouchableOpacity
-              style={[styles.button, { backgroundColor: buttonColor }]}
+              style={[styles.button, hasExtra && styles.buttonCompact, { backgroundColor: buttonColor }]}
               onPress={withClick(onPress)}
             >
               <Text style={styles.buttonText}>{buttonText}</Text>
@@ -151,6 +164,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginTop: 4,
+  },
+  // Three buttons: tighter so they still fit on one row of the card.
+  buttonRowCompact: {
+    gap: 8,
+  },
+  buttonCompact: {
+    minWidth: 0,
+    paddingHorizontal: 12,
   },
   button: {
     borderWidth: 2,

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Image,
@@ -14,6 +14,8 @@ import VolumeSlider from "../components/VolumeSlider";
 import audio from "../audio/AudioManager";
 import AchievementList from "../components/AchievementList";
 import GrannyTutorial from "../components/GrannyTutorial";
+import PopupModal from "../components/PopupModal";
+import { isOnline } from "../components/gameplayReusables/WordInput/WordApi";
 
 const PANEL_TITLES = {
   music: "Settings",
@@ -44,8 +46,60 @@ const ART_STYLE = {
   transform: [{ translateX: 20 }, { translateY: 20 }],
 };
 
-export default function SettingsScreen({ onBack, achievements }) {
+// Re-checks every time the Settings panel opens.
+function ConnectionStatus() {
+  const [online, setOnline] = useState(null); // null = still checking
+
+  useEffect(() => {
+    let cancelled = false;
+    isOnline().then((ok) => {
+      if (!cancelled) setOnline(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const text =
+    online === null
+      ? "Checking connection..."
+      : online
+        ? "You are connected - all words available"
+        : "You are not connected - fewer words available";
+
+  return (
+    <Text
+      style={[
+        styles.connectionText,
+        online === true && styles.connectionOn,
+        online === false && styles.connectionOff,
+      ]}
+    >
+      {text}
+    </Text>
+  );
+}
+
+export default function SettingsScreen({
+  onBack,
+  achievements,
+  onResetProgress,
+}) {
   const [view, setView] = useState("music");
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  const handleConfirmReset = async () => {
+    if (resetting) return;
+    setResetting(true);
+    try {
+      await onResetProgress?.();
+    } finally {
+      // The session remounts after a reset, but this covers a failed reset too.
+      setResetting(false);
+      setConfirmReset(false);
+    }
+  };
   // Start from the engine's live values (App loads the saved ones into it).
   const [masterVolume, setMasterVolume] = useState(
     () => audio.getVolumes().master,
@@ -88,6 +142,7 @@ export default function SettingsScreen({ onBack, achievements }) {
             <>
               <VolumeSlider
                 label="Master Volume"
+                backgroundImage={require("../assets/Final/buttons/button.png")}
                 value={masterVolume}
                 onValueChange={liveVolume("master", setMasterVolume)}
                 onSlidingComplete={saveVolume(true)}
@@ -95,6 +150,7 @@ export default function SettingsScreen({ onBack, achievements }) {
               />
               <VolumeSlider
                 label="Music Volume"
+                backgroundImage={require("../assets/Final/buttons/button.png")}
                 value={musicVolume}
                 onValueChange={liveVolume("music", setMusicVolume)}
                 onSlidingComplete={saveVolume(false)}
@@ -102,25 +158,36 @@ export default function SettingsScreen({ onBack, achievements }) {
               />
               <VolumeSlider
                 label="Sound Effects (SFX)"
+                backgroundImage={require("../assets/Final/buttons/button.png")}
                 value={sfxVolume}
                 onValueChange={liveVolume("sfx", setSfxVolume)}
                 onSlidingComplete={saveVolume(true)}
                 style={styles.sliderSpacing}
               />
 
+              <ConnectionStatus />
+
               <View style={styles.panelButtonRow}>
-                {/* Image and target now match (they were swapped before). */}
                 <AppButton
                   onPress={() => setView("achievements")}
                   style={styles.panelSmallButton}
-                  backgroundImage={require("../assets/Final/buttons/buttonSettings-Achievements.png")}
+                  label="Achievement"
+                  backgroundImage={require("../assets/Final/buttons/button.png")}
                 />
                 <AppButton
                   onPress={() => setView("credits")}
                   style={styles.panelSmallButton}
-                  multiline
-                  backgroundImage={require("../assets/Final/buttons/buttonSettings-Credits.png")}
+                  label="Credits"
+                  backgroundImage={require("../assets/Final/buttons/button.png")}
                 />
+                {onResetProgress && (
+                  <AppButton
+                    onPress={() => setConfirmReset(true)}
+                    style={styles.panelSmallButton}
+                    label="Reset Progress"
+                    backgroundImage={require("../assets/Final/buttons/button.png")}
+                  />
+                )}
               </View>
             </>
           )}
@@ -169,8 +236,8 @@ export default function SettingsScreen({ onBack, achievements }) {
               </Text>
 
               <View style={styles.creditItem}>
-                <Text style={styles.roleText}>Game Font PixelifySans</Text>
-                <Text style={styles.nameText}>Stefie Justprince</Text>
+                <Text style={styles.roleText}>Game Font Geist Pixel</Text>
+                <Text style={styles.nameText}>The Geist Project Authors</Text>
               </View>
             </ScrollView>
           )}
@@ -195,8 +262,23 @@ export default function SettingsScreen({ onBack, achievements }) {
             />
           </TouchableOpacity>
         </View>
-        <GrannyTutorial style={{ bottom: 20 }}/>
+        <GrannyTutorial style={{ bottom: 20 }} />
       </View>
+
+      <PopupModal
+        visible={confirmReset}
+        title="RESET PROGRESS?"
+        message="This erases your unlocked levels, coins, upgrades, achievements and best scores."
+        extraMessage="This cannot be undone."
+        buttonText={resetting ? "Resetting..." : "Reset"}
+        buttonColor="#F4A3A3"
+        onPress={handleConfirmReset}
+        cancelText="Cancel"
+        cancelColor="#E0E0E0"
+        onCancel={() => {
+          if (!resetting) setConfirmReset(false);
+        }}
+      />
     </ImageBackground>
   );
 }
@@ -257,18 +339,27 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#8a5a30",
     opacity: 0.5,
-    marginBottom: 16,
+    marginBottom: 7,
   },
   sliderSpacing: {
-    marginBottom: 26,
+    marginBottom: 20,
     width: "100%",
   },
+  connectionText: {
+    textAlign: "center",
+    color: "#8a5a30",
+    fontWeight: "700",
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  connectionOn: { color: "#2e7d32" },
+  connectionOff: { color: "#b3261e" },
   panelButtonRow: {
     flexDirection: "column",
     alignItems: "center",
     marginTop: "auto",
     marginBottom: 30,
-    gap: 20,
+    gap: 7,
   },
   panelSmallButton: {
     width: 230,

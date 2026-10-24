@@ -30,6 +30,7 @@ import { formatCurrency } from "../components/gameplayReusables/UseWallet";
 import AchievementModal from "../components/gameplayReusables/AchievementModal";
 import PauseModal from "../components/PauseModal";
 import { ACHIEVEMENTS } from "../components/gameplayReusables/Achievements.js";
+import ServeCounter from "../components/gameplayReusables/ServeCounter";
 import UpgradeHUD from "../components/gameplayReusables/UpgradeHUD";
 import { UPGRADE_LIST } from "../components/gameplayReusables/UseUpgrades";
 import AnimatedNpc from "../components/gameplayReusables/AnimatedNpc.js";
@@ -183,9 +184,11 @@ function BossLevelSession({
   const toastedIdsRef = useRef(new Set());
   const [toastMessages, setToastMessages] = useState([]);
 
+  // Start queued timed upgrades when play begins, not during the intro.
   useEffect(() => {
-    safeUpgrades.startNewRound();
-  }, []);
+    if (phase === "playing") safeUpgrades.startNewRound();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   useEffect(() => {
     const messages = [];
@@ -242,6 +245,12 @@ function BossLevelSession({
   });
 
   const levelMaker = useLevelMaker(levelConfig, isStoreOpen || showPause);
+
+  // Served counts for the HUD and the end screen (derived, no extra state).
+  const customersServed = Math.min(levelMaker.customerIndex, levelConfig.totalCustomers);
+  const wordsServed =
+    levelMaker.customerIndex * levelConfig.wordsPerCustomer + levelMaker.wordsServedForCustomer;
+  const totalWords = levelConfig.totalCustomers * levelConfig.wordsPerCustomer;
   const levelMakerRef = useRef(levelMaker);
   levelMakerRef.current = levelMaker;
 
@@ -302,6 +311,7 @@ function BossLevelSession({
 
   const [levelResult, setLevelResult] = useState(null);
     const [isWorried, setIsWorried] = useState(false);
+  const [statsPing, setStatsPing] = useState(0); // chef tap re-shows the counter bubble
 
   const patienceBandRef = useRef("happy");
   const voiceIdRef = useRef(customerVoiceId);
@@ -417,6 +427,8 @@ function BossLevelSession({
         won={levelResult === "win"}
         finalScore={score}
         newRecord={isNewRecord}
+        customersServed={customersServed}
+        wordsServed={wordsServed}
         onComplete={handleEndComplete}
       />
     );
@@ -446,6 +458,15 @@ function BossLevelSession({
             />
           </TouchableOpacity>
         </Slot>
+
+        <ServeCounter
+          customersServed={customersServed}
+          totalCustomers={levelConfig.totalCustomers}
+          wordsServed={wordsServed}
+          totalWords={totalWords}
+          scale={scale}
+          ping={statsPing}
+        />
 
         {/* Coin board + patience meter (one PNG, same layout as GameplayScreen) */}
         <Slot rect={RECTS.coin}>
@@ -566,11 +587,12 @@ function BossLevelSession({
           />
         </Slot>
 
-        <Slot rect={RECTS.serve}>
+        <Slot rect={{ ...RECTS.serve, y: 556 }}>
           <PlateButton style={{ flex: 1 }} onPress={handleServePlate} />
         </Slot>
 
       <Slot rect={RECTS.chef} scale={scale}>
+        <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={() => setStatsPing((n) => n + 1)}>
         {/* Normal pose, hidden while the worry animation plays. */}
         <Image
           source={require('../assets/Final/MainCharacter.png')}
@@ -583,6 +605,7 @@ function BossLevelSession({
             npcKey="chef"
             unit={scale}
             worried
+            animatedGif
             imageStyle={{
               position: 'absolute',
               left: '-23.4375%',
@@ -593,6 +616,7 @@ function BossLevelSession({
             }}
           />
         )}
+        </TouchableOpacity>
       </Slot>
 
         <Slot rect={RECTS.conveyors}>
@@ -627,6 +651,10 @@ function BossLevelSession({
         onExit={() => {
           setShowPause(false);
           onBack?.();
+        }}
+        onRetry={() => {
+          setShowPause(false);
+          onRetry?.();
         }}
         onResume={() => setShowPause(false)}
       />

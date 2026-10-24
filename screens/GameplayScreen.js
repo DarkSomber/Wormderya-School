@@ -15,6 +15,7 @@ import { formatCurrency } from '../components/gameplayReusables/UseWallet';
 import AchievementModal from '../components/gameplayReusables/AchievementModal';
 import MrRattyDiscount from '../components/gameplayReusables/MrRattyDiscount';
 import UpgradeToast from '../components/gameplayReusables/UpgradeToast';
+import ServeCounter from '../components/gameplayReusables/ServeCounter';
 import UpgradeHUD from '../components/gameplayReusables/UpgradeHUD';
 import AnimatedNpc from '../components/gameplayReusables/AnimatedNpc.js';
 import HintBubble from '../components/gameplayReusables/HintBubble';
@@ -201,11 +202,11 @@ function LevelSession({
   const toastedIdsRef = useRef(new Set());
   const [toastMessages, setToastMessages] = useState([]);
 
-  // Drop expired timers when this session starts.
+  // Start queued timed upgrades when play begins, not during the intro.
   useEffect(() => {
-    safeUpgrades.startNewRound();
+    if (phase === 'playing') safeUpgrades.startNewRound();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [phase]);
 
   // Announce active upgrades once per session / activation.
   useEffect(() => {
@@ -270,6 +271,12 @@ function LevelSession({
   });
 
   const levelMaker = useLevelMaker(levelConfig, isStoreOpen || showPause);
+
+  // Served counts for the HUD and the end screen (derived, no extra state).
+  const customersServed = Math.min(levelMaker.customerIndex, levelConfig.totalCustomers);
+  const wordsServed =
+    levelMaker.customerIndex * levelConfig.wordsPerCustomer + levelMaker.wordsServedForCustomer;
+  const totalWords = levelConfig.totalCustomers * levelConfig.wordsPerCustomer;
 
   const isPicky = !!CUSTOMER_SPRITES[levelMaker.customerIndex % CUSTOMER_SPRITES.length].picky;
   const hint = useHint({
@@ -349,6 +356,7 @@ function LevelSession({
   // null | 'win' | 'lose'
   const [levelResult, setLevelResult] = useState(null);
   const [isWorried, setIsWorried] = useState(false);
+  const [statsPing, setStatsPing] = useState(0); // chef tap re-shows the counter bubble
 
   // CustomerMood reports every patience change. Only a drop into a worse band
   // speaks ("ehem" at impatient, a sigh at angry); a fresh customer starts happy.
@@ -498,6 +506,8 @@ function LevelSession({
         finalScore={score}
         rushHourStage={isRushHour ? rushHourStage : null}
         newRecord={isNewRecord}
+        customersServed={customersServed}
+        wordsServed={wordsServed}
         onComplete={handleEndComplete}
       />
     );
@@ -524,6 +534,15 @@ function LevelSession({
                  style={{ width: '100%', height: '100%', resizeMode: 'contain', bottom: 5}} />
         </TouchableOpacity>
       </Slot>
+
+      <ServeCounter
+        customersServed={customersServed}
+        totalCustomers={levelConfig.totalCustomers}
+        wordsServed={wordsServed}
+        totalWords={totalWords}
+        scale={scale}
+        ping={statsPing}
+      />
 
       <Slot rect={RECTS.coin} scale={scale}>
   <ImageBackground
@@ -610,11 +629,12 @@ function LevelSession({
         />
       </Slot>
 
-      <Slot rect={RECTS.serve} scale={scale}>
+      <Slot rect={{ ...RECTS.serve, y: 556 }} scale={scale}>
         <PlateButton style={{ flex: 1 }} onPress={handleServePlate} />
       </Slot>
 
             <Slot rect={RECTS.chef} scale={scale}>
+        <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={() => setStatsPing((n) => n + 1)}>
         {/* Normal pose, hidden while the worry animation plays. */}
         <Image
           source={require('../assets/Final/MainCharacter.png')}
@@ -627,6 +647,7 @@ function LevelSession({
             npcKey="chef"
             unit={scale}
             worried
+            animatedGif
             imageStyle={{
               position: 'absolute',
               left: '-23.4375%',
@@ -637,6 +658,7 @@ function LevelSession({
             }}
           />
         )}
+        </TouchableOpacity>
       </Slot>
 
       <Slot rect={RECTS.conveyors} scale={scale}>
@@ -681,6 +703,7 @@ function LevelSession({
       <PauseModal
         visible={showPause}
         onExit={() => { setShowPause(false); onBack?.(); }}
+        onRetry={() => { setShowPause(false); onRetry?.(); }}
         onResume={() => setShowPause(false)}
       />
 

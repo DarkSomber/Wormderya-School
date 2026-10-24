@@ -11,6 +11,7 @@ import {
   Platform,
   useWindowDimensions,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { hasLevelPreset } from "../levels/levelPresets";
 import Text from "../components/AppText";
 import DebugButton from "../components/tests/DebugButton"; // [TEST/DEBUG]
@@ -101,9 +102,11 @@ function AnimatedBackdrop({ sceneWidth, sceneHeight }) {
           pointerEvents="none"
           style={[StyleSheet.absoluteFill, { opacity }]}
         >
-          <Image
+          <ExpoImage
         key={cycle}
         source={require("../assets/Final/levels/LevelSelectionMainBGAnim.gif")}
+        autoplay
+        transition={0}
         style={[
           {
             position: "absolute",
@@ -117,8 +120,7 @@ function AnimatedBackdrop({ sceneWidth, sceneHeight }) {
             ],
           },
         ]}
-        resizeMode="stretch"
-        fadeDuration={0}
+        contentFit="fill"
       />
         </Animated.View>
       )}
@@ -233,6 +235,7 @@ export default function LevelSelectScreen({
   onBack,
   unlockedLevels = [1],
   lockedLevels = [],
+  initialLevelId = 1, // the carousel opens on this level
   onDebugToggle, // [TEST/DEBUG]
   onDebugResetSave, // [TEST/DEBUG]
   debugAllUnlocked = false, // [TEST/DEBUG]
@@ -251,7 +254,15 @@ export default function LevelSelectScreen({
   const debugTop = Math.round(height * DEBUG_TOP_RATIO);
 
   const scrollRef = useRef(null);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  // Open on initialLevelId when it is a real, unlocked level; otherwise level 1.
+  const startIndex = (() => {
+    const i = LEVELS.findIndex((l) => l.id === initialLevelId);
+    if (i < 0) return 0;
+    return isLevelLocked(LEVELS[i], unlockedLevels, lockedLevels) ? 0 : i;
+  })();
+  const [selectedIndex, setSelectedIndex] = useState(startIndex);
+  const didInitialScroll = useRef(false);
 
   const snapOffsets = LEVELS.map((_, i) => i * pageWidth);
 
@@ -324,6 +335,15 @@ export default function LevelSelectScreen({
             bounces={false}
             overScrollMode="never"
             nestedScrollEnabled
+            contentOffset={{ x: startIndex * pageWidth, y: 0 }}
+            onContentSizeChange={() => {
+              // Android ignores contentOffset, so jump there once content is laid out.
+              if (didInitialScroll.current) return;
+              didInitialScroll.current = true;
+              if (startIndex > 0) {
+                scrollRef.current?.scrollTo({ x: startIndex * pageWidth, animated: false });
+              }
+            }}
             snapToOffsets={snapOffsets}
             snapToEnd={false}
             decelerationRate="fast"

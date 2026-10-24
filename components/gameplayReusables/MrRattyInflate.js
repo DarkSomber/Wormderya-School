@@ -8,7 +8,7 @@ export default function MrRattyInflate({ visible, onDismiss }) {
       title={`Mr. Ratty will\nremember you`}
       message="The next time Mr. Ratty will appear, prices will have a chance to inflate."
       buttonText="uh..."
-      buttonColor="#FFE194" // Yellow
+      buttonColor="#FFE194" 
       onPress={onDismiss}
       />
     );

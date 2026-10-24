@@ -1,16 +1,12 @@
-import { TAGALOG_WORD_DATABASE } from './TagalogWordDatabase';
+import { checkWord } from './WordApi';
 
 /**
  * WordValidator
  * -------------
- * Its only job is: does this word exist in the configured database?
- * It knows nothing about the conveyor, input, or scoring — WordInputSystem
- * calls this, gets a plain boolean back, and decides what to do with it.
- *
- * A different/larger database can be swapped in per level later:
- *   isValidWord('BAHAY', someOtherDatabase)
+ * Does this word exist? Async, because the answer comes from the word API
+ * (with a local cache). WordInputSystem awaits it and decides what to do.
  */
-export function isValidWord(word, database = TAGALOG_WORD_DATABASE) {
+export async function isValidWord(word, check = checkWord) {
   if (!word) return false;
-  return database.has(word.toUpperCase());
+  return check(word);
 }

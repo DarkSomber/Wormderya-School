@@ -40,17 +40,20 @@ export default function ModeSelectScreen({
         <View style={styles.menu}>
           <AppButton
             onPress={onSelectStoryMode}
-            backgroundImage={require("../assets/Final/buttons/buttonStorymode.png")}
+            label="STORY MODE"
+            backgroundImage={require("../assets/Final/buttons/button.png")}
           />
           <AppButton
             onPress={onSelectRushHour}
             style={styles.buttonSpacing}
-            backgroundImage={require("../assets/Final/buttons/buttonRushHourmode.png")}
+            label="RUSH HOUR MODE"
+            backgroundImage={require("../assets/Final/buttons/button.png")}
           />
           <AppButton
             onPress={onBack}
             style={styles.buttonSpacing}
-            backgroundImage={require("../assets/Final/buttons/buttonBack.png")}
+            label="BACK"
+            backgroundImage={require("../assets/Final/buttons/button.png")}
           />
         </View>
       </View>

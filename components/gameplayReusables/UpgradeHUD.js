@@ -11,16 +11,15 @@ import { Slot } from "./Stage";
 import { UPGRADE_LIST } from "./UseUpgrades";
 import audio from "../../audio/AudioManager";
 
-// Art-unit rects. Popup sits right of the stack, below the serve button.
 const STACK = { x: 14, y: 486, w: 70, h: 177 };
 const POPUP_GAP = 3;
 const POPUP_W = 110;
 const ICON = 60;
+const TAB_W = 40;
 const GAP = 3;
 const POPUP_MS = 4000;
-const LOW_MS = 3000; // icon blinks at or below this
+const LOW_MS = 5000; 
 
-// Only upgrades the player has right now.
 function liveItems({ ownedPermanent, activeList, extraHealth }) {
   const now = Date.now();
   const items = [];
@@ -51,7 +50,6 @@ function liveItems({ ownedPermanent, activeList, extraHealth }) {
   return items;
 }
 
-// Fades in and out while `blink` is true.
 function BlinkView({ blink, style, children }) {
   const opacity = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -88,7 +86,6 @@ export default function UpgradeHUD({ upgrades, scale }) {
   const openIndex = items.findIndex((i) => i.u.id === selected);
   const open = items[openIndex];
 
-  // Popup closes itself; the game keeps running underneath.
   useEffect(() => {
     if (!selected) return undefined;
     const t = setTimeout(() => setSelected(null), POPUP_MS);
@@ -125,7 +122,16 @@ export default function UpgradeHUD({ upgrades, scale }) {
                 resizeMode="contain"
               />
             </BlinkView>
-            <Text style={[styles.badge, { fontSize: fs(8) }]}>{badge}</Text>
+            <BlinkView
+              style={[
+                styles.tab,
+                { width: TAB_W * scale, height: (ICON * 0.5) * scale, marginLeft: -6 * scale },
+              ]}
+            >
+              <Text style={[styles.badge, { fontSize: fs(8) }]} numberOfLines={1}>
+                {badge}
+              </Text>
+            </BlinkView>
           </TouchableOpacity>
         ))}
       </Slot>
@@ -135,7 +141,7 @@ export default function UpgradeHUD({ upgrades, scale }) {
           pointerEvents="box-none"
           style={{
             position: "absolute",
-            left: (STACK.x + ICON + POPUP_GAP) * scale,
+            left: (STACK.x + ICON + TAB_W + POPUP_GAP) * scale,
             top: (STACK.y + openIndex * (ICON + GAP)) * scale,
             width: POPUP_W * scale,
           }}
@@ -165,6 +171,7 @@ export default function UpgradeHUD({ upgrades, scale }) {
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center" },
   icon: {
+    zIndex: 1,
     borderWidth: 2,
     borderColor: "#7A2E2E",
     backgroundColor: "#FFE194",
@@ -173,7 +180,18 @@ const styles = StyleSheet.create({
   },
   iconOn: { borderColor: "#000" },
   iconImg: { width: "100%", height: "100%" },
-  badge: { marginLeft: 6, fontWeight: "900", color: "#3B1F0B" },
+  tab: {
+    backgroundColor: "#3B1F0B",
+    borderWidth: 2,
+    borderLeftWidth: 0,
+    borderColor: "#000",
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+    paddingLeft: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badge: { fontWeight: "900", color: "#fff" },
   popup: {
     backgroundColor: "#FFF8E7",
     borderWidth: 3,

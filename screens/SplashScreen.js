@@ -1,16 +1,18 @@
 import React from "react";
-import { ImageBackground, StyleSheet, StatusBar } from "react-native";
+import { View, StyleSheet, StatusBar } from "react-native";
+import { Image } from "expo-image";
 
-// Display only. App.js decides when loading is done and leaves this screen.
 export default function SplashScreen() {
   return (
-    <ImageBackground
-      source={require("../assets/Final/Animations/SplashScreenAnimated.gif")}
-      style={styles.background}
-      resizeMode="cover"
-    >
+    <View style={styles.background}>
+      <Image
+        source={require("../assets/Final/Animations/SplashScreenAnimated.gif")}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        autoplay
+      />
       <StatusBar barStyle="dark-content" />
-    </ImageBackground>
+    </View>
   );
 }
 
