@@ -5,19 +5,19 @@ export const UPGRADES = {
     id: 'teka-lang',
     name: 'Teka lang po!',
     description: 'Customers wait ~10s longer before losing patience.',
-    price: 20,
+    price: 50,
     type: 'temporary',
-    durationMs: 10000,
+    durationMs: 45000,
     patienceDrainMultiplier: 0.5,
     icon: require('../../assets/Final/store/Power-Teka_Lang_Po.png'),
   },
   DOBLENG_MAHAL: {
     id: 'dobleng-mahal',
     name: 'Dobleng Mahal, Dobleng Hirap',
-    description: 'Double rewards, double patience drain.',
-    price: 35,
+    description: 'Double rewards, double patience drain. BUY AT YOUR OWN RISK!',
+    price: 150,
     type: 'temporary',
-    durationMs: 15000,
+    durationMs: 35000,
     rewardMultiplier: 2,
     patienceDrainMultiplier: 2,
     icon: require('../../assets/Final/store/Power-DMDH.png'),
@@ -25,19 +25,20 @@ export const UPGRADES = {
   EXTRA_HEALTH: {
     id: 'extra-health',
     name: 'Extra Health',
-    description: 'One extra customer can leave before you lose.',
-    price: 30,
+    description: 'One extra chance before you lose.',
+    price: 50,
     type: 'consumable',
     healthBonus: 1,
+    priceStep: 25, // added to the price for each one already held
     icon: require('../../assets/Final/store/Power-Extra_Health.png'),
   },
   YOLO: {
     id: 'yolo',
     name: 'YOLO nalang G!',
-    description: 'Permanent 2.5x rewards, 1.5x patience drain.',
-    price: 100,
+    description: 'Permanent 1.5x rewards, 1.5x patience drain. BUY AT YOUR OWN RISK!',
+    price: 150,
     type: 'permanent',
-    rewardMultiplier: 2.5,
+    rewardMultiplier: 1.5,
     patienceDrainMultiplier: 1.5,
     icon: require('../../assets/Final/store/Power-YOLO.png'),
   },
@@ -45,28 +46,15 @@ export const UPGRADES = {
 
 export const UPGRADE_LIST = Object.values(UPGRADES);
 
-/**
- * useUpgrades(wallet, { initialState, onChange })
- *
- * - initialState: { owned: [ids], consumables: { id: count } } from save
- * - onChange(snapshot): App persists owned + consumables only
- *
- * Temporary power-ups bought in the Store are QUEUED for the next round.
- * They activate when the round actually starts (GameplayScreen calls
- * startNewRound on mount). This matches the Store-flow: buy -> next
- * round begins -> effect fires for its full duration.
- */
 export function useUpgrades(wallet, { initialState, onChange } = {}) {
   const [ownedPermanent, setOwnedPermanent] = useState(
     () => new Set(initialState?.owned ?? [])
   );
-  // Temporary upgrade ids waiting to activate on the next round start.
+
   const [queuedTemporary, setQueuedTemporary] = useState([]);
-  // Currently-running temporaries: { [id]: { expiresAt } }.
   const [activeTemporary, setActiveTemporary] = useState({});
   const [consumables, setConsumables] = useState(initialState?.consumables ?? {});
 
-  // Tick so the HUD / multipliers re-evaluate as timers expire.
   const [, forceTick] = useState(0);
   useEffect(() => {
     const hasTimed = Object.values(activeTemporary).some(
@@ -77,7 +65,6 @@ export function useUpgrades(wallet, { initialState, onChange } = {}) {
     return () => clearInterval(id);
   }, [activeTemporary]);
 
-  // Persist only permanent + consumable state. Temporary state is round-local.
   const notify = useCallback(() => {
     if (!onChange) return;
     onChange({
@@ -90,16 +77,25 @@ export function useUpgrades(wallet, { initialState, onChange } = {}) {
     notify();
   }, [ownedPermanent, consumables, notify]);
 
+  // Base price; Extra Health costs more for each one already held (no stockpiling).
+  const getBasePrice = useCallback(
+    (upgrade) => upgrade.price + (upgrade.priceStep ?? 0) * (consumables[upgrade.id] || 0),
+    [consumables]
+  );
+
   const buyUpgrade = useCallback(
-    (upgrade) => {
+    (upgrade, offeredIds = UPGRADE_LIST.map((u) => u.id)) => {
       if (!upgrade) return { success: false, reason: 'unknown' };
       if (upgrade.type === 'permanent' && ownedPermanent.has(upgrade.id)) {
         return { success: false, reason: 'owned' };
       }
-      if (!wallet.canAfford(upgrade.id, upgrade.price)) {
+      const basePrice = getBasePrice(upgrade);
+      if (!wallet.canAfford(upgrade.id, basePrice)) {
         return { success: false, reason: 'insufficient' };
       }
-      const spend = wallet.buyItem(upgrade.id, upgrade.price, [upgrade.id]);
+      // The random discount goes to another offered upgrade the player doesn't own.
+      const pool = offeredIds.filter((id) => !ownedPermanent.has(id));
+      const spend = wallet.buyItem(upgrade.id, basePrice, pool);
       if (!spend.success) return { success: false, reason: 'insufficient' };
 
       if (upgrade.type === 'permanent') {
@@ -109,9 +105,6 @@ export function useUpgrades(wallet, { initialState, onChange } = {}) {
           return next;
         });
       } else if (upgrade.type === 'temporary') {
-        // Queue for the next round. Multiple buys of the same temp
-        // are allowed (they'll stack in the queue and just refresh the
-        // timer when the round starts — one activation per round).
         setQueuedTemporary((prev) => [...prev, upgrade.id]);
       } else {
         setConsumables((prev) => ({
@@ -121,7 +114,7 @@ export function useUpgrades(wallet, { initialState, onChange } = {}) {
       }
       return { success: true };
     },
-    [wallet, ownedPermanent]
+    [wallet, ownedPermanent, getBasePrice]
   );
 
   const isActive = useCallback(
@@ -134,7 +127,6 @@ export function useUpgrades(wallet, { initialState, onChange } = {}) {
     [activeTemporary]
   );
 
-  // Combined reward multiplier: permanent + currently-active temps.
   const rewardMultiplier = useMemo(() => {
     let m = 1;
     if (ownedPermanent.has(UPGRADES.YOLO.id)) m *= UPGRADES.YOLO.rewardMultiplier;
@@ -142,8 +134,6 @@ export function useUpgrades(wallet, { initialState, onChange } = {}) {
     return m;
   }, [ownedPermanent, isActive]);
 
-  // Combined patience drain multiplier: permanent + active temps.
-  // Teka (<1) slows drain; Dobleng / YOLO (>1) speed it up.
   const patienceDrainMultiplier = useMemo(() => {
     let m = 1;
     if (ownedPermanent.has(UPGRADES.YOLO.id)) m *= UPGRADES.YOLO.patienceDrainMultiplier;
@@ -162,36 +152,31 @@ export function useUpgrades(wallet, { initialState, onChange } = {}) {
     });
   }, []);
 
-  /**
-   * Called ONCE at the start of each round (GameplayScreen mount).
-   * - Drops any already-expired actives.
-   * - Activates everything in the queued temporary list with a fresh timer.
-   * - Clears the queue so a mid-round re-render never re-triggers it.
-   */
+  // Mirror of the queue so startNewRound never reads a stale closure.
+  const queueRef = useRef([]);
+  useEffect(() => {
+    queueRef.current = queuedTemporary;
+  }, [queuedTemporary]);
+
   const startNewRound = useCallback(() => {
     const now = Date.now();
-
+    const queue = queueRef.current;
+    queueRef.current = [];
+    setQueuedTemporary([]);
     setActiveTemporary((prev) => {
       const next = {};
-      // Keep actives that haven't expired yet.
       for (const [k, v] of Object.entries(prev)) {
         if (v.expiresAt !== null && v.expiresAt > now) next[k] = v;
       }
-      // Activate queued temps with a fresh timer. Same id re-bought
-      // just refreshes the timer — no duplication.
-      setQueuedTemporary((queue) => {
-        for (const id of queue) {
-          const def = UPGRADE_LIST.find((u) => u.id === id);
-          if (!def || !def.durationMs) continue;
-          next[id] = { expiresAt: now + def.durationMs };
-        }
-        return [];
-      });
+      for (const id of queue) {
+        const def = UPGRADE_LIST.find((u) => u.id === id);
+        if (!def || !def.durationMs) continue;
+        next[id] = { expiresAt: now + def.durationMs };
+      }
       return next;
     });
   }, []);
 
-  // What's currently live — used by the HUD.
   const activeList = useMemo(() => {
     const now = Date.now();
     return Object.entries(activeTemporary)
@@ -203,6 +188,7 @@ export function useUpgrades(wallet, { initialState, onChange } = {}) {
           id,
           name: def?.name ?? id,
           remainingMs,
+          expiresAt: v.expiresAt,
         };
       });
   }, [activeTemporary]);
@@ -217,6 +203,7 @@ export function useUpgrades(wallet, { initialState, onChange } = {}) {
     extraHealth,
     consumeExtraHealth,
     buyUpgrade,
+    getBasePrice,
     startNewRound,
   };
 }

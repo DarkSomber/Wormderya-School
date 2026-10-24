@@ -271,9 +271,15 @@ export function useWordInput(   //Constuctor
     return false;
   }, [returnLetterFromSlot]);
 
-  const submitWord = useCallback(() => {
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+
+  // Tiles clear right away; the result arrives once the word check finishes.
+  const submitWord = useCallback(async () => {
     const word = currentWord.map((l) => l.character).join('');
-    const valid = isValidWord(word);
+    resetWord();
+    const valid = await isValidWord(word);
+    if (!mountedRef.current) return null;
     const score = valid ? calculateScore(word, levelConfig.scoreMultiplier) : 0;
     const result = { word, valid, score };
 
@@ -282,7 +288,6 @@ export function useWordInput(   //Constuctor
     }
 
     setLastResult(result);
-    resetWord();
     onSubmit?.(result); // <-- notifies the caller (e.g. GameplayScreen's handleWordSubmit)
     return result;
   }, [currentWord, levelConfig, resetWord, onSubmit]);
@@ -307,7 +312,7 @@ export function useWordInput(   //Constuctor
     lastResult,   //{ word, valid, score } | null   result of the last submit
     selectLetter,  //call from a belt's onLetterPress
     handleKeyPress,  //call from a keyboard listener
-    submitWord,     //validate + score + reset
+    submitWord,     //async: reset + validate (API) + score
     resetWord,
     removeLastLetter,
     inputBoxCount,

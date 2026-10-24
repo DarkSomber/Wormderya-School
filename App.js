@@ -1,11 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useFonts } from "expo-font";
-import {
-  PixelifySans_400Regular,
-  PixelifySans_500Medium,
-  PixelifySans_600SemiBold,
-  PixelifySans_700Bold,
-} from "@expo-google-fonts/pixelify-sans";
+import { GeistPixel_400Regular } from "@expo-google-fonts/geist-pixel";
 import { View, StyleSheet, Modal, Platform, BackHandler } from "react-native";
 import SplashScreen from "./screens/SplashScreen";
 import HomeScreen from "./screens/HomeScreen";
@@ -38,6 +33,10 @@ import {
   DEFAULT_SAVE,
 } from "./components/GameSave";
 import audio from "./audio/AudioManager";
+import {
+  loadWordCache,
+  shouldShowOfflineNotice,
+} from "./components/gameplayReusables/WordInput";
 
 import QuitModal from "./components/QuitModal";
 import RushHourModal from "./screens/RushHourModal";
@@ -46,27 +45,23 @@ import StoreScreen from "./screens/StoreScreen";
 
 const DEBUG_LEVEL_TOGGLE = true;
 
-// Normal-level wins -> achievement. The boss achievement is unlocked in BossGameplayScreen.
 const LEVEL_ACHIEVEMENTS = {
   "level-1": ACHIEVEMENTS.FINISH_LEVEL_ONE,
   "level-2": ACHIEVEMENTS.FINISH_LEVEL_TWO,
   "level-3": ACHIEVEMENTS.FINISH_LEVEL_THREE,
 };
 
-// Splash stays up for this long after the images finish preloading.
 const SPLASH_EXTRA_DELAY_MS = 3000;
-// Safety net so a hung image request can never keep the splash up forever.
 const PRELOAD_TIMEOUT_MS = 15000;
 
-// Images used by the screens, preloaded while the splash GIF plays. Metro gives
-// the same module id to a repeated require(), so this adds no extra bundled files.
-// Icons from ACHIEVEMENTS / UPGRADES are reused from their own definitions.
+
 const PRELOAD_IMAGES = [
   ...Object.values(ACHIEVEMENTS).map((a) => a.icon),
   ...Object.values(UPGRADES).map((u) => u.icon),
   require("./assets/Final/MainBackground.png"),
   require("./assets/Final/WormderyaLogo.png"),
   require("./assets/Final/MainCharacter.png"),
+  require("./assets/Final/MainCharacterMenuAnim.gif"),
   require("./assets/Final/LevelSelectionMainBG.png"),
   require("./assets/Final/levels/LevelSelectionMainBGAnim.gif"),
   require("./assets/Final/levels/Bubong.png"),
@@ -116,10 +111,9 @@ const PRELOAD_IMAGES = [
   require("./assets/Placeholder/BuyButton.png"),
   require("./assets/Placeholder/DeclineButton.png"),
   require("./assets/Placeholder/BlankRectangle.png"),
+  require("./assets/Final/buttons/button.png"),
 ].filter(Boolean);
 
-// Resolves once every image has loaded or failed. One bad image is ignored,
-// and the timeout resolves it anyway if a request hangs.
 function preloadImages() {
   let timeoutId;
   const loading = Promise.all(
@@ -199,11 +193,20 @@ function ScreenSwitcher() {
   });
   const [assetsReady, setAssetsReady] = useState(false);
   const [delayDone, setDelayDone] = useState(false);
+  const [offlineNotice, setOfflineNotice] = useState(false);
 
-  // Preload images in parallel with the save load.
+  // First launch with no internet: explain the smaller word list.
+  useEffect(() => {
+    shouldShowOfflineNotice().then(setOfflineNotice);
+  }, []);
+
+  // Preload images and the saved word cache in parallel with the save load.
   useEffect(() => {
     let cancelled = false;
-    preloadImages().then(() => {
+    Promise.all([
+      preloadImages(),
+      loadWordCache(),
+    ]).then(() => {
       if (!cancelled) setAssetsReady(true);
     });
     return () => {
@@ -224,14 +227,24 @@ function ScreenSwitcher() {
   }
 
   return (
-    <GameSession
-      key={session.key}
-      save={save}
-      initialScreen={session.screen}
-      onReset={() =>
-        setSession((s) => ({ key: s.key + 1, screen: SCREENS.LEVEL_SELECT }))
-      }
-    />
+    <>
+      <GameSession
+        key={session.key}
+        save={save}
+        initialScreen={session.screen}
+        onReset={(screen = SCREENS.LEVEL_SELECT) =>
+          setSession((s) => ({ key: s.key + 1, screen }))
+        }
+      />
+      <PopupModal
+        visible={offlineNotice}
+        title="NO INTERNET CONNECTION"
+        message="You are not connected to the internet. You can still play offline, but fewer words will be accepted until you reconnect."
+        extraMessage="You can check your connection in the Settings."
+        buttonText="Got it"
+        onPress={() => setOfflineNotice(false)}
+      />
+    </>
   );
 }
 
@@ -243,6 +256,9 @@ function GameSession({ save, initialScreen, onReset }) {
   const [currentLevelId, setCurrentLevelId] = useState(snapshot.currentLevelId);
   const [unlockedLevels, setUnlockedLevels] = useState(snapshot.unlockedLevels);
   const [unlockNotice, setUnlockNotice] = useState(null);
+  // Which level Level Select should open on. After a win this is the next
+  // level, so the player can continue straight away; null = the last played.
+  const [levelSelectFocusId, setLevelSelectFocusId] = useState(null);
   const [showStore, setShowStore] = useState(false);
   // True when the store was opened mid-level (Mr. Ratty's visit): leaving it
   // returns to the running level instead of going to Level Select.
@@ -329,12 +345,23 @@ function GameSession({ save, initialScreen, onReset }) {
     onReset();
   };
 
+  // Settings > Reset Progress: wipe the save, keep the player's volume sliders,
+  // then remount the session and land on the home screen.
+  const handleResetProgress = async () => {
+    const volumes = audio.getVolumes();
+    await reset();
+    patch("settings", volumes);
+    onReset(SCREENS.HOME);
+  };
+
   const handleLevelComplete = (completedLevelId) => {
     // Before the early returns below, so replays and the last level still count.
     achievements.unlockAchievement(LEVEL_ACHIEVEMENTS[completedLevelId]);
     // The boss level leads to the ending (played when the boss screen's onBack fires).
     if (getLevelConfigById(completedLevelId).isBoss) setEndingPending(true);
     const nextId = getNextLevelId(completedLevelId);
+    // Win: Level Select will open on the next level (or stay on the boss).
+    setLevelSelectFocusId(nextId ?? completedLevelId);
     if (nextId === null || unlockedLevels.includes(nextId)) return;
     setUnlockedLevels((prev) =>
       prev.includes(nextId) ? prev : [...prev, nextId],
@@ -359,18 +386,16 @@ function GameSession({ save, initialScreen, onReset }) {
     [getSnapshot, patch, scoreKey],
   );
 
-  // openStore({ resumeGameplay: true }) = mid-level visit (Mr. Ratty): closing the
-  // store returns to the running level. Any other call (e.g. after a win, or
-  // from a press event) keeps the old behavior of going to Level Select.
   const openStore = (opts) => {
     console.log("[Store] opened with", opts);
     audio.playSfx("ratty_shop_appear");
     setStoreResumesGameplay(opts?.resumeGameplay === true);
     setShowStore(true);
   };
-  const closeStore = () => setShowStore(false);
-
-  // Home-screen Quit. Android can exit; iOS has no API for it, so the popup just closes.
+  const closeStore = () => {
+    if (storeResumesGameplay) upgrades.startNewRound();
+    setShowStore(false);
+  }
   const exitApp = () => {
     setShowQuit(false);
     if (Platform.OS === "android") BackHandler.exitApp();
@@ -402,6 +427,7 @@ function GameSession({ save, initialScreen, onReset }) {
           <SettingsScreen
             onBack={() => setScreen(SCREENS.HOME)}
             achievements={achievements}
+            onResetProgress={handleResetProgress}
           />
         );
 
@@ -409,6 +435,7 @@ function GameSession({ save, initialScreen, onReset }) {
         return (
           <LevelSelectScreen
             unlockedLevels={unlockedLevels}
+            initialLevelId={levelSelectFocusId ?? currentLevelId}
             onDebugToggle={DEBUG_LEVEL_TOGGLE ? handleDebugToggle : undefined}
             onDebugResetSave={
               DEBUG_LEVEL_TOGGLE ? handleDebugResetSave : undefined
@@ -418,6 +445,7 @@ function GameSession({ save, initialScreen, onReset }) {
               if (!hasLevelPreset(levelId)) return;
               setEndingPending(false);
               setGameMode("normal");
+              setLevelSelectFocusId(null); // back to "last played" for the next visit
               setCurrentLevelId(levelId);
               if (levelId === 1) setScreen(SCREENS.STORY_BACKSTORY);
               else setScreen(SCREENS.GAMEPLAY);
@@ -518,7 +546,6 @@ function GameSession({ save, initialScreen, onReset }) {
               upgrades={upgrades}
               onGoToLevelSelect={() => {
                 closeStore();
-                // Mid-level Ratty visit: stay in the running level.
                 if (!storeResumesGameplay) setScreen(SCREENS.LEVEL_SELECT);
               }}
             />
@@ -569,10 +596,7 @@ function AppInner() {
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    PixelifySans_400Regular,
-    PixelifySans_500Medium,
-    PixelifySans_600SemiBold,
-    PixelifySans_700Bold,
+    GeistPixel_400Regular,
   });
   if (!fontsLoaded) return null;
   return <AppInner />;

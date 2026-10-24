@@ -15,10 +15,11 @@ import {
 } from "react-native";
 import Text from "../components/AppText";
 
-// Sizes below were authored for a ~400 wide screen; they scale with the box.
 const DESIGN_WIDTH = 400;
+// Shrinks or grows the whole item box (art, icon, price). Lower = smaller.
 
 const NO_UPGRADES = {
+  getBasePrice: (u) => u.price,
   ownedPermanent: new Set(),
   activeTemporary: {},
   isActive: () => false,
@@ -30,13 +31,12 @@ const NO_UPGRADES = {
   startNewRound: () => {},
 };
 
-// Full-screen Bodega scene: forest background + stall (sign, Mr. Ratty, board).
-// If RattyStall.png already contains everything, you can delete SHOP_BACKGROUND.
 const SHOP_BACKGROUND = require("../assets/Final/RattyBodega/BackgroundRattyStall.png");
 const SHOP_STALL = require("../assets/Final/RattyBodega/RattyStall.png");
 const SHOP_RATTY = require("../assets/Final/RattyBodega/MrRatty.png");
+const BOX_SINGLE = require("../assets/Final/RattyBodega/BoxPlacerSingle.png");
+const PRICE_ARROW = require("../assets/Final/buttons/buttonLevelSelectBack.png");
 
-// Pick n random items (Fisher-Yates shuffle on a copy).
 function pickRandom(list, n) {
   const a = [...list];
   for (let i = a.length - 1; i > 0; i--) {
@@ -59,6 +59,21 @@ export default function StoreScreen({
   // of exactly that shape, fitted to the window, so the art and the UI never drift apart.
   const { w, h } = useStage();
   const styles = useMemo(() => createStyles(w / DESIGN_WIDTH, w, h), [w, h]);
+  const renderArrow = (dir, size = 1) =>
+    dir ? (
+      <Image
+        source={PRICE_ARROW}
+        style={[
+          styles.priceArrow,
+          {
+            transform: [
+              { rotate: dir === "up" ? "-90deg" : "90deg" },
+              { scale: size },
+            ],
+          },
+        ]}
+      />
+    ) : null;
 
   const [rattyOutcome, setRattyOutcome] = useState(null);
   // Three random offers, chosen once per visit to the store.
@@ -67,7 +82,8 @@ export default function StoreScreen({
   const [feedback, setFeedback] = useState(null); // last action result, shown in status line
 
   const selected = offers.find((u) => u.id === selectedId) || offers[0];
-  const price = wallet.getEffectivePrice(selected.id, selected.price);
+  const selectedBase = safeUpgrades.getBasePrice(selected);
+  const price = wallet.getEffectivePrice(selected.id, selectedBase);
   const owned = safeUpgrades.ownedPermanent.has(selected.id);
   const active = safeUpgrades.isActive(selected.id);
   const affordable = wallet.currency >= price;
@@ -103,9 +119,11 @@ export default function StoreScreen({
       );
     }
 
-    const result = safeUpgrades.buyUpgrade(selected);
+    const result = safeUpgrades.buyUpgrade(
+      selected,
+      offers.map((u) => u.id),
+    );
 
-    // eslint-disable-next-line no-undef
     if (__DEV__) {
       console.log(`[Store] buyUpgrade result:`, result);
     }
@@ -135,8 +153,8 @@ export default function StoreScreen({
     setRattyOutcome("inflate");
   };
 
-  const priceArrow =
-    price < selected.price ? " ↓" : price > selected.price ? " ↑" : "";
+  const priceDir =
+    price > selectedBase ? "up" : price < selectedBase ? "down" : null;
 
   const statusLine = owned
     ? "OWNED"
@@ -144,7 +162,7 @@ export default function StoreScreen({
       ? "ACTIVE"
       : feedback
         ? feedback.text
-        : `${price} coins${priceArrow}${!affordable ? " — not enough coins" : ""}`;
+        : null;
 
   const statusColor =
     feedback && feedback.type === "ok" ? "#2E7D32" : "#7A2E2E";
@@ -167,22 +185,27 @@ export default function StoreScreen({
 
         {/* Coins */}
         <View style={styles.coinHeader}>
-          <Text style={styles.coinText} numberOfLines={1} adjustsFontSizeToFit>
-            {formatCurrency(wallet.currency)}
-          </Text>
-          <Image
-            source={require("../assets/Placeholder/pixel_coins.png")}
-            style={styles.coinIcon}
-          />
+          <View style={styles.coinBoxOuter}>
+            <View style={styles.coinBox}>
+              <Text style={styles.coinText} numberOfLines={1}>
+                {formatCurrency(wallet.currency)}
+              </Text>
+              <Image
+                source={require("../assets/Placeholder/pixel_coins.png")}
+                style={styles.coinIcon}
+              />
+            </View>
+          </View>
         </View>
 
         {/* Three random offers, lined up with the boxes in the picture */}
         <View style={styles.boxesRow}>
           {offers.map((item) => {
             const itemOwned = safeUpgrades.ownedPermanent.has(item.id);
-            const itemPrice = wallet.getEffectivePrice(item.id, item.price);
-            const onSale = itemPrice < item.price;
-            const pricedUp = itemPrice > item.price;
+            const itemBase = safeUpgrades.getBasePrice(item);
+            const itemPrice = wallet.getEffectivePrice(item.id, itemBase);
+            const onSale = itemPrice < itemBase;
+            const pricedUp = itemPrice > itemBase;
             return (
               <TouchableOpacity
                 key={item.id}
@@ -194,12 +217,16 @@ export default function StoreScreen({
                   setFeedback(null);
                 }}
               >
-                <View
-                  style={[
-                    styles.boxHighlight,
-                    selectedId === item.id && styles.itemSelected,
-                  ]}
-                >
+                <View style={styles.itemBox}>
+                <Image
+                  source={BOX_SINGLE}
+                  style={styles.boxArt}
+                  pointerEvents="none"
+                />
+                {selectedId === item.id && (
+                  <View style={styles.boxSelected} pointerEvents="none" />
+                )}
+                <View style={styles.boxHighlight}>
                   {item.icon ? (
                     <Image source={item.icon} style={styles.itemIcon} />
                   ) : (
@@ -214,11 +241,9 @@ export default function StoreScreen({
                     source={require("../assets/Placeholder/pixel_coins.png")}
                     style={styles.smallCoinIcon}
                   />
-                  <Text style={styles.priceText}>
-                    {itemPrice}
-                    {onSale ? " ↓" : ""}
-                    {pricedUp ? " ↑" : ""}
-                  </Text>
+                  <Text style={styles.priceText}>{itemPrice}</Text>
+                  {renderArrow(pricedUp ? "up" : onSale ? "down" : null)}
+                </View>
                 </View>
               </TouchableOpacity>
             );
@@ -227,11 +252,44 @@ export default function StoreScreen({
 
         {/* Name, description, status */}
         <View style={styles.textArea}>
+          <View style={styles.textBox}>
           <Text style={styles.descriptionText}>{selected.name}</Text>
           <Text style={styles.affordabilityText}>{selected.description}</Text>
-          <Text style={[styles.affordabilityText, { color: statusColor }]}>
-            {statusLine}
-          </Text>
+          <View style={styles.statusRow}>
+            {statusLine !== null ? (
+              <Text
+                style={[
+                  styles.affordabilityText,
+                  { color: statusColor, marginBottom: 0 },
+                ]}
+              >
+                {statusLine}
+              </Text>
+            ) : (
+              <>
+                <Text
+                  style={[
+                    styles.affordabilityText,
+                    { color: statusColor, marginBottom: 0 },
+                  ]}
+                >
+                  {price} coins
+                </Text>
+                {renderArrow(priceDir)}
+                {!affordable && (
+                  <Text
+                    style={[
+                      styles.affordabilityText,
+                      { color: statusColor, marginBottom: 0 },
+                    ]}
+                  >
+                    {" — not enough coins"}
+                  </Text>
+                )}
+              </>
+            )}
+          </View>
+          </View>
         </View>
 
         {/* Buy / No thank you, side by side at the bottom.
@@ -261,21 +319,6 @@ export default function StoreScreen({
             />
           </TouchableOpacity>
         </View>
-
-        {/* Back button, top left */}
-        <TouchableOpacity
-          onPress={() => {
-            audio.playSfx("click");
-            onBack?.();
-          }}
-          activeOpacity={0.7}
-          style={styles.backButtonWrapper}
-        >
-          <Image
-            source={require("../assets/Final/buttons/buttonBack.png")}
-            style={styles.backButtonIcon}
-          />
-        </TouchableOpacity>
       </ImageBackground>
 
       <ShopOutcomeModal
@@ -295,8 +338,27 @@ export default function StoreScreen({
   );
 }
 
-// `s` scales the fixed sizes (fonts, icons, borders); positions are % of the box.
 function createStyles(s, w, h) {
+
+  const CONTENT_W = 80 * s;
+  const ICON_H = 60 * s;
+  const GAP = 4 * s; 
+  const PRICE_H = 20 * s;
+  const CONTENT_H = ICON_H + GAP + PRICE_H;
+  const COIN_TEXT = 22 * s; 
+  const COIN_ICON = 32 * s; 
+  const COIN_PAD_X = 12 * s; 
+  const COIN_PAD_Y = 1 * s; 
+  const COIN_BORDER = 3 * s; 
+
+
+  const ART_W = 92 * s; 
+  const ART_H = 96 * s; 
+  const ART_X = 0; 
+  const ART_Y = 0; 
+  const IMG = 124 / 116; 
+  const artLeft = (CONTENT_W - ART_W) / 2 + ART_X;
+  const artTop = (CONTENT_H - ART_H) / 2 + ART_Y;
   return StyleSheet.create({
     screenWrapper: {
       flex: 1,
@@ -314,18 +376,6 @@ function createStyles(s, w, h) {
       height: "22%",
       resizeMode: "contain",
     },
-    backButtonWrapper: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      zIndex: 30,
-      elevation: 30,
-    },
-    backButtonIcon: {
-      width: 130 * s,
-      height: 50 * s,
-      resizeMode: "contain",
-    },
 
     coinHeader: {
       position: "absolute",
@@ -335,39 +385,70 @@ function createStyles(s, w, h) {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: 9 * s,
     },
-    coinIcon: { width: 40 * s, height: 40 * s, resizeMode: "contain" },
+    coinBoxOuter: {
+      borderWidth: COIN_BORDER,
+      borderColor: "#A05634",
+      borderRadius: 8 * s,
+    },
+    coinBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7 * s,
+      paddingHorizontal: COIN_PAD_X,
+      paddingVertical: COIN_PAD_Y,
+      borderWidth: COIN_BORDER,
+      borderColor: "#793718",
+      borderRadius: 5 * s,
+      backgroundColor: "#FFCBB1",
+    },
+    coinIcon: { width: COIN_ICON, height: COIN_ICON, resizeMode: "contain" },
     coinText: {
-      flexShrink: 1,
-      maxWidth: "50%",
-      fontSize: 28 * s,
+      fontSize: COIN_TEXT,
       fontWeight: "bold",
-      color: "#fff",
+      color: "#5A2A10",
     },
-
-    // Lines up with the three boxes in the picture
     boxesRow: {
       position: "absolute",
-      top: "57.9%",
+      top: "57.2%",
       left: "4.5%",
       right: "4.5%",
-      height: "10%",
+      height: "13.8%",
       flexDirection: "row",
+      alignItems: "center",
     },
     boxSlot: { flex: 1, alignItems: "center" },
-    boxHighlight: {
-      width: "90%",
-      height: "100%",
+    itemBox: {
+      width: CONTENT_W,
+      height: CONTENT_H,
+      alignItems: "center",
+    },
+    boxArt: {
+      position: "absolute",
+      left: artLeft - (ART_W * (IMG - 1)) / 2,
+      top: artTop - (ART_H * (IMG - 1)) / 2,
+      width: ART_W * IMG,
+      height: ART_H * IMG,
+      resizeMode: "stretch",
+    },
+    boxSelected: {
+      position: "absolute",
+      left: artLeft - 4 * s,
+      top: artTop - 4 * s,
+      width: ART_W + 8 * s,
+      height: ART_H + 8 * s,
+      borderWidth: 4 * s,
+      borderColor: "#FFE194",
       borderRadius: 8 * s,
-      borderWidth: 3 * s,
-      borderColor: "transparent",
+    },
+    boxHighlight: {
+      width: CONTENT_W,
+      height: ICON_H,
       alignItems: "center",
       justifyContent: "center",
     },
-    itemSelected: { borderColor: "#FFE194", borderWidth: 4 * s },
     itemSlotInitial: { fontSize: 30 * s, fontWeight: "bold", color: "#5A3A1A" },
-    itemIcon: { width: "80%", height: "80%", resizeMode: "contain" },
+    itemIcon: { width: "90%", height: "90%", resizeMode: "contain" },
     ownedBadge: {
       position: "absolute",
       top: 2 * s,
@@ -380,12 +461,31 @@ function createStyles(s, w, h) {
       flexDirection: "row",
       alignItems: "center",
       gap: 4 * s,
-      marginTop: 4 * s,
+      marginTop: GAP,
+      height: PRICE_H,
     },
     smallCoinIcon: { width: 18 * s, height: 18 * s, resizeMode: "contain" },
     priceText: { fontSize: 14 * s, fontWeight: "bold", color: "#000" },
-
-    textArea: { position: "absolute", top: "72%", left: "8%", right: "8%" },
+    textArea: {
+      position: "absolute",
+      top: "72.5%",
+      height: "13.5%",
+      left: "4.5%",
+      right: "4.5%",
+      borderWidth: 4 * s,
+      borderColor: "#A05634",
+      borderRadius: 10 * s,
+    },
+    textBox: {
+      flex: 1,
+      borderWidth: 4 * s,
+      borderColor: "#793718",
+      borderRadius: 6 * s,
+      backgroundColor: "#FFCBB1",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 4 * s,
+    },
     descriptionText: {
       fontSize: 20 * s,
       fontWeight: "bold",
@@ -414,5 +514,18 @@ function createStyles(s, w, h) {
     buttonHalf: { flex: 1 },
     buttonImage: { width: "100%", height: 60 * s, resizeMode: "stretch" },
     buyButtonDisabled: { opacity: 0.4 },
+    statusRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      flexWrap: "wrap",
+      marginBottom: 6 * s,
+    },
+    priceArrow: {
+      width: 20 * s,
+      height: 20 * s,
+      resizeMode: "contain",
+      marginBottom: 2,
+    },
   });
 }

@@ -97,7 +97,14 @@ export default function GrannyTutorial({ onClose, style }) {
   };
 
   const [slide, setSlide] = useState(0);
+  const isFirst = slide === 0;
   const isLast = slide === TUTORIAL_SLIDES.length - 1;
+
+  // Back goes to the previous tutorial slide (same as SlideshowSequence).
+  const handleBack = () => {
+    audio.playSfx("click");
+    setSlide((s) => Math.max(0, s - 1));
+  };
 
   const handleNext = () => {
     audio.playSfx("click");
@@ -145,13 +152,26 @@ export default function GrannyTutorial({ onClose, style }) {
               resizeMode="contain"
             />
           </View>
-          <TouchableOpacity
-            activeOpacity={0.75}
-            style={styles.nextButton}
-            onPress={handleNext}
-          >
-            <Text style={styles.nextText}>{isLast ? "Close" : "Next  ->"}</Text>
-          </TouchableOpacity>
+          <View style={styles.footer}>
+            {isFirst ? (
+              <View />
+            ) : (
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={styles.nextButton}
+                onPress={handleBack}
+              >
+                <Text style={styles.nextText}>{"<-  Back"}</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={styles.nextButton}
+              onPress={handleNext}
+            >
+              <Text style={styles.nextText}>{isLast ? "Close" : "Next  ->"}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </View>
@@ -193,8 +213,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   slideImage: { width: "100%", height: "100%" },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   nextButton: {
-    alignSelf: "flex-end",
     paddingVertical: 12,
     paddingHorizontal: 22,
     borderRadius: 14,

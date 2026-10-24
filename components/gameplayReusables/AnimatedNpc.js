@@ -6,7 +6,11 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Animated, Easing } from "react-native";
+import { Animated, Easing, StyleSheet } from "react-native";
+import { Image as ExpoImage } from "expo-image";
+
+// expo-image plays animated GIFs on its own; React Native's Image does not on some builds.
+const AnimatedExpoImage = Animated.createAnimatedComponent(ExpoImage);
 
 // Timings (ms) and sizes. Distances are multiplied by `unit` (the stage scale),
 // so the motion looks the same on every screen size.
@@ -23,7 +27,7 @@ const SWAY_DEGREES = 4; // lean left / right
 
 
 const AnimatedNpc = forwardRef(function AnimatedNpc(
-  { source, npcKey, unit = 1, worried = false, imageStyle },
+  { source, npcKey, unit = 1, worried = false, imageStyle, animatedGif = false },
   ref,
 ) {
   const [shownSource, setShownSource] = useState(source);
@@ -174,22 +178,29 @@ const AnimatedNpc = forwardRef(function AnimatedNpc(
 
   useEffect(() => () => clearTimeout(jumpTimerRef.current), []);
 
-  return (
-    <Animated.Image
-      source={shownSource}
-      style={[
-        imageStyle,
-        {
-          transformOrigin: "50% 100%", // lean from the feet
-          transform: [
-            { translateX: Animated.add(slideX, swayX) },
-            { translateY: Animated.add(jumpY, stepY) },
-            { rotate: swayRotate },
-          ],
-        },
-      ]}
-    />
-  );
+  const motionStyle = {
+    transformOrigin: "50% 100%", // lean from the feet
+    transform: [
+      { translateX: Animated.add(slideX, swayX) },
+      { translateY: Animated.add(jumpY, stepY) },
+      { rotate: swayRotate },
+    ],
+  };
+
+  if (animatedGif) {
+    // expo-image has no style.resizeMode; "stretch" is contentFit "fill".
+    const { resizeMode, ...flatStyle } = StyleSheet.flatten(imageStyle) || {};
+    return (
+      <AnimatedExpoImage
+        source={shownSource}
+        contentFit={resizeMode === "stretch" ? "fill" : resizeMode || "cover"}
+        autoplay
+        style={[flatStyle, motionStyle]}
+      />
+    );
+  }
+
+  return <Animated.Image source={shownSource} style={[imageStyle, motionStyle]} />;
 });
 
 export default AnimatedNpc;

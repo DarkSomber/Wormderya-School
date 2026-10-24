@@ -19,11 +19,11 @@ export default function CountdownSequence({ slides, onComplete, msPerSlide = 800
       } else {
         setIndex((i) => i + 1);
       }
-    }, msPerSlide);
+    }, slide.ms ?? msPerSlide);
 
     // Safety net so it won't fire twice
     return () => clearTimeout(timeoutId);
-  }, [index, isLastSlide, msPerSlide]);
+  }, [index, isLastSlide, msPerSlide, slide.ms]);
 
   return (
     <View style={styles.container}>
@@ -65,9 +65,10 @@ const styles = StyleSheet.create({
   },
   slideSubLabelText: {
     textAlign: "center",
-    color: "#8a5a30",
+    color: "#4a2d17",
     fontWeight: "600",
-    fontSize: 16,
-    marginTop: 10,
+    fontSize: 20,
+    lineHeight: 28,
+    marginTop: 12,
   },
 });
