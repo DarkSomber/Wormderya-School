@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Animated, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import Text from '../../AppText';
 import { getLetterSprite } from './Spriteloader';
 import { useSpawnAnimation, LETTER_ANIM_STATES } from './Animationsystem';
@@ -37,9 +37,18 @@ function Letter({ letter, left, width, height, onPress }) {
       pointerEvents={letter.active ? 'auto' : 'none'}
       style={[styles.slot, { left, width, height, opacity, transform: [{ scale }] }]}
     >
+      {/* onPressIn = the moment the finger lands. The belt keeps sliding the plate away,
+          so waiting for a release over the same spot made plates feel like they needed a hard,
+          precise press. hitSlop grows the touch area back to the whole slot (visuals unchanged). */}
       <TouchableOpacity
         activeOpacity={0.7}
-        onPress={() => letter.active && onPress && onPress(letter)}
+        onPressIn={() => letter.active && onPress && onPress(letter)}
+        hitSlop={{
+          top: height * 0.07,
+          bottom: height * 0.07,
+          left: width * 0.07,
+          right: width * 0.07,
+        }}
         style={styles.tileTouchable}
       >
         <Image source={PLATE} style={styles.plateImage} resizeMode="contain" />
@@ -49,6 +58,62 @@ function Letter({ letter, left, width, height, onPress }) {
          <Text style={styles.tileText}>{letter.character}</Text>
         )}
       </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+const FLY_MS = 460;
+
+/**
+ * The plate you just tapped: a copy of it lifts off the belt and eases in toward the table
+ * (the word row), shrinking and fading as it lands. ConveyorBelt renders these in a layer
+ * that isn't clipped by the belt, and removes each one through `onDone` when it finishes.
+ * tile = { key, character, left, dx, dy }  (px, relative to the belt's left edge).
+ */
+export function FlyingTile({ tile, width, height, onDone }) {
+  const p = useRef(new Animated.Value(0)).current;
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
+  useEffect(() => {
+    const anim = Animated.timing(p, {
+      toValue: 1,
+      duration: FLY_MS,
+      easing: Easing.inOut(Easing.quad),
+      useNativeDriver: true,
+    });
+    anim.start(({ finished }) => {
+      if (finished) onDoneRef.current?.(tile.key);
+    });
+    return () => anim.stop();
+  }, [p, tile.key]);
+
+  const motion = useMemo(
+    () => ({
+      opacity: p.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 1, 0] }),
+      transform: [
+        { translateX: p.interpolate({ inputRange: [0, 1], outputRange: [0, tile.dx] }) },
+        { translateY: p.interpolate({ inputRange: [0, 1], outputRange: [0, tile.dy] }) },
+        { scale: p.interpolate({ inputRange: [0, 0.2, 1], outputRange: [1, 1.15, 0.4] }) },
+      ],
+    }),
+    [p, tile.dx, tile.dy]
+  );
+
+  const sprite = getLetterSprite(tile.character);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.slot, { left: tile.left, width, height }, motion]}
+    >
+      <View style={styles.tileTouchable}>
+        <Image source={PLATE} style={styles.plateImage} resizeMode="contain" />
+        {sprite ? (
+          <Image source={sprite} style={styles.foodImage} resizeMode="contain" />
+        ) : (
+          <Text style={styles.tileText}>{tile.character}</Text>
+        )}
+      </View>
     </Animated.View>
   );
 }

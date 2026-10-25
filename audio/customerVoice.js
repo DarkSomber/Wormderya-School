@@ -1,21 +1,3 @@
-/**
- * customerVoice
- * ----------------------------------------------------------------------
- * Decides WHICH customer line plays WHEN. Every voice file is
- * <type>_<n>, where n (1-3) is the customer: eating_1, goodbye_2, ...
- *
- *   greetings   a customer steps up                       (queued)
- *   satisfied   a dish was right (or haha, 30% of the time) (only if quiet)
- *   eating      the customer's LAST dish is served        (queued)
- *   goodbye     ...then they leave                        (queued)
- *   shocked     a wrong word was served                   (only if quiet)
- *   ehem        patience drops to "impatient"             (only if quiet)
- *   sighing     patience drops to "angry"                 (only if quiet)
- *
- * "only if quiet" = skipped when another voice line is still playing, so
- * reactions never pile up. To retune the game's voice, edit this file only.
- * ----------------------------------------------------------------------
- */
 import audio from './AudioManager';
 
 export const VOICE_COUNT = 3;

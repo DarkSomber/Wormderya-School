@@ -8,6 +8,7 @@ import {
   ImageBackground,
 } from "react-native";
 import AppButton from "../components/AppButton";
+import { AnimatedWorm } from "./HomeScreen";
 
 export default function ModeSelectScreen({
   onSelectStoryMode,
@@ -29,11 +30,7 @@ export default function ModeSelectScreen({
 
         {/* ---------- CHARACTER PLACEHOLDER ---------- */}
         <View style={styles.characterPlaceholder}>
-          <Image
-            source={require("../assets/Final/MainCharacter.png")}
-            style={styles.characterImage}
-            resizeMode="contain"
-          />
+          <AnimatedWorm />
         </View>
 
         {/* ---------- MENU BUTTONS ---------- */}

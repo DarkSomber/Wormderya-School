@@ -92,6 +92,7 @@ async function lookup(word) {
 
 export async function checkWord(word) {
   const w = word.toUpperCase();
+  if (w.length < 2) return false;
   if (offlineWords.has(w) || valid.has(w)) return true;
   if (invalid.has(w)) return false;
   try {

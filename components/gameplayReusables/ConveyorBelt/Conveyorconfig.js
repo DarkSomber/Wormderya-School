@@ -32,6 +32,10 @@ export const DEFAULT_CONVEYOR_CONFIG = {
   // Fallback only: each belt row sets its own via LevelConfig `belts`.
   minVisibleVowels: 1,
 
+  // How far (px) a tapped plate flies up toward the table. The screen sets it per belt row
+  // (the gap between the belt and the word row). 0 = just a small lift.
+  flyDy: 0,
+
   // Reserved width/height (px) per letter tile.
   slotWidth: 70,
   slotHeight: 50,

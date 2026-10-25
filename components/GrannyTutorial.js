@@ -1,42 +1,82 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
-  Image,
   Animated,
   Easing,
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
-import Text from "./AppText";
 import SpeechBubble from "./SpeechBubble";
+import GameplayTutorial from "./GameplayTutorial";
 import audio from "../audio/AudioManager";
-
 const GRANNY = require("../assets/Final/GrannyWorm.png");
 const LINES = ["Tutorial..?", "Apo..."];
 
-const TUTORIAL_SLIDES = [
-  { id: "1", image: require("../assets/Final/Tutorial/Tutorial_2.png") },
-  { id: "2", image: require("../assets/Final/Tutorial/Tutorial_3.png") },
-  { id: "3", image: require("../assets/Final/Tutorial/Tutorial_4.png") },
-  { id: "4", image: require("../assets/Final/Tutorial/Tutorial_5.png") },
-  { id: "5", image: require("../assets/Final/Tutorial/Tutorial_6.png") },
-  { id: "6", image: require("../assets/Final/Tutorial/Tutorial_7.png") },
-  { id: "7", image: require("../assets/Final/Tutorial/Tutorial_8.png") },
-  { id: "8", image: require("../assets/Final/Tutorial/Tutorial_9.png") },
-  { id: "9", image: require("../assets/Final/Tutorial/Tutorial_10.png") },
-  { id: "10", image: require("../assets/Final/Tutorial/Tutorial_11.png") },
-  { id: "11", image: require("../assets/Final/Tutorial/Tutorial_12.png") },
-  { id: "12", image: require("../assets/Final/Tutorial/Tutorial_13.png") },
-];
-
 const IDLE_MS = 10000;
+const COOLDOWN_MS = 2500;
+let cooldownUntil = 0; 
 const EASE = Easing.inOut(Easing.sin);
 
-// Granny peeking from the corner; tap opens the tutorial slideshow.
-export default function GrannyTutorial({ onClose, style }) {
+const INTRO_LINE = "Bago ang lahat tutorial muna apo.";
+const SIZE = 150;
+const HOPS = 5;
+const STEPS_N = 40;
+const T = Array.from({ length: STEPS_N + 1 }, (_, i) => i / STEPS_N);
+const HOP_Y = T.map((t) => -22 * Math.abs(Math.sin(Math.PI * HOPS * t)) * (1 - 0.5 * t));
+const HOP_ROT = T.map((t) => `${5 * Math.sin(Math.PI * HOPS * t)}deg`);
+
+// Granny peeking from the corner; tap opens the tutorial.
+export default function GrannyTutorial({ onClose, style, intro }) {
   const [open, setOpen] = useState(false);
+  const [phase, setPhase] = useState(null); // null | "walk" | "talk"
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  const talkTimer = useRef(null);
+  const walk = useRef(new Animated.Value(0)).current;
+  const talkFade = useRef(new Animated.Value(0)).current;
   const [line, setLine] = useState(0);
+  const [cooling, setCooling] = useState(Date.now() < cooldownUntil);
   const sway = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!cooling) return undefined;
+    const t = setTimeout(
+      () => setCooling(false),
+      Math.max(0, cooldownUntil - Date.now()),
+    );
+    return () => clearTimeout(t);
+  }, [cooling]);
+
+  // New player pressed Play: Granny hops to the center, then opens the tutorial.
+  useEffect(() => {
+    if (intro && !open && !phase && box.w > 0) setPhase("walk");
+  }, [intro, open, phase, box.w]);
+
+  useEffect(() => {
+    if (phase !== "walk") return undefined;
+    walk.setValue(0);
+    talkFade.setValue(0);
+    Animated.timing(walk, {
+      toValue: 1,
+      duration: 1800,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (!finished) return;
+      setPhase("talk");
+      Animated.timing(talkFade, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+      talkTimer.current = setTimeout(() => {
+        setPhase(null);
+        setOpen(true);
+      }, 2600);
+    });
+    return () => walk.stopAnimation();
+  }, [phase === "walk"]);
+
+  useEffect(() => () => clearTimeout(talkTimer.current), []);
 
   useEffect(() => {
     const t = setInterval(() => setLine((n) => (n + 1) % LINES.length), 5000);
@@ -96,30 +136,23 @@ export default function GrannyTutorial({ onClose, style }) {
     ],
   };
 
-  const [slide, setSlide] = useState(0);
-  const isFirst = slide === 0;
-  const isLast = slide === TUTORIAL_SLIDES.length - 1;
-
-  // Back goes to the previous tutorial slide (same as SlideshowSequence).
-  const handleBack = () => {
-    audio.playSfx("click");
-    setSlide((s) => Math.max(0, s - 1));
-  };
-
-  const handleNext = () => {
-    audio.playSfx("click");
-    if (isLast) {
-      setOpen(false);
-      setSlide(0);
-      onClose?.();
-    } else {
-      setSlide((s) => s + 1);
-    }
+  const handleClose = () => {
+    cooldownUntil = Date.now() + COOLDOWN_MS;
+    setCooling(true);
+    setOpen(false);
+    onClose?.();
   };
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      {!open && (
+    <View
+      style={StyleSheet.absoluteFill}
+      pointerEvents="box-none"
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        setBox((b) => (b.w === width && b.h === height ? b : { w: width, h: height }));
+      }}
+    >
+      {!open && !phase && (
         <View style={[StyleSheet.absoluteFill, style]} pointerEvents="box-none">
           <SpeechBubble
             text={LINES[line]}
@@ -129,7 +162,8 @@ export default function GrannyTutorial({ onClose, style }) {
           />
           <TouchableOpacity
             activeOpacity={0.85}
-            style={styles.granny}
+            disabled={cooling}
+            style={[styles.granny, cooling && { opacity: 0.5 }]}
             onPress={() => {
               audio.playSfx("click");
               setOpen(true);
@@ -143,37 +177,56 @@ export default function GrannyTutorial({ onClose, style }) {
           </TouchableOpacity>
         </View>
       )}
-      {open && (
-        <View style={styles.viewer}>
-          <View style={styles.card}>
-            <Image
-              source={TUTORIAL_SLIDES[slide].image}
-              style={styles.slideImage}
-              resizeMode="contain"
-            />
-          </View>
-          <View style={styles.footer}>
-            {isFirst ? (
-              <View />
-            ) : (
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={styles.nextButton}
-                onPress={handleBack}
-              >
-                <Text style={styles.nextText}>{"<-  Back"}</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              activeOpacity={0.75}
-              style={styles.nextButton}
-              onPress={handleNext}
+      {phase && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="auto">
+          <Animated.Image
+            source={GRANNY}
+            resizeMode="contain"
+            style={{
+              position: "absolute",
+              width: SIZE,
+              height: SIZE,
+              left: box.w / 2 - SIZE / 2,
+              top: box.h / 2 - SIZE / 2,
+              transform: [
+                {
+                  translateX: walk.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [box.w / 2 - 40, 0],
+                  }),
+                },
+                {
+                  translateY: Animated.add(
+                    walk.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [box.h / 2 - 70, 0],
+                    }),
+                    walk.interpolate({ inputRange: T, outputRange: HOP_Y }),
+                  ),
+                },
+                { rotate: walk.interpolate({ inputRange: T, outputRange: HOP_ROT }) },
+              ],
+            }}
+          />
+          {phase === "talk" && (
+            <Animated.View
+              style={{
+                position: "absolute",
+                left: (box.w - Math.min(box.w - 40, 300)) / 2,
+                top: box.h / 2 - SIZE / 2 - 48,
+                opacity: talkFade,
+              }}
             >
-              <Text style={styles.nextText}>{isLast ? "Close" : "Next  ->"}</Text>
-            </TouchableOpacity>
-          </View>
+              <SpeechBubble
+                text={INTRO_LINE}
+                width={Math.min(box.w - 40, 300)}
+                height={40}
+              />
+            </Animated.View>
+          )}
         </View>
       )}
+      {open && <GameplayTutorial onClose={handleClose} />}
     </View>
   );
 }
@@ -188,48 +241,4 @@ const styles = StyleSheet.create({
   },
   sprite: { width: "100%", height: "100%" },
   bubble: { position: "absolute", right: 40, bottom: 125 },
-  tutorialFrame: {
-    backgroundColor: "#f3e6cf",
-    paddingHorizontal: 30,
-    paddingVertical: 70,
-  },
-  viewer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "#f3e6cf",
-    paddingHorizontal: 24,
-    paddingVertical: 30,
-  },
-  card: {
-    flex: 1,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: "#8a5a30",
-    backgroundColor: "rgba(255,255,255,0.4)",
-    overflow: "hidden",
-    marginBottom: 20,
-  },
-  slideImage: { width: "100%", height: "100%" },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  nextButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 22,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: "#8a5a30",
-    backgroundColor: "rgba(245, 236, 214, 0.9)",
-  },
-  nextText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#5c3a21",
-    textAlign: "center",
-  },
 });

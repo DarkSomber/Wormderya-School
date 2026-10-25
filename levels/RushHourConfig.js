@@ -2,60 +2,60 @@ import { createLevelConfig, DEFAULT_BELTS } from './LevelConfig';
 import { LEVEL_PRESETS } from './levelPresets';
 
 export const RUSH_HOUR_SETTINGS = {
-  id: 'rush-hour', // constant: the same id for every stage (GameplayScreen keys the session on it)
+  id: 'rush-hour', 
   title: 'Rush Hour',
 
-  // --- Stage pacing ---
-  wordsPerStage: 3,          // correct words needed to reach the next stage
+  wordsPerStage: 4,          // correct words needed to reach the next stage
 
-  // --- Timer ---
-  startingTimeSeconds: 30,   // clock at the start of a run
-  maxTimeSeconds: 40,        // the clock can never be restored above this
-  baseTimeBonusSeconds: 5,   // seconds restored per correct word at stage 1
-  minTimeBonusSeconds: 3,    // the restore shrinks with stage, never below this
-  stagesPerBonusStep: 3,     // the restore drops by 1s every this many stages
+  startingTimeSeconds: 60,   // default time run
+  maxTimeSeconds: 120,        // the clock can never be restored above this
+  baseTimeBonusSeconds: 8,   // seconds restored per correct word at stage 1
+  minTimeBonusSeconds: 5,    // the restore shrinks with stage, never below this
+  stagesPerBonusStep: 4,     // the restore drops by 1s every this many stages
 
-  // --- Scaling past the hardest preset (per stage beyond the last preset) ---
-  speedStepMs: 40,           // conveyor slotDurationMs decreases by this per stage
+  speedStepMs: 25,           // conveyor slotDurationMs decreases by this per stage
   minConveyorSpeedMs: 600,   // fastest belt allowed
   multiplierStep: 0.25,      // scoreMultiplier increase per stage
   maxScoreMultiplier: 4,
   stagesPerMinLengthStep: 4, // wordDifficulty.minLength +1 every this many stages
-  maxMinWordLength: 6,
+  maxMinWordLength: 11,
 
-  // --- Customer patience (time pressure) ---
-  basePatienceDecayMs: 4000, // same as CustomerMood's default
-  patienceDecayStepMs: 150,  // patience drains faster by this much per stage
-  minPatienceDecayMs: 2200,
+  basePatienceDecayMs: 5000, // same as CustomerMood's default
+  patienceDecayStepMs: 100,  // patience drains faster by this much per stage
+  minPatienceDecayMs: 3000,
 
-  // --- Letter generation (existing per-belt minVisibleVowels) ---
+
   stagesPerVowelFloorStep: 4, // each belt's vowel floor drops by 1 every this many stages
   minVowelFloorMiddleBelt: 1, // belt 2 is the vowel-rich belt; keep at least this many
 
-  // --- Syllable tiles (top belt only, like the normal levels) ---
   extendedSyllablesFromStage: 2, // stage 1 uses the 'basic' pool; this stage and later use 'extended'
 
-  // --- Mr. Ratty (see useLevelMaker: rate is rolled every interval, at most one
-  //     encounter at a time, and never inside the cooldown window) ---
   rattySpawnRate: 0.08,        // normal levels: 0.15 - 0.25
   rattyCheckIntervalMs: 20000, // normal levels: 15000
   rattyCooldownMs: 60000,      // min gap between encounters, also after run start
+
+  bossAfterCustomers: 3,     // the boss comes after every 3rd customer
+  bossBonusRatio: 1,         // boss riddle bonus = this x the word's points (normal hint: 0.3)
 };
 
-/** 1-based Rush Hour stage after `wordsServed` correct words this run. */
+// Customer slots cycle: 3 regular customers, then the boss (slots 4, 8, 12...).
+export function isRushHourBoss(customerIndex) {
+  const every = Math.max(1, RUSH_HOUR_SETTINGS.bossAfterCustomers);
+  return (customerIndex + 1) % (every + 1) === 0;
+}
+
 export function getRushHourStageForWords(wordsServed) {
   const perStage = Math.max(1, RUSH_HOUR_SETTINGS.wordsPerStage);
   return 1 + Math.floor(Math.max(0, wordsServed) / perStage);
 }
 
-// Monotonic anchors from the normal presets: index i = Rush Hour stage i + 1.
 function buildAnchors() {
   const anchors = [];
   let speed = Infinity;
   let multiplier = 0;
   let minLength = 0;
   let maxLength = 0;
-  for (const preset of LEVEL_PRESETS.filter((p) => !p.isBoss)) { // the boss level doesn't drive Rush Hour difficulty
+  for (const preset of LEVEL_PRESETS.filter((p) => !p.isBoss)) { 
     speed = Math.min(speed, preset.conveyorSpeed);
     multiplier = Math.max(multiplier, preset.scoreMultiplier);
     minLength = Math.max(minLength, preset.wordDifficulty.minLength);
@@ -67,23 +67,18 @@ function buildAnchors() {
 
 const ANCHORS = buildAnchors();
 
-/**
- * LevelConfig for one Rush Hour stage (stage >= 1, no upper limit).
- * Extra fields read only in rushHour mode: maxTimeSeconds, timeBonusSeconds.
- */
 export function getRushHourLevelConfig(stage = 1) {
   const s = RUSH_HOUR_SETTINGS;
   const n = Math.max(1, Math.floor(stage));
   const last = ANCHORS.length - 1;
 
-  // Difficulty from presets, then controlled scaling past the last one.
   const anchor = ANCHORS[Math.min(n - 1, last)];
-  const beyond = Math.max(0, n - ANCHORS.length); // stages past the hardest preset
+  const beyond = Math.max(0, n - ANCHORS.length); 
 
   const conveyorSpeed = Math.max(s.minConveyorSpeedMs, anchor.speed - beyond * s.speedStepMs);
   const scoreMultiplier = Math.min(s.maxScoreMultiplier, anchor.multiplier + beyond * s.multiplierStep);
   const minLength = Math.min(
-    Math.max(s.maxMinWordLength, anchor.minLength), // never lower than a preset already asks for
+    Math.max(s.maxMinWordLength, anchor.minLength), 
     anchor.minLength + Math.floor(beyond / s.stagesPerMinLengthStep),
   );
 
@@ -96,9 +91,6 @@ export function getRushHourLevelConfig(stage = 1) {
     s.basePatienceDecayMs - (n - 1) * s.patienceDecayStepMs,
   );
 
-  // Letter generation: lower each belt's vowel floor as stages pass.
-  // Only minVisibleVowels changes; letterDistribution and per-belt letter
-  // counts stay exactly as LevelConfig defines them.
   const vowelStep = Math.floor((n - 1) / s.stagesPerVowelFloorStep);
   const belts = DEFAULT_BELTS.map((belt, i) => ({
     minVisibleVowels: Math.max(i === 1 ? s.minVowelFloorMiddleBelt : 0, belt.minVisibleVowels - vowelStep),
@@ -117,17 +109,14 @@ export function getRushHourLevelConfig(stage = 1) {
     tileMode: 'syllable',
     syllablePool: n >= s.extendedSyllablesFromStage ? 'extended' : 'basic',
 
-    // Endless: no customer quota and no score target.
     totalCustomers: Number.POSITIVE_INFINITY,
     wordsPerCustomer: 2,
     targetScore: 0,
 
-    // Timer
     timeLimitSeconds: s.startingTimeSeconds,
     maxTimeSeconds: s.maxTimeSeconds,
     timeBonusSeconds,
 
-    // Ratty
     rattySpawnRate: s.rattySpawnRate,
     rattyCheckIntervalMs: s.rattyCheckIntervalMs,
     rattyCooldownMs: s.rattyCooldownMs,

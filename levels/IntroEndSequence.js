@@ -3,10 +3,8 @@ import SlideshowSequence from '../components/SlideshowSequence';
 import CountdownSequence from '../components/CountdownSequence';
 import { computeStars } from '../components/gameplayReusables/UseScoreSystem';
 
-//slideshow sequence turned props
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-// What the player has to do to clear the level (shown before the countdown).
 function goalSlide(levelConfig) {
   const customers = levelConfig.totalCustomers;
   if (!Number.isFinite(customers)) {
@@ -47,14 +45,11 @@ export function LevelIntroSequence({ levelConfig, onComplete }) {
   );
 }
 
-//Generics for level end sequence screen
-// `rushHourStage` (number) switches to the endless-run summary; null = a normal level.
-export function LevelEndSequence({ levelConfig, won, finalScore, onComplete, rushHourStage = null, newRecord = false, customersServed = null, wordsServed = null }) { //Dynamic Props Generics
-  const stars = computeStars(finalScore, levelConfig.targetScore); //Display results of ScoreHandler()
+export function LevelEndSequence({ levelConfig, won, finalScore, onComplete, rushHourStage = null, newRecord = false, customersServed = null, wordsServed = null, onMenu }) {
+  const stars = computeStars(finalScore, levelConfig.targetScore);
   const starText = won ? '⭐'.repeat(stars) || '☆' : '';
   const recordText = newRecord ? '\nNEW RECORD!' : '';
 
-  // Served counts (hidden if the screen didn't pass them).
   const servedLines = [];
   if (customersServed !== null && Number.isFinite(levelConfig.totalCustomers)) {
     servedLines.push(`Customers served: ${customersServed} / ${levelConfig.totalCustomers}`);
@@ -85,6 +80,8 @@ export function LevelEndSequence({ levelConfig, won, finalScore, onComplete, rus
       slides={slides}
       onComplete={onComplete}
       lastLabel={won ? 'Continue ->' : 'Try Again'}
+      secondaryLabel="Return to Menu"
+      onSecondary={onMenu}
     />
   );
 }

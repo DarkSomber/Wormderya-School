@@ -65,6 +65,7 @@ const PRELOAD_IMAGES = [
   require("./assets/Final/LevelSelectionMainBG.png"),
   require("./assets/Final/levels/LevelSelectionMainBGAnim.gif"),
   require("./assets/Final/levels/Bubong.png"),
+  require("./assets/Final/levels/TextBox.png"),
   require("./assets/Final/levels/table.png"),
   require("./assets/Final/MainCharacterWorryAnim.gif"),
   require("./assets/Final/SettingsPanel.png"),
@@ -97,7 +98,7 @@ const PRELOAD_IMAGES = [
   require("./assets/Final/Customers/CustomerPicky.png"),
   require("./assets/Final/Customers/CustomerBoss.png"),
   require("./assets/Final/GameplayUI/GameplayScreen.png"),
-  require("./assets/Final/GameplayUI/quit-sign.png"),
+  require("./assets/Final/buttons/buttonPause2.png"),
   require("./assets/Final/GameplayUI/CoinPatience.png"),
   require("./assets/Final/GameplayUI/conveyors.png"),
   require("./assets/Final/GameplayUI/serve-button.png"),
@@ -555,6 +556,8 @@ function GameSession({ save, initialScreen, onReset }) {
 
       <RushHourModal
         visible={showRushHour}
+        highScore={getSnapshot().bestScores?.rushHour ?? 0}
+        onBack={() => setShowRushHour(false)}
         onDismiss={() => {
           setShowRushHour(false);
           setScreen(SCREENS.GAMEPLAY);

@@ -3,42 +3,20 @@ import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import Text from './AppText';
 import audio from '../audio/AudioManager';
 
-/**
- * SlideshowSequence
- * ----------------------------------------------------------------------
- * Generic "show one slide, tap Next, show the next slide" component.
- * Used for the Story-Mode backstory intro, and reusable as-is for the
- * game's ending sequence later — just pass a different `slides` array.
- *
- * Props:
- *   slides       array   - e.g. [{ id: '1', image: require(...) }, ...]
- *                           each slide can optionally carry a real
- *                           `image` (require(...) or { uri }) — until
- *                           then it renders as a numbered placeholder.
- *   onComplete   function - called when "Next" is pressed on the last slide
- *   nextLabel        ?string - label for the button on every slide except
- *                              the last (default: "Next ->")
- *   lastLabel        ?string - label for the button on the last slide
- *                              (default: "Continue ->")
- *   backLabel        ?string - label for the Back button, which goes to the
- *                              previous slide (default: "<-  Back"). It is
- *                              hidden on the first slide.
- *
- * Each slide placeholder is numbered (1 of 5, 2 of 5, ...) so it's easy
- * to tell them apart before the real art is dropped in.
- * ----------------------------------------------------------------------
- */
 export default function SlideshowSequence({
   slides,
   onComplete,
   nextLabel = "Next  ->",
   lastLabel = "Continue  ->",
   backLabel = "<-  Back",
+  secondaryLabel, 
+  onSecondary,
 }) {
   const [index, setIndex] = useState(0);
   const isFirstSlide = index === 0;
   const isLastSlide = index === slides.length - 1;
   const slide = slides[index];
+  const showSecondary = isLastSlide && !!onSecondary;
  
   const handleNext = () => {
     audio.playSfx('click');
@@ -79,8 +57,18 @@ export default function SlideshowSequence({
       </View>
  
       <View style={styles.footer}>
-        {/* Back goes to the previous slide; hidden on the first one. */}
-        {isFirstSlide ? (
+        {showSecondary ? (
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => {
+              audio.playSfx('click');
+              onSecondary();
+            }}
+            style={styles.nextButton}
+          >
+            <Text style={styles.nextButtonText}>{secondaryLabel}</Text>
+          </TouchableOpacity>
+        ) : isFirstSlide ? (
           <View />
         ) : (
           <TouchableOpacity

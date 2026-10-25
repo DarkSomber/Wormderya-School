@@ -8,6 +8,7 @@ import React, {
 import { StatusBar } from "expo-status-bar";
 import {
   Animated,
+  Easing,
   StyleSheet,
   View,
   Image,
@@ -15,7 +16,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import Text from "../components/AppText";
-import { ConveyorBelt } from "../components/gameplayReusables/ConveyorBelt";
+import { ConveyorBelt, createWordSpawner } from "../components/gameplayReusables/ConveyorBelt";
 import {
   useWordInput,
   CurrentWordDisplay,
@@ -263,6 +264,12 @@ function BossLevelSession({
     },
   });
 
+  // One spawner shared by all belts: it makes them spawn the letters of the current
+  // riddle answer (plus dummies). setTarget only resets when the answer actually changes.
+  const spawnerRef = useRef(null);
+  if (!spawnerRef.current) spawnerRef.current = createWordSpawner(levelConfig.spawnAssist);
+  spawnerRef.current.setTarget(hint.hint.answer);
+
   const customerVoiceId =
     BOSS_SPRITES[levelMaker.customerIndex % BOSS_SPRITES.length].voice;
 
@@ -271,20 +278,26 @@ function BossLevelSession({
 
     if (result.valid) {
       audio.playSfx("correct");
+      customerSpriteRef.current?.bounce(3); // right word: the boss bounces 3 times
       customerVoice.served(customerVoiceId, {
         lastForCustomer:
           levelMaker.wordsServedForCustomer + 1 >= levelConfig.wordsPerCustomer,
       });
       const earned = addScoreFromWord(result.word, 1, levelConfig.scoreMultiplier);
-      const bonus = hint.isMatch(result.word)
+      const hintHit = hint.isMatch(result.word);
+      const bonus = hintHit
         ? addBonusScore(Math.round(earned * HINT_BONUS_RATIO.boss))
         : 0;
+      if (!hintHit) hint.reveal(); // real word but not the hint: show what it was
+      hopChef(hintHit);
       hint.advance(bonus);
       customerRef.current?.restorePatience(100);
       levelMakerRef.current.registerServedWord();
     } else if (result.word.length > 0) {
       audio.playSfx("wrong");
+      customerSpriteRef.current?.shake(2000); // wrong word: the boss shakes for 2 seconds
       customerVoice.wrong(customerVoiceId);
+      hint.reveal();
       customerRef.current?.applyWrongWordPenalty();
     }
   };
@@ -309,8 +322,57 @@ function BossLevelSession({
     { slotHoldMs: levelConfig.slotHoldMs },
   );
 
+  // Letters already in the input boxes still count toward the answer.
+  spawnerRef.current.setHeld(wordInput.currentWord.map((tile) => tile.character));
+
   const [levelResult, setLevelResult] = useState(null);
     const [isWorried, setIsWorried] = useState(false);
+  // Chef hops right, left, then back to centre: each hop is an arc (up easing out, down
+  // easing in like gravity) with a small squash on landing. A right hint answer hops bigger.
+  const chefX = useRef(new Animated.Value(0)).current;
+  const chefY = useRef(new Animated.Value(0)).current;
+  const chefSquash = useRef(new Animated.Value(0)).current;
+  const hopChef = (big = false) => {
+    const k = big ? 1.7 : 1;
+    const t = (v, to, duration, easing) =>
+      Animated.timing(v, { toValue: to, duration, easing, useNativeDriver: true });
+    const hop = (toX, h, ms) =>
+      Animated.sequence([
+        Animated.parallel([
+          t(chefX, toX, ms, Easing.inOut(Easing.sin)),
+          Animated.sequence([
+            t(chefY, -h, ms * 0.5, Easing.out(Easing.quad)),
+            t(chefY, 0, ms * 0.5, Easing.in(Easing.quad)),
+          ]),
+        ]),
+        Animated.sequence([
+          t(chefSquash, 1, 60, Easing.out(Easing.quad)),
+          t(chefSquash, 0, 140, Easing.out(Easing.back(2))),
+        ]),
+      ]);
+    [chefX, chefY, chefSquash].forEach((v) => { v.stopAnimation(); v.setValue(0); });
+    Animated.sequence([
+      hop(8 * k, 12 * k, 240),
+      hop(-8 * k, 12 * k, 300),
+      hop(0, 5 * k, 200),
+    ]).start();
+  };
+  const chefHopStyle = {
+    transformOrigin: '50% 100%', // squash from the feet
+    transform: [
+      { translateX: chefX },
+      { translateY: chefY },
+      { scaleX: chefSquash.interpolate({ inputRange: [0, 1], outputRange: [1, 1.07] }) },
+      { scaleY: chefSquash.interpolate({ inputRange: [0, 1], outputRange: [1, 0.88] }) },
+    ],
+  };
+  // Like the menu worm: keep the still sprite until the gif has loaded, so it starts clean.
+  const [wormReady, setWormReady] = useState(false);
+  useEffect(() => {
+    if (!isWorried) { setWormReady(false); return undefined; }
+    const t = setTimeout(() => setWormReady(true), 400);
+    return () => clearTimeout(t);
+  }, [isWorried]);
   const [statsPing, setStatsPing] = useState(0); // chef tap re-shows the counter bubble
 
   const patienceBandRef = useRef("happy");
@@ -360,9 +422,13 @@ function BossLevelSession({
     handleLevelEnd(false);
   }, [extraHealth, consumeExtraHealth, handleLevelEnd]);
 
+  // Serve ("Ihain na"): nothing happens with an empty plate. The spam lock after each
+  // press lives in PlateButton (cooldownMs).
   const handleServePlate = () => {
-    wordInput.submitWord();
+    if (wordInput.currentWord.length === 0) return;
+    wordInput.submitWord(); // scoring/patience handled via onSubmit
   };
+  const serveDisabled = wordInput.currentWord.length === 0;
 
   const handleIntroComplete = useCallback(() => setPhase("playing"), []);
 
@@ -453,8 +519,8 @@ function BossLevelSession({
             }}
           >
             <Image
-              source={require("../assets/Final/GameplayUI/quit-sign.png")}
-              style={{ width: "100%", height: "100%", resizeMode: "contain", bottom: 5 }}
+              source={require("../assets/Final/buttons/buttonPause2.png")}
+              style={{ width: "100%", height: "100%", resizeMode: "contain" }}
             />
           </TouchableOpacity>
         </Slot>
@@ -572,7 +638,7 @@ function BossLevelSession({
         </Slot>
 
         <Slot rect={RECTS.hint}>
-          <HintBubble text={hint.hint.text} reward={hint.reward} scale={scale} boss />
+          <HintBubble text={hint.hint.text} reward={hint.reward} answer={hint.revealed} scale={scale} boss />
         </Slot>
 
         <Slot rect={RECTS.word}>
@@ -584,39 +650,52 @@ function BossLevelSession({
             targetHoleId={wordInput.targetHoleId}
             lastResult={wordInput.lastResult}
             inputBoxCount={wordInput.inputBoxCount}
+            // "WORD +score" pill: left of the riddle bubble instead of on top of it
+            resultMaxWidth={(RECTS.hint.x - RECTS.word.x - 20) * scale}
+            resultAlign="left"
           />
         </Slot>
 
         <Slot rect={{ ...RECTS.serve, y: 556 }}>
-          <PlateButton style={{ flex: 1 }} onPress={handleServePlate} />
+          <PlateButton style={{ flex: 1 }} onPress={handleServePlate} disabled={serveDisabled} />
         </Slot>
 
       <Slot rect={RECTS.chef} scale={scale}>
-        <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={() => setStatsPing((n) => n + 1)}>
-        {/* Normal pose, hidden while the worry animation plays. */}
-        <Image
-          source={require('../assets/Final/MainCharacter.png')}
-          style={{ width: '100%', height: '100%', opacity: isWorried ? 0 : 1 }}
-          resizeMode="contain"
-        />
-        {isWorried && (
-          <AnimatedNpc
-            source={require('../assets/Final/MainCharacterWorryAnim.gif')}
-            npcKey="chef"
-            unit={scale}
-            worried
-            animatedGif
-            imageStyle={{
-              position: 'absolute',
-              left: '-23.4375%',
-              top: '-18.75%',
-              width: '137.5%',
-              height: '125%',
-              resizeMode: 'stretch',
-            }}
+        {/* The art can be bigger than the tap area, so it ignores touches... */}
+        <Animated.View pointerEvents="none" style={[{ flex: 1 }, chefHopStyle]}>
+          {/* Normal pose, hidden while the worry animation plays. */}
+          <Image
+            source={require('../assets/Final/MainCharacter.png')}
+            style={{ width: '100%', height: '100%', opacity: isWorried && wormReady ? 0 : 1 }}
+            resizeMode="contain"
           />
-        )}
-        </TouchableOpacity>
+          {isWorried && (
+            <AnimatedNpc
+              source={require('../assets/Final/MainCharacterWorryAnim.gif')}
+              npcKey="chef"
+              unit={scale}
+              worried
+              animatedGif
+              gifVisible={wormReady}
+              onGifLoad={() => setWormReady(true)}
+              imageStyle={{
+                position: 'absolute',
+                left: '-23.4375%',
+                top: '-18.75%',
+                width: '137.5%',
+                height: '125%',
+                resizeMode: 'stretch',
+              }}
+            />
+          )}
+        </Animated.View>
+        {/* ...and only this inset box taps the chef: it starts right of the serve plate
+            (x 336) and ends above the top belt (y 663), so it can't steal their taps. */}
+        <TouchableOpacity
+          activeOpacity={1}
+          style={{ position: 'absolute', left: '6%', top: 0, width: '94%', height: '89%' }}
+          onPress={() => setStatsPing((n) => n + 1)}
+        />
       </Slot>
 
         <Slot rect={RECTS.conveyors}>
@@ -636,10 +715,14 @@ function BossLevelSession({
                 slotDurationMs: levelConfig.conveyorSpeed,
                 slotWidth: 100 * scale,
                 slotHeight: 94 * scale,
+                // how far a tapped plate flies up to the word row
+                flyDy: (RECTS[`belt${row}`].y + RECTS[`belt${row}`].h / 2 - (RECTS.word.y + 24)) * scale,
                 ...getBeltConfig(levelConfig, row),
               }}
               onLetterPress={(letter) => wordInput.selectLetter(letter, row)}
             isPaused={showPause}
+              spawner={spawnerRef.current}
+              beltIndex={row}
             />
           </Slot>
         ))}

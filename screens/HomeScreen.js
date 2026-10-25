@@ -17,7 +17,7 @@ const WORM_GIF_PAUSE_MS = 5000;
 
 const WORM_FADE_MS = 300;
 
-function AnimatedWorm() {
+export function AnimatedWorm() {
   const [cycle, setCycle] = useState(0);
   const opacity = useRef(new Animated.Value(0)).current;
   const fadeInRef = useRef(() => {});
@@ -93,7 +93,12 @@ export default function HomeScreen({
   showGranny,
   onGrannySeen,
 }) {
+  const [grannyIntro, setGrannyIntro] = useState(false);
   const handleStart = onStart ?? (() => Alert.alert("Start pressed"));
+  const handlePlay = () => {
+    if (showGranny) setGrannyIntro(true); // new player: tutorial first
+    else handleStart();
+  };
   const handleSettings =
     onOpenSettings ?? (() => Alert.alert("Settings pressed"));
   const handleQuit = onQuit ?? (() => Alert.alert("Quit pressed"));
@@ -119,7 +124,7 @@ export default function HomeScreen({
 
         <View style={styles.menu}>
           <AppButton
-            onPress={handleStart}
+            onPress={grannyIntro ? undefined : handlePlay}
             label="START"
             backgroundImage={require("../assets/Final/buttons/button.png")}
           />
@@ -138,7 +143,14 @@ export default function HomeScreen({
         </View>
       </View>
       {showGranny && (
-        <GrannyTutorial onClose={onGrannySeen} style={{ bottom: 20 }} />
+        <GrannyTutorial
+          intro={grannyIntro}
+          onClose={() => {
+            if (grannyIntro) handleStart();
+            else onGrannySeen?.();
+          }}
+          style={{ bottom: 20 }}
+        />
       )}
     </ImageBackground>
   );

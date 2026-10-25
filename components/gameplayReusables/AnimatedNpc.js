@@ -9,39 +9,54 @@ import React, {
 import { Animated, Easing, StyleSheet } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 
-// expo-image plays animated GIFs on its own; React Native's Image does not on some builds.
 const AnimatedExpoImage = Animated.createAnimatedComponent(ExpoImage);
 
-// Timings (ms) and sizes. Distances are multiplied by `unit` (the stage scale),
-// so the motion looks the same on every screen size.
 const WALK_OUT_MS = 280;
 const WALK_IN_MS = 420;
-const STEP_MS = 110; // one half of a walking hop
-const SLIDE_DISTANCE = 300; // art units, enough to leave / enter the screen
-const STEP_HEIGHT = 7; // art units, small hop while walking
-const JUMP_HEIGHT = 18; // art units, hop when the patience face changes
+const STEP_MS = 110; 
+const SLIDE_DISTANCE = 300; 
+const STEP_HEIGHT = 7; 
+const JUMP_HEIGHT = 18; 
 const IGNORE_JUMP_AFTER_MOUNT_MS = 400;
-const SWAY_MS = 380; // time for each swing of the worried sway
-const SWAY_DISTANCE = 5; // art units, left / right
-const SWAY_DEGREES = 4; // lean left / right
+const PACE_DISTANCE = 16; 
+const PACE_WALK_MS = 1500; 
+const PACE_PAUSE_MS = 220; 
+const PACE_TURN_MS = 320;
+const PACE_BOB = 3; 
+const PACE_BOB_MS = 170; 
+const BOUNCE_HEIGHT = 22; 
+const BOUNCE_UP_MS = 150;
+const BOUNCE_DOWN_MS = 190;
+const SHAKE_DISTANCE = 7; 
+const SHAKE_STEP_MS = 55; 
 
 
 const AnimatedNpc = forwardRef(function AnimatedNpc(
-  { source, npcKey, unit = 1, worried = false, imageStyle, animatedGif = false },
+  { source, npcKey, unit = 1, worried = false, imageStyle, animatedGif = false, gifVisible = true, onGifLoad },
   ref,
 ) {
   const [shownSource, setShownSource] = useState(source);
   const slideX = useRef(new Animated.Value(0)).current;
   const jumpY = useRef(new Animated.Value(0)).current;
   const stepY = useRef(new Animated.Value(0)).current;
-  const swayV = useRef(new Animated.Value(0)).current; // -1 (left) .. 1 (right)
+  const paceX = useRef(new Animated.Value(0)).current;
+  const paceBob = useRef(new Animated.Value(0)).current;
+  const paceFlip = useRef(new Animated.Value(1)).current; 
   const walkingRef = useRef(false);
   const prevKeyRef = useRef(npcKey);
   const mountedAtRef = useRef(Date.now());
   const jumpTimerRef = useRef(null);
+  const reactX = useRef(new Animated.Value(0)).current; 
+  const reactY = useRef(new Animated.Value(0)).current;
+  const reactAnimRef = useRef(null);
 
-  // Walk out, swap the sprite, walk in. Cleanup stops everything, so a quick
-  // second change or leaving the screen can never leave a stuck animation.
+  const stopReaction = () => {
+    reactAnimRef.current?.stop();
+    reactAnimRef.current = null;
+    reactX.setValue(0);
+    reactY.setValue(0);
+  };
+
   useEffect(() => {
     if (npcKey === prevKeyRef.current) return undefined;
     prevKeyRef.current = npcKey;
@@ -98,59 +113,98 @@ const AnimatedNpc = forwardRef(function AnimatedNpc(
       stepY.setValue(0);
       walkingRef.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [npcKey]);
 
-  // Worried sway: a smooth left-right loop that runs while `worried` is true.
   useEffect(() => {
     if (!worried) return undefined;
-    swayV.setValue(0);
-    const swing = (toValue, duration) =>
-      Animated.timing(swayV, {
-        toValue,
-        duration,
-        easing: Easing.inOut(Easing.sin),
-        useNativeDriver: true,
-      });
+    paceX.setValue(0);
+    paceFlip.setValue(1);
+    paceBob.setValue(0);
+    const d = -PACE_DISTANCE * unit; 
+    const bob = PACE_BOB * unit;
+    const t = (v, toValue, duration, easing) =>
+      Animated.timing(v, { toValue, duration, easing, useNativeDriver: true });
+    const walk = (toX, ms = PACE_WALK_MS) =>
+      Animated.parallel([
+        t(paceX, toX, ms, Easing.inOut(Easing.sin)),
+        Animated.loop(
+          Animated.sequence([
+            t(paceBob, -bob, PACE_BOB_MS, Easing.out(Easing.quad)),
+            t(paceBob, 0, PACE_BOB_MS, Easing.in(Easing.quad)),
+          ]),
+          { iterations: Math.round(ms / (PACE_BOB_MS * 2)) },
+        ),
+      ]);
+    const turn = (to) =>
+      Animated.sequence([
+        Animated.delay(PACE_PAUSE_MS),
+        t(paceFlip, to, PACE_TURN_MS, Easing.inOut(Easing.quad)),
+        Animated.delay(PACE_PAUSE_MS / 2),
+      ]);
     const loop = Animated.loop(
       Animated.sequence([
-        swing(1, SWAY_MS),
-        swing(-1, SWAY_MS * 2),
-        swing(0, SWAY_MS),
+        walk(d),
+        turn(-1),
+        walk(-d, PACE_WALK_MS * 2),
+        turn(1),
+        walk(0),
       ]),
     );
     loop.start();
     return () => {
       loop.stop();
-      swing(0, 150).start(); // ease back to upright
+      Animated.parallel([
+        t(paceX, 0, 150, Easing.out(Easing.quad)),
+        t(paceFlip, 1, 150, Easing.out(Easing.quad)),
+        t(paceBob, 0, 150, Easing.out(Easing.quad)),
+      ]).start();
     };
-  }, [worried, swayV]);
+  }, [worried, unit, paceX, paceFlip, paceBob]);
 
-  const swayX = useMemo(
-    () =>
-      swayV.interpolate({
-        inputRange: [-1, 1],
-        outputRange: [-SWAY_DISTANCE * unit, SWAY_DISTANCE * unit],
-      }),
-    [swayV, unit],
-  );
-  const swayRotate = useMemo(
-    () =>
-      swayV.interpolate({
-        inputRange: [-1, 1],
-        outputRange: [`-${SWAY_DEGREES}deg`, `${SWAY_DEGREES}deg`],
-      }),
-    [swayV],
-  );
-
-  // Keep the sprite in sync if `source` changes without a new customer.
   useEffect(() => {
     if (!walkingRef.current) setShownSource(source);
   }, [source]);
 
   useImperativeHandle(ref, () => ({
+    bounce: (times = 3) => {
+      stopReaction();
+      const hop = Animated.sequence([
+        Animated.timing(reactY, {
+          toValue: -BOUNCE_HEIGHT * unit,
+          duration: BOUNCE_UP_MS,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(reactY, {
+          toValue: 0,
+          duration: BOUNCE_DOWN_MS,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]);
+      reactAnimRef.current = Animated.loop(hop, { iterations: times });
+      reactAnimRef.current.start();
+    },
+    shake: (durationMs = 2000) => {
+      stopReaction();
+      const d = SHAKE_DISTANCE * unit;
+      const step = (toValue, mult = 1) =>
+        Animated.timing(reactX, {
+          toValue,
+          duration: SHAKE_STEP_MS * mult,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        });
+      const wiggle = Animated.sequence([step(d), step(-d, 2), step(0)]);
+      const anim = Animated.loop(wiggle, {
+        iterations: Math.max(1, Math.round(durationMs / (SHAKE_STEP_MS * 4))),
+      });
+      reactAnimRef.current = anim;
+      anim.start(({ finished }) => {
+        if (finished) reactX.setValue(0);
+      });
+    },
     jump: () => {
-      // Checked on the next tick: a new customer's first patience report
       clearTimeout(jumpTimerRef.current);
       jumpTimerRef.current = setTimeout(() => {
         if (walkingRef.current) return;
@@ -176,26 +230,29 @@ const AnimatedNpc = forwardRef(function AnimatedNpc(
     },
   }));
 
-  useEffect(() => () => clearTimeout(jumpTimerRef.current), []);
+  useEffect(() => () => {
+    clearTimeout(jumpTimerRef.current);
+    reactAnimRef.current?.stop();
+  }, []);
 
   const motionStyle = {
-    transformOrigin: "50% 100%", // lean from the feet
+    transformOrigin: "50% 100%", 
     transform: [
-      { translateX: Animated.add(slideX, swayX) },
-      { translateY: Animated.add(jumpY, stepY) },
-      { rotate: swayRotate },
+      { translateX: Animated.add(Animated.add(slideX, paceX), reactX) },
+      { translateY: Animated.add(Animated.add(Animated.add(jumpY, stepY), paceBob), reactY) },
+      { scaleX: paceFlip },
     ],
   };
 
   if (animatedGif) {
-    // expo-image has no style.resizeMode; "stretch" is contentFit "fill".
     const { resizeMode, ...flatStyle } = StyleSheet.flatten(imageStyle) || {};
     return (
       <AnimatedExpoImage
         source={shownSource}
         contentFit={resizeMode === "stretch" ? "fill" : resizeMode || "cover"}
         autoplay
-        style={[flatStyle, motionStyle]}
+        onLoad={onGifLoad}
+        style={[flatStyle, motionStyle, { opacity: gifVisible ? 1 : 0 }]}
       />
     );
   }

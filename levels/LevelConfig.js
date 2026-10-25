@@ -1,4 +1,3 @@
-
 import { TILE_MODES, getSyllablePool } from '../components/gameplayReusables/ConveyorBelt/Letterpool';
 
 export function parseLevelNumber(id) {
@@ -44,6 +43,11 @@ export const LEVEL_CONFIG_DEFAULTS = {
   // letterDistribution accepts a profile name, a 0-1 number, or
   // { profiles: [...], minStreak, maxStreak } (see Letterpool.js).
   belts: DEFAULT_BELTS,
+  // How strongly the belts help build the current hint/riddle answer (see WordSpawner.js).
+  // targetChance: base chance a new tile is a letter the answer still needs.
+  // pityStep: extra chance added per dummy in a row, so a needed letter can't be starved.
+  // decoyEcho: chance a dummy may be a letter that is in the answer (higher = harder).
+  spawnAssist: { targetChance: 0.4, pityStep: 0.15, decoyEcho: 0.35 },
   wordDifficulty: {
     minLength: 3,          // -> wordRules.minLength
     maxLength: 8,          // -> wordRules.maxLength

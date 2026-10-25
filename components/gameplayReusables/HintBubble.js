@@ -4,9 +4,10 @@ import Text from '../AppText';
 
 const TAIL = 12;
 
-export default function HintBubble({ text, reward, scale = 1, picky = false, boss = false }) {
-  const bg = boss ? '#F3E1FF' : picky ? '#FFE9C7' : '#FFF8E7';
-  const rewarded = reward != null;
+export default function HintBubble({ text, reward, answer, scale = 1, picky = false, boss = false }) {
+  const revealed = answer != null;
+  const bg = revealed ? '#FFDADA' : boss ? '#F3E1FF' : picky ? '#FFE9C7' : '#FFF8E7';
+  const rewarded = !revealed && reward != null;
   return (
     <View pointerEvents="none" style={styles.wrap}>
       <View
@@ -25,7 +26,7 @@ export default function HintBubble({ text, reward, scale = 1, picky = false, bos
           adjustsFontSizeToFit
           minimumFontScale={0.6}
         >
-          {rewarded ? `Tama! +${reward}` : text}
+          {revealed ? answer : rewarded ? `Tama! +${reward}` : text}
         </Text>
       </View>
       <View

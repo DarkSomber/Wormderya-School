@@ -3,6 +3,7 @@ import {
   View,
   Image,
   Animated,
+  Easing,
   StyleSheet,
   ScrollView,
   StatusBar,
@@ -14,9 +15,8 @@ import {
 import { Image as ExpoImage } from "expo-image";
 import { hasLevelPreset } from "../levels/levelPresets";
 import Text from "../components/AppText";
-import DebugButton from "../components/tests/DebugButton"; // [TEST/DEBUG]
+import DebugButton from "../components/tests/DebugButton";
 import audio from "../audio/AudioManager";
-/* global __DEV__ */
 
 const isLevelLocked = (lvl, unlockedLevels, lockedLevels) =>
   !hasLevelPreset(lvl.id) ||
@@ -29,7 +29,7 @@ const LEVELS = [
   {
     id: 3,
     image: require("../assets/Final/levels/Level_3_Sinigang-na-Bangus.png"),
-    scale: 1.3, // wide art renders shorter; enlarge to close the gap
+    scale: 1.3,
   },
   {
     id: 4,
@@ -40,32 +40,32 @@ const LEVELS = [
 
 const IMAGE_WIDTH_RATIO = 0.7;
 const IMAGE_HEIGHT_RATIO = 0.38;
-const BOTTOM_OFFSET_RATIO = 0.1;
+const CAROUSEL_TOP = 725;
 const IMAGE_DROP_RATIO = 0.03;
 
-// DEBUG BUTTON TOGGLE
 const ENABLE_DEBUG_BUTTON = true;
 
-// [TEST/DEBUG]
 const DEBUG_TOP_RATIO = 0.17;
 
 const SHOW_DEBUG_BUTTON = ENABLE_DEBUG_BUTTON && __DEV__;
 
-// One full pass of levels/LevelSelectionMainBGAnim.gif (sum of its 65 frame delays).
 const BG_GIF_LOOP_MS = 16760;
-// Rest time with only the static background showing, then the GIF replays.
 const BG_GIF_PAUSE_MS = 5000;
 const BG_GIF_FADE_MS = 300;
 
-// The scene is drawn on this canvas (art size), then scaled to cover the screen.
 const SCENE_W = 512;
 const SCENE_H = 1088;
-const ROOF_H = 280; // levels/Bubong.png, pinned to the top
-const TABLE_H = 352; // levels/table.png, pinned to the bottom
-const BG_GIF_SCALE = 1; // GIF shares the static BG's 512x1088 canvas
+const ROOF_H = 284;
+const BOX_K = 0.8; // title box size (1 = original)
+const BOX_CX = 260;
+const BOX_CY = 154;
+const pctX = (v) => `${(v / SCENE_W) * 100}%`;
+const pctY = (v) => `${(v / SCENE_H) * 100}%`;
+const TABLE_H = 352;
+const BG_GIF_SCALE = 1;
 const BG_GIF_SHIFT_Y = 0;
 
-function AnimatedBackdrop({ sceneWidth, sceneHeight }) {
+function AnimatedBackdrop({ sceneWidth, sceneHeight, scale }) {
   const [cycle, setCycle] = useState(0);
   const [visible, setVisible] = useState(true);
   const opacity = useRef(new Animated.Value(1)).current;
@@ -103,25 +103,25 @@ function AnimatedBackdrop({ sceneWidth, sceneHeight }) {
           style={[StyleSheet.absoluteFill, { opacity }]}
         >
           <ExpoImage
-        key={cycle}
-        source={require("../assets/Final/levels/LevelSelectionMainBGAnim.gif")}
-        autoplay
-        transition={0}
-        style={[
-          {
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: sceneWidth,
-            height: sceneHeight,
-            transform: [
-              { translateY: BG_GIF_SHIFT_Y * sceneHeight },
-              { scale: BG_GIF_SCALE },
-            ],
-          },
-        ]}
-        contentFit="fill"
-      />
+            key={cycle}
+            source={require("../assets/Final/levels/LevelSelectionMainBGAnim.gif")}
+            autoplay
+            transition={0}
+            style={[
+              {
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: sceneWidth,
+                height: sceneHeight,
+                transform: [
+                  { translateY: BG_GIF_SHIFT_Y * sceneHeight },
+                  { scale: BG_GIF_SCALE },
+                ],
+              },
+            ]}
+            contentFit="fill"
+          />
         </Animated.View>
       )}
       <Image
@@ -132,14 +132,54 @@ function AnimatedBackdrop({ sceneWidth, sceneHeight }) {
           left: 0,
           width: "100%",
           height: `${(ROOF_H / SCENE_H) * 100}%`,
+          zIndex: 1,
         }}
         resizeMode="stretch"
       />
       <Image
+        source={require("../assets/Final/levels/TextBox.png")}
+        style={{
+          position: "absolute",
+          left: pctX(BOX_CX - (336 * BOX_K) / 2),
+          top: pctY(BOX_CY - (116 * BOX_K) / 2),
+          width: pctX(336 * BOX_K),
+          height: pctY(116 * BOX_K),
+          zIndex: 2,
+        }}
+        resizeMode="stretch"
+      />
+      <View
+        style={{
+          position: "absolute",
+          left: pctX(BOX_CX - (328 * BOX_K) / 2),
+          top: pctY(BOX_CY - (108 * BOX_K) / 2),
+          width: pctX(328 * BOX_K),
+          height: pctY(108 * BOX_K),
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 3,
+        }}
+      >
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={{
+            width: "100%",
+            fontSize: 34 * scale * BOX_K,
+            fontWeight: "bold",
+            color: "#5A1010",
+            textAlign: "center",
+            includeFontPadding: false,
+          }}
+        >
+          Level Selection
+        </Text>
+      </View>
+      <Image
         source={require("../assets/Final/levels/table.png")}
         style={{
           position: "absolute",
-          bottom: -50,
+          bottom: -50 * scale,
           left: 0,
           width: "100%",
           height: `${(TABLE_H / SCENE_H) * 120}%`,
@@ -170,7 +210,7 @@ function LevelSelectScene({ width, height }) {
           style={{ position: "absolute", top: 0, left: 0, width: w, height: h }}
           resizeMode="stretch"
         />
-        <AnimatedBackdrop sceneWidth={w} sceneHeight={h} />
+        <AnimatedBackdrop sceneWidth={w} sceneHeight={h} scale={k} />
       </View>
     </View>
   );
@@ -210,19 +250,78 @@ function LevelImage({ level, locked, onPlay, width, height, drop }) {
   );
 }
 
-const TEMP_INDICATOR_HEIGHT = 64; 
-function TempLevelIndicator({ index, total }) {
+const TEMP_INDICATOR_HEIGHT = 64;
+const BADGE_W = 130;
+const BADGE_H = Math.round((BADGE_W * 116) / 336);
+
+// Unlocked dots are lit; the newest unlocked one pulses.
+function IndicatorDot({ lit, active, pulse }) {
+  const p = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!pulse) return undefined;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(p, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(p, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => {
+      loop.stop();
+      p.setValue(0);
+    };
+  }, [pulse, p]);
+
+  return (
+    <View style={styles.dotSlot}>
+      {pulse && (
+        <Animated.View
+          style={[
+            styles.dotHalo,
+            {
+              opacity: p.interpolate({ inputRange: [0, 1], outputRange: [0.8, 0] }),
+              transform: [
+                { scale: p.interpolate({ inputRange: [0, 1], outputRange: [1, 2.2] }) },
+              ],
+            },
+          ]}
+        />
+      )}
+      <View
+        style={[
+          styles.tempDot,
+          lit && styles.tempDotLit,
+          active && styles.tempDotActive,
+        ]}
+      />
+    </View>
+  );
+}
+
+function TempLevelIndicator({ index, total, unlocked }) {
   const level = LEVELS[index];
+  const newest = unlocked.lastIndexOf(true);
   return (
     <View style={styles.tempIndicatorWrap} pointerEvents="none">
-      <View style={styles.tempIndicatorBadge}>
+      <ImageBackground
+        source={require("../assets/Final/levels/TextBox.png")}
+        style={styles.tempIndicatorBadge}
+        resizeMode="stretch"
+      >
         <Text style={styles.tempIndicatorText}>LEVEL {level.id}</Text>
-      </View>
+      </ImageBackground>
       <View style={styles.tempDotsRow}>
         {Array.from({ length: total }).map((_, i) => (
-          <View
+          <IndicatorDot
             key={i}
-            style={[styles.tempDot, i === index && styles.tempDotActive]}
+            lit={unlocked[i]}
+            active={i === index}
+            pulse={i === newest && i > 0}
           />
         ))}
       </View>
@@ -235,17 +334,24 @@ export default function LevelSelectScreen({
   onBack,
   unlockedLevels = [1],
   lockedLevels = [],
-  initialLevelId = 1, // the carousel opens on this level
-  onDebugToggle, // [TEST/DEBUG]
-  onDebugResetSave, // [TEST/DEBUG]
-  debugAllUnlocked = false, // [TEST/DEBUG]
+  initialLevelId = 1,
+  onDebugToggle,
+  onDebugResetSave,
+  debugAllUnlocked = false,
 }) {
   const { width, height } = useWindowDimensions();
 
+  const k = width / SCENE_W;
+  const sceneH = Math.max(SCENE_H * k, height);
+  const sceneTop = (height - sceneH) / 2;
+
   const pageWidth = width;
   const imageWidth = Math.round(width * IMAGE_WIDTH_RATIO);
-  const imageHeight = Math.round(height * IMAGE_HEIGHT_RATIO);
-  const imageDrop = Math.round(height * IMAGE_DROP_RATIO);
+  const imageHeight = Math.round(sceneH * IMAGE_HEIGHT_RATIO);
+  const imageDrop = Math.round(sceneH * IMAGE_DROP_RATIO);
+  const carouselTop = Math.round(
+    sceneTop + (CAROUSEL_TOP / SCENE_H) * sceneH
+  );
 
   const backSize = Math.round(Math.min(width * 0.65, 56));
   const topInset =
@@ -255,7 +361,6 @@ export default function LevelSelectScreen({
 
   const scrollRef = useRef(null);
 
-  // Open on initialLevelId when it is a real, unlocked level; otherwise level 1.
   const startIndex = (() => {
     const i = LEVELS.findIndex((l) => l.id === initialLevelId);
     if (i < 0) return 0;
@@ -293,7 +398,6 @@ export default function LevelSelectScreen({
     <View style={styles.background}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Background pieces: GIF plays behind the roof and the table. */}
       <LevelSelectScene width={width} height={height} />
 
       <TouchableOpacity
@@ -317,12 +421,17 @@ export default function LevelSelectScreen({
           styles.carousel,
           {
             height: imageHeight,
-            bottom: Math.round(height * BOTTOM_OFFSET_RATIO),
+            top: carouselTop,
           },
         ]}
       >
-        {/* [TEMP] selected-level indicator, sits right above the carousel */}
-        <TempLevelIndicator index={selectedIndex} total={LEVELS.length} />
+        <TempLevelIndicator
+          index={selectedIndex}
+          total={LEVELS.length}
+          unlocked={LEVELS.map(
+            (l) => !isLevelLocked(l, unlockedLevels, lockedLevels),
+          )}
+        />
 
         <View style={styles.carouselClip}>
           <ScrollView
@@ -337,11 +446,13 @@ export default function LevelSelectScreen({
             nestedScrollEnabled
             contentOffset={{ x: startIndex * pageWidth, y: 0 }}
             onContentSizeChange={() => {
-              // Android ignores contentOffset, so jump there once content is laid out.
               if (didInitialScroll.current) return;
               didInitialScroll.current = true;
               if (startIndex > 0) {
-                scrollRef.current?.scrollTo({ x: startIndex * pageWidth, animated: false });
+                scrollRef.current?.scrollTo({
+                  x: startIndex * pageWidth,
+                  animated: false,
+                });
               }
             }}
             snapToOffsets={snapOffsets}
@@ -371,7 +482,6 @@ export default function LevelSelectScreen({
         </View>
       </View>
 
-      {/* [TEST/DEBUG] */}
       {SHOW_DEBUG_BUTTON && onDebugToggle && (
         <View
           style={[styles.debugWrap, { top: debugTop }]}
@@ -384,7 +494,7 @@ export default function LevelSelectScreen({
           />
         </View>
       )}
-    </View >
+    </View>
   );
 }
 
@@ -403,7 +513,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    top: 565,
   },
   carouselClip: {
     flex: 1,
@@ -430,37 +539,52 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   tempIndicatorBadge: {
-    paddingHorizontal: 18,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    borderWidth: 2,
-    borderColor: "#ffebbd",
+    width: BADGE_W,
+    height: BADGE_H,
+    alignItems: "center",
+    justifyContent: "center",
   },
   tempIndicatorText: {
-    color: "#ffebbd",
-    fontSize: 20,
+    color: "#5A1010",
+    fontSize: 15,
     fontWeight: "700",
-    letterSpacing: 1,
+    textAlign: "center",
+    includeFontPadding: false,
   },
   tempDotsRow: {
     flexDirection: "row",
-    marginTop: 8,
+    marginTop: 6,
+  },
+  dotSlot: {
+    width: 18,
+    height: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dotHalo: {
+    position: "absolute",
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#ffebbd",
   },
   tempDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: "rgba(0,0,0,0.25)",
   },
-  tempDotActive: {
+  tempDotLit: {
     backgroundColor: "#ffebbd",
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.55)",
   },
+  tempDotActive: {
+    transform: [{ scale: 1.35 }],
+    borderWidth: 2,
+    borderColor: "#5A1010",
+  },
 
-  // [TEST/DEBUG]
   debugWrap: {
     position: "absolute",
     left: 0,

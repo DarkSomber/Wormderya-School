@@ -1,6 +1,7 @@
 export { default as ConveyorBelt } from './Conveyorbelt';
 export { default as Letter } from './Letter';
 export { DEFAULT_CONVEYOR_CONFIG } from './Conveyorconfig';
+export { createWordSpawner, DEFAULT_SPAWN_TUNING } from './WordSpawner';
 export {
   DEFAULT_LETTER_POOL,
   TILE_MODES,

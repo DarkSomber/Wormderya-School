@@ -31,6 +31,8 @@ export default function CurrentWordDisplay({
   lastResult,
   inputBoxCount = DEFAULT_INPUT_BOX_COUNT,
   resultFadeDelayMs = DEFAULT_RESULT_FADE_DELAY_MS,
+  resultMaxWidth = BUBBLE_W, // px; the screen narrows the pill so it stops short of the hint/riddle bubble
+  resultAlign = 'center',    // 'center' | 'left' (left keeps it clear of a bubble on the right)
 }) {
   const {
     shakeX,
@@ -160,10 +162,14 @@ export default function CurrentWordDisplay({
       {lastResult ? (
         <Animated.View
           pointerEvents="none"
-          style={[styles.bubbleWrap, { opacity: resultOpacity, transform: [{ scale: bubbleScale }] }]}
+          style={[
+            styles.bubbleWrap,
+            resultAlign === 'left' && { alignItems: 'flex-start' },
+            { opacity: resultOpacity, transform: [{ scale: bubbleScale }] },
+          ]}
         >
           <SpeechBubble
-            width={BUBBLE_W}
+            width={Math.min(BUBBLE_W, resultMaxWidth)}
             height={BUBBLE_H}
             text={
               lastResult.valid

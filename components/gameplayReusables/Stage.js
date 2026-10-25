@@ -6,7 +6,7 @@ export const ART_H = 1088;
 
 // Slot rectangles (art units) shared by the normal and boss gameplay screens.
 export const GAMEPLAY_RECTS = {
-  quit:      { x: 3,   y: 0,   w: 171, h: 147 },
+  quit:      { x: 18,  y: 18,  w: 80, h: 80 }, // round pause button (buttonPause2.png is ~1:1)
   coin:      { x: 326, y: 0,   w: 186, h: 300 }, // board + patience meter (one PNG)
   customer:  { x: 20,   y: 141, w: 230, h: 250 }, // bottom (386) = counter top edge (384)
   word:      { x: 30,  y: 380, w: 452, h: 100 },
