@@ -26,7 +26,7 @@ function PauseVolumes() {
   );
 }
 
-export default function PauseModal({ visible, onResume, onExit, onRetry }) {
+export default function PauseModal({ visible, onResume, onExit, onRetry, retryDisabled = false }) {
   const [confirmQuit, setConfirmQuit] = useState(false);
 
   useEffect(() => {
@@ -47,6 +47,8 @@ export default function PauseModal({ visible, onResume, onExit, onRetry }) {
         extraText={onRetry ? 'Retry' : undefined}
         onExtra={onRetry}
         extraColor="#FFE194"
+        extraDisabled={retryDisabled}
+        extraDisabledMessage="Disabled to avoid accidental resets"
         overlayChildren={<GrannyTutorial />}
       >
         <PauseVolumes />

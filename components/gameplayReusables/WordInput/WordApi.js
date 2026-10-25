@@ -14,7 +14,6 @@ const BLOCKED = [
   'Category:Tagalog obsolete forms',
 ];
 const CACHE_KEY = 'wormderya.validWords.v1';
-const LAUNCHED_KEY = 'wormderya.launched.v1';
 const TIMEOUT_MS = 6000;
 const HEADERS = {
   'User-Agent': 'Wormderya/1.0 (Student Project Game)',
@@ -58,8 +57,6 @@ export async function isOnline() {
 
 export async function shouldShowOfflineNotice() {
   try {
-    if (await AsyncStorage.getItem(LAUNCHED_KEY)) return false;
-    await AsyncStorage.setItem(LAUNCHED_KEY, '1');
     return !(await isOnline());
   } catch {
     return false;

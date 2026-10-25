@@ -1,7 +1,10 @@
-import React from 'react';
-import { StyleSheet, View, Modal, TouchableOpacity } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { StyleSheet, View, Modal, TouchableOpacity, useWindowDimensions } from 'react-native';
 import Text from './AppText';
 import audio from '../audio/AudioManager';
+
+const BUBBLE_W = 170;
+const BUBBLE_H = 44;
 
 const withClick = (fn) => (e) => {
   audio.playSfx('click');
@@ -23,17 +26,53 @@ export default function PopupModal({
   extraText,
   onExtra,
   extraColor = '#FFE194',
+  extraDisabled = false,
+  extraDisabledMessage,
   children, 
   overlayChildren,
 }) {
   const hasExtra = !!(extraText && onExtra);
+  const [bubblePos, setBubblePos] = useState(null);
+  const bubbleTimerRef = useRef(null);
+  const overlayRef = useRef(null);
+  const extraRef = useRef(null);
+  const { width: screenW } = useWindowDimensions();
+
+  useEffect(() => () => clearTimeout(bubbleTimerRef.current), []);
+  useEffect(() => {
+    if (!visible) {
+      clearTimeout(bubbleTimerRef.current);
+      setBubblePos(null);
+    }
+  }, [visible]);
+
+  const handleExtraPress = () => {
+    if (!extraDisabled) {
+      withClick(onExtra)();
+      return;
+    }
+    if (!extraDisabledMessage) return;
+    overlayRef.current?.measureInWindow((ox, oy) => {
+      extraRef.current?.measureInWindow((x, y, w) => {
+        const center = x - ox + w / 2;
+        const left = Math.max(8, Math.min(center - BUBBLE_W / 2, screenW - BUBBLE_W - 8));
+        setBubblePos({
+          left,
+          top: y - oy - BUBBLE_H - 10,
+          tail: Math.max(10, Math.min(center - left, BUBBLE_W - 10)),
+        });
+        clearTimeout(bubbleTimerRef.current);
+        bubbleTimerRef.current = setTimeout(() => setBubblePos(null), 2000);
+      });
+    });
+  };
   return (
     <Modal
       visible={visible}
       transparent={true}
       onRequestClose={onCancel ?? onPress}
     >
-      <View style={styles.overlay}>
+      <View ref={overlayRef} collapsable={false} style={styles.overlay}>
         <View style={styles.card}>
 
           <Text style={styles.title}>{title}</Text>
@@ -66,12 +105,19 @@ export default function PopupModal({
             ) : null}
 
             {hasExtra ? (
-              <TouchableOpacity
-                style={[styles.button, styles.buttonCompact, { backgroundColor: extraColor }]}
-                onPress={withClick(onExtra)}
-              >
-                <Text style={styles.buttonText}>{extraText}</Text>
-              </TouchableOpacity>
+              <View ref={extraRef} collapsable={false} style={styles.extraWrap}>
+                <TouchableOpacity
+                  style={[
+                    styles.button,
+                    styles.buttonCompact,
+                    extraDisabled ? styles.buttonDisabled : { backgroundColor: extraColor },
+                  ]}
+                  activeOpacity={extraDisabled ? 1 : 0.2}
+                  onPress={handleExtraPress}
+                >
+                  <Text style={[styles.buttonText, extraDisabled && styles.buttonTextDisabled]}>{extraText}</Text>
+                </TouchableOpacity>
+              </View>
             ) : null}
 
             <TouchableOpacity
@@ -84,6 +130,15 @@ export default function PopupModal({
 
         </View>
         {overlayChildren}
+        {extraDisabled && bubblePos ? (
+          <View
+            pointerEvents="none"
+            style={[styles.bubble, { left: bubblePos.left, top: bubblePos.top }]}
+          >
+            <Text style={styles.bubbleText}>{extraDisabledMessage}</Text>
+            <View style={[styles.bubbleTail, { left: bubblePos.tail - 6 }]} />
+          </View>
+        ) : null}
       </View>
     </Modal>
   );
@@ -180,5 +235,45 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: '#000',
+  },
+  buttonDisabled: {
+    backgroundColor: '#D0D0D0',
+    borderColor: '#8A8A8A',
+  },
+  buttonTextDisabled: {
+    color: '#8A8A8A',
+  },
+  extraWrap: {
+    position: 'relative',
+  },
+  bubble: {
+    position: 'absolute',
+    width: BUBBLE_W,
+    height: BUBBLE_H,
+    backgroundColor: '#222',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 999,
+    elevation: 20,
+  },
+  bubbleText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#FFF8E7',
+    textAlign: 'center',
+  },
+  bubbleTail: {
+    position: 'absolute',
+    bottom: -6,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 6,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#222',
   },
 });

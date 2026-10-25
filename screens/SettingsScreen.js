@@ -184,10 +184,13 @@ export default function SettingsScreen({
           )}
 
           {view === "achievements" && (
-            <AchievementList unlockedIds={achievements?.unlockedIds} />
+            <View style={styles.listFrame}>
+              <AchievementList unlockedIds={achievements?.unlockedIds} />
+            </View>
           )}
 
           {view === "credits" && (
+            <View style={styles.listFrame}>
             <ScrollView
               style={styles.creditsScrollView}
               contentContainerStyle={styles.creditsContentContainer}
@@ -230,7 +233,15 @@ export default function SettingsScreen({
                 <Text style={styles.roleText}>Game Font Geist Pixel</Text>
                 <Text style={styles.nameText}>The Geist Project Authors</Text>
               </View>
+
+              <View style={styles.creditItem}>
+                <Text style={styles.roleText}>Tagalog Word Validation</Text>
+                <Text style={styles.nameText}>
+                  Wiktionary (en.wiktionary.org){"\n"}Text available under CC BY-SA 4.0
+                </Text>
+              </View>
             </ScrollView>
+            </View>
           )}
         </View>
 
@@ -375,8 +386,22 @@ const styles = StyleSheet.create({
     width: 200,
     height: 60,
   },
+  listFrame: {
+    width: "100%",
+    flex: 1,
+    marginTop: 4,
+    marginBottom: 30,
+    marginLeft: 6,
+    marginRight: 6,
+    overflow: "hidden",
+  },
   creditsScrollView: { width: "100%", flex: 1 },
-  creditsContentContainer: { paddingVertical: 8, alignItems: "center" },
+  creditsContentContainer: {
+    paddingTop: 8,
+    paddingBottom: 24,
+    paddingHorizontal: 12,
+    alignItems: "center",
+  },
   creditsTitleText: {
     textAlign: "center",
     color: "#8a5a30",

@@ -704,6 +704,7 @@ function LevelSession({
         visible={showPause}
         onExit={() => { setShowPause(false); onBack?.(); }}
         onRetry={() => { setShowPause(false); onRetry?.(); }}
+        retryDisabled={isRushHour}
         onResume={() => setShowPause(false)}
       />
 

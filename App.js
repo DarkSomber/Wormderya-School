@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useFonts } from "expo-font";
 import { GeistPixel_400Regular } from "@expo-google-fonts/geist-pixel";
-import { View, StyleSheet, Modal, Platform, BackHandler } from "react-native";
+import { View, StyleSheet, Modal, Platform, BackHandler, AppState } from "react-native";
 import SplashScreen from "./screens/SplashScreen";
 import HomeScreen from "./screens/HomeScreen";
 import ModeSelectScreen from "./screens/ModeSelectScreen";
@@ -184,9 +184,30 @@ function ScreenSwitcher() {
   const [assetsReady, setAssetsReady] = useState(false);
   const [delayDone, setDelayDone] = useState(false);
   const [offlineNotice, setOfflineNotice] = useState(false);
+  const offlineShownRef = useRef(false);
 
   useEffect(() => {
-    shouldShowOfflineNotice().then(setOfflineNotice);
+    let cancelled = false;
+    const check = async () => {
+      const offline = await shouldShowOfflineNotice();
+      if (cancelled) return;
+      if (!offline) {
+        offlineShownRef.current = false;
+        return;
+      }
+      if (!offlineShownRef.current) {
+        offlineShownRef.current = true;
+        setOfflineNotice(true);
+      }
+    };
+    check();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") check();
+    });
+    return () => {
+      cancelled = true;
+      sub.remove();
+    };
   }, []);
 
   useEffect(() => {
