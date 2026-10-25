@@ -29,7 +29,7 @@ export const UPGRADES = {
     price: 50,
     type: 'consumable',
     healthBonus: 1,
-    priceStep: 25, // added to the price for each one already held
+    priceStep: 25,
     icon: require('../../assets/Final/store/Power-Extra_Health.png'),
   },
   YOLO: {
@@ -77,7 +77,6 @@ export function useUpgrades(wallet, { initialState, onChange } = {}) {
     notify();
   }, [ownedPermanent, consumables, notify]);
 
-  // Base price; Extra Health costs more for each one already held (no stockpiling).
   const getBasePrice = useCallback(
     (upgrade) => upgrade.price + (upgrade.priceStep ?? 0) * (consumables[upgrade.id] || 0),
     [consumables]
@@ -93,7 +92,6 @@ export function useUpgrades(wallet, { initialState, onChange } = {}) {
       if (!wallet.canAfford(upgrade.id, basePrice)) {
         return { success: false, reason: 'insufficient' };
       }
-      // The random discount goes to another offered upgrade the player doesn't own.
       const pool = offeredIds.filter((id) => !ownedPermanent.has(id));
       const spend = wallet.buyItem(upgrade.id, basePrice, pool);
       if (!spend.success) return { success: false, reason: 'insufficient' };
@@ -152,7 +150,6 @@ export function useUpgrades(wallet, { initialState, onChange } = {}) {
     });
   }, []);
 
-  // Mirror of the queue so startNewRound never reads a stale closure.
   const queueRef = useRef([]);
   useEffect(() => {
     queueRef.current = queuedTemporary;

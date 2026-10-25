@@ -3,7 +3,6 @@ import { StyleSheet, View, Modal, TouchableOpacity } from 'react-native';
 import Text from './AppText';
 import audio from '../audio/AudioManager';
 
-// Popup buttons all click, then run their own handler.
 const withClick = (fn) => (e) => {
   audio.playSfx('click');
   fn?.(e);
@@ -16,12 +15,12 @@ export default function PopupModal({
   extraMessage,
   score,
   buttonText,
-  buttonColor = '#FFE194', // Default color
+  buttonColor = '#FFE194',
   onPress,
   cancelText,
   onCancel,
   cancelColor,
-  extraText, // optional third button, shown between cancel and the main button
+  extraText,
   onExtra,
   extraColor = '#FFE194',
   children, 
@@ -37,15 +36,12 @@ export default function PopupModal({
       <View style={styles.overlay}>
         <View style={styles.card}>
 
-          {/* Header Title */}
           <Text style={styles.title}>{title}</Text>
 
-          {/* Divider Line */}
           <View style={styles.divider} />
 
           {children}
 
-          {/* Body Content */}
           <View style={styles.body}>
             {message && <Text style={styles.messageText}>{message}</Text>}
           </View>
@@ -53,15 +49,12 @@ export default function PopupModal({
             {extraMessage && <Text style={styles.extraMessageText}>{extraMessage}</Text>}
           </View>
 
-
-            {/* Styled Score Display */}
           {score !== undefined && (
               <View style={styles.scoreBox}>
                 <Text style={styles.scoreText}>SCORE: {score}</Text>
                </View>
             )}
 
-          {/* Action Button(s) */}
           <View style={[styles.buttonRow, hasExtra && styles.buttonRowCompact]}>
             {cancelText && onCancel ? (
               <TouchableOpacity
@@ -140,7 +133,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 10,
   },
-  // Dedicated styling for the score display
   scoreBox: {
     marginTop: 12,
     paddingVertical: 4,
@@ -165,7 +157,6 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 4,
   },
-  // Three buttons: tighter so they still fit on one row of the card.
   buttonRowCompact: {
     gap: 8,
   },

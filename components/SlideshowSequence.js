@@ -34,7 +34,6 @@ export default function SlideshowSequence({
  
   return (
     <View style={styles.container}>
-      {/* ---------- SLIDE CONTENT ---------- */}
       <View style={styles.slideCard}>
         {slide.image ? (
           <Image

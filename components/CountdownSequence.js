@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { View, StyleSheet } from 'react-native';
 import Text from './AppText';
 
-//Slideshow Sequence survives so the game won't crash. Functions like slideshow Sequence
 export default function CountdownSequence({ slides, onComplete, msPerSlide = 800 }) {
   const [index, setIndex] = useState(0);
   const isLastSlide = index === slides.length - 1;
@@ -11,7 +10,6 @@ export default function CountdownSequence({ slides, onComplete, msPerSlide = 800
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
-  // loop for each slide
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (isLastSlide) {
@@ -21,7 +19,6 @@ export default function CountdownSequence({ slides, onComplete, msPerSlide = 800
       }
     }, slide.ms ?? msPerSlide);
 
-    // Safety net so it won't fire twice
     return () => clearTimeout(timeoutId);
   }, [index, isLastSlide, msPerSlide, slide.ms]);
 

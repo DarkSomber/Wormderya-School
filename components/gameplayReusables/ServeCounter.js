@@ -3,7 +3,6 @@ import { View, StyleSheet } from 'react-native';
 import Text from '../AppText';
 import { Slot } from './Stage';
 
-
 const COUNTER_RECT = { x: 176, y: 484, w: 160, h: 66 };
 const SHOW_MS = 3000;
 

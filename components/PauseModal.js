@@ -27,12 +27,8 @@ function PauseVolumes() {
 }
 
 export default function PauseModal({ visible, onResume, onExit, onRetry }) {
-  // Exit asks "are you sure?" first, so a misclick can't throw the run away.
-  // The pause card is hidden while the question is up (two modals at once can
-  // fail to show on iOS); Never mind brings it back.
   const [confirmQuit, setConfirmQuit] = useState(false);
 
-  // Never reopen straight on the question the next time the menu is shown.
   useEffect(() => {
     if (!visible) setConfirmQuit(false);
   }, [visible]);

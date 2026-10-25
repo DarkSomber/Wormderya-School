@@ -10,15 +10,9 @@ const PLATE_SPOTS = [
   { x: 0.55, y: 0.05, size: 6, delay: 1400 },
 ];
 
-/*
- * Bounces and stuff
- */
-// After a press the button locks for this long, so it can't be spammed.
 const SERVE_COOLDOWN_MS = 800;
 
 export default function PlateButton({ onPress, style, disabled = false, cooldownMs = SERVE_COOLDOWN_MS }) {
-  // The lock lives in a ref so two taps in the same frame can't both get through;
-  // `cooling` is only there to dim the button while it is locked.
   const lockedRef = useRef(false);
   const timerRef = useRef(null);
   const [cooling, setCooling] = useState(false);
@@ -39,7 +33,6 @@ export default function PlateButton({ onPress, style, disabled = false, cooldown
     return () => loop.stop();
   }, [lift]);
 
-  // Fires on touch DOWN (onPressIn), not on release, so a light tap always counts.
   const handlePress = (e) => {
     if (disabled || lockedRef.current) return;
     lockedRef.current = true;
@@ -59,7 +52,7 @@ export default function PlateButton({ onPress, style, disabled = false, cooldown
       activeOpacity={0.7}
       disabled={disabled}
       onPressIn={handlePress}
-      hitSlop={{ top: 8, bottom: 8, left: 8, right: 2 }} // right stays small: the chef's tap box is just beside it
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 2 }}
     >
       <Animated.View style={[styles.fill, { transform: [{ translateY: lift }, { scale: squash }] }]}>
         <Image source={PLATE_IMAGE} style={styles.fill} resizeMode="stretch" />

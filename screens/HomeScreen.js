@@ -96,7 +96,7 @@ export default function HomeScreen({
   const [grannyIntro, setGrannyIntro] = useState(false);
   const handleStart = onStart ?? (() => Alert.alert("Start pressed"));
   const handlePlay = () => {
-    if (showGranny) setGrannyIntro(true); // new player: tutorial first
+    if (showGranny) setGrannyIntro(true); 
     else handleStart();
   };
   const handleSettings =

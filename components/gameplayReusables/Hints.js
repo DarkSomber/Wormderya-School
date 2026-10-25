@@ -1,5 +1,3 @@
-// Hints and riddles are hard-coded, written in Tagalog / Taglish.
-// [answer, text]
 
 const HINT_DATA = [
   ['BAHAY', 'Tirahan ng pamilya'],

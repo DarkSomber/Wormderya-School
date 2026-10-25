@@ -1,131 +1,117 @@
-/**
- * Word list of formal Tagalog/Filipino vocabulary: no slang, no
- * texting shorthand, no informal spellings. WordValidator only needs
- * something that exposes `has(word)`, so swap or extend it freely.
- *
- * Rules every entry follows (so a word is actually buildable):
- *   - Only letters from DEFAULT_LETTER_POOL (A,B,K,D,E,G,H,I,L,M,N,O,P,R,S,T,U,W,Y).
- *     "NG" is just N + G, so words like NGIPIN and NGAYON are fine.
- *   - 3 to 6 letters. The input row has DEFAULT_INPUT_BOX_COUNT (5) or the
- *     level's inputBoxCount (6) boxes, so anything longer can never be typed.
- *   - Root words and common everyday vocabulary, mostly native Tagalog.
- *
- * The first block is the original test list; the rest is grouped by topic.
- */
 export const TAGALOG_WORD_LIST = [
-  'AKO',     // I
-  'IKAW',    // you
-  'TAYO',    // we (inclusive)
-  'KAMI',    // we (exclusive)
-  'BAHAY',   // house
-  'TUBIG',   // water
-  'ARAW',    // sun / day
-  'GABI',    // night
-  'BATA',    // child
-  'TAO',     // person
-  'MATA',    // eye
-  'PUSO',    // heart
-  'ISDA',    // fish
-  'BATO',    // rock / stone
-  'DAGAT',   // sea
-  'BUNDOK',  // mountain
-  'KAIN',    // eat
-  'LAKAD',   // walk
-  'BUHAY',   // life / alive
-  'LUPA',    // earth / land
-  'HANGIN',  // wind
-  'APOY',    // fire
-  'AKALA',   // belief / assumption
-  'BAGAY',   // thing / object
-  'BALIK',   // return
-  'BAWAT',   // each / every
-  'GABAY',   // guide
-  'GANDA',   // beauty
-  'KAMAY',   // hand
-  'PILIT',   // forced / insistence
-  'SULAT',   // letter / writing
-  'TAWAG',   // call
-  'YAMAN',   // rich
-  'SIRA',    // broken
-  'PILA',    // line of peopel
-  'PINOY',   // MALE PILIPINO
-  'LOBO',    // WOLF
-  'BOLO',    // WEAPON
-  'PINAY',   // FEMALE PILIPINO
-  'TAE',     // POO
-  'TABO',    // DIPPER
-  'SOPAS',   // FOOD sopas
-  'TOYO',    // SOY SAUCE
-  'TUYO',    // DRY
-  'GAMIT',   // ITEM
-  'DAAN',    // ROAD / WAY
-  'ARAW',    // SUN
-  'PLATO',   // PLATE
-  'LABA',    // WASHING CLOTHES
-  'LASA',    // TASTE
-  'MALASA',  // TASTY
-  'BARA',    // STUCK
-  'KUMOT',   // Blanket
-  'KAPE',    // Coffee
-  'LAMAN',   // meat
-  'DAPA',    // Knell
-  'GATA',    // coconot milk
-  'PAAWA',   // sulky(?)
-  'AWA',     // Mercy
-  'KUTO',    // Lice
-  'HAWA',    // Infect
-  'BAON',    // allowance or food something bruh
-  'KAAWAY',  // Enemy
-  'TAGA',    // Stab
-  'PASO',    // Burn or Pot
-  'RUTA',    // Route
-  'POGI',    // Handsome
-  'MALAY',   // conscious
-  'GULO',    // messy
-  'ANGULO',  // angle (?)
-  'GULONG',  //  
-  'MUTYA',   // Jewel
-  'TIGAS',   // Hard
-  'MALAS',   // 
-  'DAGA',    // Rat
-  'PAYO',    // 
-  'MULTO',   // Ghost
-  'REGLA',   // period for gorl
-  'MAASIM',  //
-  'MABAHO',  // Smelly
-  'MAALAT',  // Salty
-  'PAASA',   // Led on
-  'ASA',     // hope
-  'AGAP',    //
-  'AGA',     // 
-  'SUGAL',   // 
-  'PINSAN',  //
-  'LATA',    //
-  'TONO',    //
-  'MANO',    //
-  'MUNDO',   //
-  'BUWAYA',  //
-  'KURAKOT', //
-  'PAYAT',   //
-  'MALABO',  //
-  'MALINAW', //
-  'HAPON',   //
-  'SUBO',    //
-  'KUPAL',   //
-  'DABOG',   //
-  'SAPOL',   //
-  'DOBLE',   // two
-  'HARANA',  //
-  'SALUDO',  //
-  'TAON',    //
-  'PASKO',   //
-  'HUWAG',   //
-  'PUNO',    //
-  'PONO',    //
-  'HUBAD',   //
-  'HABAGAT', //
-  'AWAT',    //
-  'ATA',     //
+  'AKO',
+  'IKAW',
+  'TAYO',
+  'KAMI',
+  'BAHAY',
+  'TUBIG',
+  'ARAW',
+  'GABI',
+  'BATA',
+  'TAO',
+  'MATA',
+  'PUSO',
+  'ISDA',
+  'BATO',
+  'DAGAT',
+  'BUNDOK',
+  'KAIN',
+  'LAKAD',
+  'BUHAY',
+  'LUPA',
+  'HANGIN',
+  'APOY',
+  'AKALA',
+  'BAGAY',
+  'BALIK',
+  'BAWAT',
+  'GABAY',
+  'GANDA',
+  'KAMAY',
+  'PILIT',
+  'SULAT',
+  'TAWAG',
+  'YAMAN',
+  'SIRA',
+  'PILA',
+  'PINOY',
+  'LOBO',
+  'BOLO',
+  'PINAY',
+  'TAE',
+  'TABO',
+  'SOPAS',
+  'TOYO',
+  'TUYO',
+  'GAMIT',
+  'DAAN',
+  'ARAW',
+  'PLATO',
+  'LABA',
+  'LASA',
+  'MALASA',
+  'BARA',
+  'KUMOT',
+  'KAPE',
+  'LAMAN',
+  'DAPA',
+  'GATA',
+  'PAAWA',
+  'AWA',
+  'KUTO',
+  'HAWA',
+  'BAON',
+  'KAAWAY',
+  'TAGA',
+  'PASO',
+  'RUTA',
+  'POGI',
+  'MALAY',
+  'GULO',
+  'ANGULO',
+  'GULONG',
+  'MUTYA',
+  'TIGAS',
+  'MALAS',
+  'DAGA',
+  'PAYO',
+  'MULTO',
+  'REGLA',
+  'MAASIM',
+  'MABAHO',
+  'MAALAT',
+  'PAASA',
+  'ASA',
+  'AGAP',
+  'AGA',
+  'SUGAL',
+  'PINSAN',
+  'LATA',
+  'TONO',
+  'MANO',
+  'MUNDO',
+  'BUWAYA',
+  'KURAKOT',
+  'PAYAT',
+  'MALABO',
+  'MALINAW',
+  'HAPON',
+  'SUBO',
+  'KUPAL',
+  'DABOG',
+  'SAPOL',
+  'DOBLE',
+  'HARANA',
+  'SALUDO',
+  'TAON',
+  'PASKO',
+  'HUWAG',
+  'PUNO',
+  'PONO',
+  'HUBAD',
+  'HABAGAT',
+  'AWAT',
+  'ATA',
   'LAYO',    
   'KASAL',
   'DASAL',
@@ -144,1277 +130,1237 @@ export const TAGALOG_WORD_LIST = [
   'ARAY',
   'BAGAY',
   'LABIS',
-  'ALAT',     // salty variant
+  'ALAT',
   'ULAT', 
   'KABAYO',
   'TUHOD',
-  'GUSTO',    //
-  'NOO',      // forehead
-  'HAROT',    // mischevous
-  'MAPA',     //
-  'GAYA',     // 
-  'BALA',     //
-  'ANAY',     //
-  'KADAMAY',  //
-  'DAKIP',    //
-  'AGOS',     // daloy
-'AKBAY',    // balikat o pag-alalay
-'ALON',     // alon sa tubig
-'ANLU',     // salitang nangangailangan ng pagpapatunay
-'ANTAS',    // baitang o lebel
-'ASAM',     // mithiin
-'AYON',     // alinsunod
-'BAGTING',  // tunog ng kampana
-'BAKAS',    // tanda
-'BALAK',    // layunin
-'BALINTA',  // nangangailangan ng pagpapatunay
-'BALISA',   // hindi mapalagay
-'BANAAG',   // bahagyang liwanag
-'BANAYAD',  // hindi marahas
-'BANGIS',   // kalupitan
-'BATID',    // nalalaman
-'BATOK',    // likod ng leeg
-'BAYAW',    // asawa ng kapatid
-'BIHIS',    // kasuotan
-'BILAD',    // ibilad
-'BILOG',    // hugis na pabilog
-'BINHI',    // buto ng halaman
-'BISIG',    // bahagi ng braso
-'BITAK',    // siwang
-'BUKAL',    // bukal ng tubig
-'BUKLOD',   // samahan
-'BUKOL',    // umbok
-'BULOS',    // tuloy-tuloy na daloy
-'BUNGO',    // bungo
-'BUHOS',    // pagbuhos
-'DALAG',    // uri ng isda
-'DALAW',    // pagdalaw
-'DAPIT',    // pook
-'DAPOG',    // kalan na yari sa lupa
-'DAYO',     // taong dumadalaw
-'DULAS',    // madulas
-'GABOK',    // alikabok
-'GALOS',    // gasgas
-'GANAP',    // lubos
-'GAPAS',    // hibla
-'GILAS',    // kinang o husay
-'GIMIK',    // pakana o palabas
-'GULOD',    // dalisdis
-'HAGOD',    // paghaplos
-'HAKOT',    // magdala ng maraming bagay
-'HALAW',    // hanguin
-'HAPDI',    // kirot
-'HAPIT',    // halos
-'HASIK',    // maghasik
-'HATID',    // magdala
-'HILIG',    // pagkahilig
-'HIRAM',    // pansamantalang gamitin
-'HULOG',    // pagbagsak
-'IGIB',     // kumuha ng tubig
-'KALAS',    // alisin ang pagkakakabit
-'KAPOS',    // kulang
-'KIBOT',    // bahagyang galaw
-'KIMAS',    // galaw ng kamay
-'KISAP',    // mabilis na pagkislap
-'KISIG',    // tindig o anyo
-'KUBOS',    // ubos
-'KUNAT',    // matigas at hindi madaling yumuko
-'KURAP',    // mabilis na pagpikit
-'KURIT',    // pangungulit
-'KUTOB',    // pakiramdam o hinala
-'KUTOS',    // palo
-'LAGDA',    // pirma
-'LAGOM',    // buod
-'LAGOT',    // pagkaputol
-'LAGUS',    // lagusan
-'LAHAD',    // lantad
-'LAPOT',    // malapot
-'LATAG',    // ilatag
-'LATAY',    // marka mula sa paghampas
-'LATIK',    // pagkaing gawa sa gata
-'LAYAS',    // umalis
-'LIKOT',    // liko
-'LIPAS',    // lumipas
-'LISAN',    // iwan
-'LISIK',    // tumalsik
-'LIYAB',    // liyab ng apoy
-'LUGOD',    // tuwa
-'LUKOT',    // lukot
-'LUSAW',    // matunaw
-'LUSOT',    // makalusot
-'LUTOK',    // pagputok
-'PABOR',    // pagkiling
-'PADRON',   // huwaran
-'PAHIMAK',  // huling habilin
-'PAHUPA',   // humuhupa
-'PALASAK',  // karaniwan
-'PALIHIM',  // lihim
-'PAMANA',   // iniwang ari-arian
-'PANDAY',   // manggagawa ng metal
-'PANATA',   // pangako
-'PANIG',    // panig
-'PANUKALA', // mungkahi
-'PAPURI',   // papuri
-'PASAK',    // pantusok
-'PASAN',    // dalahin
-'PASILYO',  // daanan
-'PASPAS',   // mabilis
-'PATAG',    // patag
-'PATAWAD',  // pagpapatawad
-'PAWIS',    // pawis
-'PILAS',    // piraso
-'PILIPIT',  // pilipit
-'PINTA',    // pintura
-'PIRASO',   // bahagi
-'PITAK',    // bahagi ng lupa
-'PITAS',    // pitasin
-'PITIK',    // maikling tunog
-'POOK',     // lugar
-'PUKAW',    // gisingin
-'PULOT',    // pulutin
-'PUNAS',    // punasan
-'PUNLA',    // batang halaman
-'PUSOD',    // gitna
-'PUTIK',    // basang lupa
-'PUYAT',    // kulang sa tulog
-'SABIT',    // nakasabit
-'SAGAD',    // hanggang dulo
-'SAGAP',    // kumuha ng impormasyon
-'SAKOP',    // nasasakupan
-'SALIN',    // pagsasalin
-'SALON',    // bulwagan
-'SAMBA',    // pagsamba
-'SAMPA',    // umakyat
-'SANDIG',   // sandigan
-'SANDOK',   // kasangkapan sa pagsalok
-'SAPIN',    // panakip
-'SARSA',    // sarsa
-'SIKIL',    // pigilan
-'SIKIP',    // siksik
-'SILAB',    // liyab
-'SILIP',    // sumilip
-'SIMOT',    // ubusin
-'SINAG',    // sinag ng liwanag
-'SINDAK',   // matinding takot
-'SINGIL',   // singilin
-'SINGIT',   // isingit
-'SINOP',    // kaayusan
-'SIPOL',    // sipol
-'SIRKO',    // sirko
-'SISID',    // sumisid
-'SUKLOB',   // takpan
-'SUKOL',    // sukat
-'SULID',    // sinulid
-'SULOK',    // sulok
-'SUMPA',    // sumpa
-'SUPIL',    // supilin
-'TABAS',    // tabasin
-'TADHANA',  // kapalaran
-'TADYAK',   // pagsipa
-'TAGAK',    // patak
-'TAGAS',    // pagtagas
-'TAGIS',    // tagisan
-'TAGOS',    // tumagos
-'TAGPI',    // tahiin
-'TAHAS',    // lantad
-'TAKAS',    // pagtakas
-'TAKDA',    // itinakdang bagay
-'TAKIP',    // takip
-'TALAB',    // bisa
-'TALAK',    // talakayan
-'TALIM',    // talim
-'TALOS',    // pagkaunawa
-'TAMIS',    // matamis
-'TANAW',    // tanawin
-'TANOD',    // bantay
-'TAPIS',    // kasuotang pambalot
-'TASAK',    // salitang nangangailangan ng pagpapatunay
-'TIBOK',    // tibok
-'TIKAS',    // tindig
-'TIKLOP',   // tiklop
-'TILAD',    // tipak
-'TIPAK',    // tipak
-'TIRIK',    // nakatirik
-'TITIG',    // titig
-'TUGON',    // tugon
-'TUKOD',    // tukod
-'TUKOY',    // tukuyin
-'TUKTOK',   // tuktok
-'TUMPAK',   // eksakto
-'TUPIG',    // pagkaing gawa sa kanin
-'TUPOK',    // tupukin
-'TUTOL',    // pagtutol
-'UBOD',     // pinakagitna
-'UKIT',     // ukit
-'ULING',    // uling
-'UPOS',     // maubos
-'USAD',     // usad
-'USIG',     // pagsisiyasat
-'WAGAS',    // dalisay
-'WAGSI',    // iwaksi
-'WALOG',    // bangin
-'YAMOT',    // pagkainis
-'YUGTO',    // bahagi
+  'GUSTO',
+  'NOO',
+  'HAROT',
+  'MAPA',
+  'GAYA',
+  'BALA',
+  'ANAY',
+  'KADAMAY',
+  'DAKIP',
+  'AGOS',
+'AKBAY',
+'ALON',
+'ANLU',
+'ANTAS',
+'ASAM',
+'AYON',
+'BAGTING',
+'BAKAS',
+'BALAK',
+'BALINTA',
+'BALISA',
+'BANAAG',
+'BANAYAD',
+'BANGIS',
+'BATID',
+'BATOK',
+'BAYAW',
+'BIHIS',
+'BILAD',
+'BILOG',
+'BINHI',
+'BISIG',
+'BITAK',
+'BUKAL',
+'BUKLOD',
+'BUKOL',
+'BULOS',
+'BUNGO',
+'BUHOS',
+'DALAG',
+'DALAW',
+'DAPIT',
+'DAPOG',
+'DAYO',
+'DULAS',
+'GABOK',
+'GALOS',
+'GANAP',
+'GAPAS',
+'GILAS',
+'GIMIK',
+'GULOD',
+'HAGOD',
+'HAKOT',
+'HALAW',
+'HAPDI',
+'HAPIT',
+'HASIK',
+'HATID',
+'HILIG',
+'HIRAM',
+'HULOG',
+'IGIB',
+'KALAS',
+'KAPOS',
+'KIBOT',
+'KIMAS',
+'KISAP',
+'KISIG',
+'KUBOS',
+'KUNAT',
+'KURAP',
+'KURIT',
+'KUTOB',
+'KUTOS',
+'LAGDA',
+'LAGOM',
+'LAGOT',
+'LAGUS',
+'LAHAD',
+'LAPOT',
+'LATAG',
+'LATAY',
+'LATIK',
+'LAYAS',
+'LIKOT',
+'LIPAS',
+'LISAN',
+'LISIK',
+'LIYAB',
+'LUGOD',
+'LUKOT',
+'LUSAW',
+'LUSOT',
+'LUTOK',
+'PABOR',
+'PADRON',
+'PAHIMAK',
+'PAHUPA',
+'PALASAK',
+'PALIHIM',
+'PAMANA',
+'PANDAY',
+'PANATA',
+'PANIG',
+'PANUKALA',
+'PAPURI',
+'PASAK',
+'PASAN',
+'PASILYO',
+'PASPAS',
+'PATAG',
+'PATAWAD',
+'PAWIS',
+'PILAS',
+'PILIPIT',
+'PINTA',
+'PIRASO',
+'PITAK',
+'PITAS',
+'PITIK',
+'POOK',
+'PUKAW',
+'PULOT',
+'PUNAS',
+'PUNLA',
+'PUSOD',
+'PUTIK',
+'PUYAT',
+'SABIT',
+'SAGAD',
+'SAGAP',
+'SAKOP',
+'SALIN',
+'SALON',
+'SAMBA',
+'SAMPA',
+'SANDIG',
+'SANDOK',
+'SAPIN',
+'SARSA',
+'SIKIL',
+'SIKIP',
+'SILAB',
+'SILIP',
+'SIMOT',
+'SINAG',
+'SINDAK',
+'SINGIL',
+'SINGIT',
+'SINOP',
+'SIPOL',
+'SIRKO',
+'SISID',
+'SUKLOB',
+'SUKOL',
+'SULID',
+'SULOK',
+'SUMPA',
+'SUPIL',
+'TABAS',
+'TADHANA',
+'TADYAK',
+'TAGAK',
+'TAGAS',
+'TAGIS',
+'TAGOS',
+'TAGPI',
+'TAHAS',
+'TAKAS',
+'TAKDA',
+'TAKIP',
+'TALAB',
+'TALAK',
+'TALIM',
+'TALOS',
+'TAMIS',
+'TANAW',
+'TANOD',
+'TAPIS',
+'TASAK',
+'TIBOK',
+'TIKAS',
+'TIKLOP',
+'TILAD',
+'TIPAK',
+'TIRIK',
+'TITIG',
+'TUGON',
+'TUKOD',
+'TUKOY',
+'TUKTOK',
+'TUMPAK',
+'TUPIG',
+'TUPOK',
+'TUTOL',
+'UBOD',
+'UKIT',
+'ULING',
+'UPOS',
+'USAD',
+'USIG',
+'WAGAS',
+'WAGSI',
+'WALOG',
+'YAMOT',
+'YUGTO',
   
 
+  'SILA',
+  'KAYO',
+  'SIYA',
+  'AMIN',
+  'ATIN',
+  'INYO',
+  'ITO',
+  'IYON',
+  'IYAN',
+  'DITO',
+  'DOON',
 
-  // --- Pronouns and pointing words ---
-  'SILA',     // they
-  'KAYO',     // you (plural)
-  'SIYA',     // he / she
-  'AMIN',     // our (exclusive)
-  'ATIN',     // our (inclusive)
-  'INYO',     // your (plural)
-  'ITO',      // this
-  'IYON',     // that (far)
-  'IYAN',     // that (near you)
-  'DITO',     // here
-  'DOON',     // there
-
-  // --- Question words ---
-  'SAAN',     // where
-  'ANO',      // what
-  'SINO',     // who
-  'KAILAN',   // when
-  'BAKIT',    // why
-  'PAANO',    // how
-  'ALIN',     // which
-  'GAANO',    // how much / how
+  'SAAN',
+  'ANO',
+  'SINO',
+  'KAILAN',
+  'BAKIT',
+  'PAANO',
+  'ALIN',
+  'GAANO',
   'KASO',
 
-  'ABANG',    // wait / watch out / stay on guard
-  'ABOT',     // reach / hand over
-  'AGAW',     // snatch / grab
-  'AGAP',     // promptness / quickness
-  'ALAB',     // blaze / passion
-  'ALABOK',   // dust
-  'ALALAH',   // (skip - bad spelling)
-  'ALANGAN',  // uncertain / hesitant
-  'ALIN',     // which
-  'ALIS',     // leave / depart
-  'AMOY',     // smell / odor
-  'ANGAT',    // lifted / superior
-  'ANGKIN',   // claim / inherent property
-  'ANI',      // harvest
-  'ANINO',    // shadow
-  'ANTAY',    // wait
-  'APAW',     // overflow
-  'API',      // oppressed / maltreated
-  'APOG',     // lime / chalk
-  'ARUGA',    // tender care
-  'ASAP',     // smoke / vapor
-  'ASING',    // (skip)
-  'ATAS',     // order / decree
-  'AYOS',     // order / arrangement
-  'BAKAS',    // trace / mark
-  'BAKOD',    // fence
-  'BALA',     // bullet / warning
-  'BALI',     // fracture / broken
-  'BALOT',    // wrap / cover
-  'BANAL',    // holy / sacred
-  'BANTA',    // threat / warning
-  'BANTAY',   // guard / watcher
-  'BANTOG',   // famous / renowned
-  'BARO',     // clothes / dress
-  'BASAG',    // broken / shattered
-  'BASBAS',   // blessing
-  'BATI',     // greet / beat (egg)
-  'BATOC',    // nape
-  'BAWAT',    // each / every
-  'BIGKAS',   // pronounce / recite
-  'BIGKIS',   // tie / bind together
-  'BIGLA',    // sudden
-  'BINGI',    // deaf
-  'BIPOL',    // (skip)
-  'BIPOLAR',  // (too long)
-  'BITAW',    // let go / release
-  'BITIN',    // hanging short
-  'BITAG',    // trap / snare
-  'BUBUK',    // weevil (BUBOK)
-  'BUBOK',    // wood-borer / weevil
-  'BUBUAN',   // (too long)
-  'BUBOG',    // glass shard
-  'BUBUOT',   // (skip)
-  'BUKAS',    // open / tomorrow
-  'BUKID',    // farm / field
-  'BULAG',    // blind
-  'BULAK',    // cotton
-  'BUNOT',    // coconut husk / pull out
-  'BUNYAG',   // reveal / disclose
-  'DALI',     // quickness / instant
-  'DALANG',   // rare / infrequent
-  'DAMDAM',   // emotion / feeling
-  'DAMOH',    // (skip)
-  'DANAS',    // experience
-  'DANGAL',   // honor / dignity
-  'DAPAT',    // must / proper
-  'DIKIT',    // stick / paste / close
-  'DIPA',     // fathom / arm span
-  'DIWATA',   // fairy / nymph
-  'DUKHA',    // poor / destitute
-  'DULOS',    // trowel / weed cutter
-  'DURAN',    // spittoon
-  'GAOD',     // row / oar
-  'GAPANG',   // crawl
-  'GAPOS',    // tied up / bound
-  'GATAS',    // milk
-  'GAYAK',    // attire / decoration
-  'GITING',   // heroism / valor
-  'GUHIT',    // line / draw
-  'GULANG',   // age / maturity
-  'GUTOM',    // hunger
-  'HAGIS',    // throw
-  'HALA',     // warning / go ahead
-  'HALAL',    // elect / vote
-  'HALIK',    // kiss
-  'HALIP',    // instead
-  'HAMAK',    // humble / lowly
-  'HAMON',    // challenge
-  'HANGAD',   // wish / desire
-  'HAPIS',    // grief / sorrow
-  'HATOL',    // sentence / judgment
-  'HAWAK',    // hold / grasp
-  'HAYAG',    // manifest / public
-  'HILOM',    // healing
-  'HINTO',    // stop / halt
-  'HIPON',    // shrimp
-  'HUKOM',    // judge
-  'IBABAW',   // surface / top
-  'IBAYO',    // across / double
-  'IGTING',   // tension / intensity
-  'ILAP',     // wildness / shyness
-  'INAM',     // goodness
-  'INAT',     // stretch
-  'ISAGAD',   // push to limit
-  'KABAN',    // trunk / chest
-  'KAGAT',    // bite
-  'KAPWA',    // fellow person
-  'KILOS',    // movement / action
-  'KINIS',    // smoothness
-  'KIPOT',    // narrowness
-  'KUBLI',    // hidden / shelter
-  'KULOB',    // enclosed heat / sealed
-  'KUPAS',    // faded
-  'LAKAS',    // strength
-  'LAKBAY',   // travel / trip
-  'LAMAD',    // membrane
-  'LANDAS',   // path / trail
-  'LAPAD',    // width / wide
-  'LAPIT',    // approach / near
-  'LASAP',    // savor / taste
-  'LAYAG',    // sail
-  'LIGAYA',   // happiness / delight
-  'LIKHA',    // create / artwork
-  'LILOK',    // carve / sculpture
-  'LINGAP',   // caring protection
-  'LIPAD',    // fly
-  'LIPON',    // group / gathering
-  'LUBAY',    // loosen / relent
-  'LUMBAY',   // sadness
-  'LUNAS',    // remedy / cure
-  'LUNOD',    // drown
-  'LUTANG',   // float
-  'MALAY',    // awareness
-  'MANGHA',   // amazed
-  'MASID',    // observe / watch
-  'MAYARI',   // owner / master
-  'MITHI',    // goal / earnest desire
-  'MULAT',    // open eyes / aware
-  'NILAY',    // reflect / contemplate
-  'PAGOD',    // tired
-  'PALAD',    // palm / fate
-  'PANGO',    // flat-nosed
-  'PANGIL',   // fang / tusk
-  'PANTAY',   // level / equal
-  'PARUSA',   // penalty / punishment
-  'PATAK',    // drop of liquid
-  'PATAY',    // dead
-  'PAYAPA',   // peaceful
-  'PILAY',    // lame / sprained
-  'PINTIG',   // pulse / beat
-  'PISIL',    // squeeze
-  'PUPO',     // address respectfully
-  'PUTOL',    // cut / severed
-  'SABAY',    // together / simultaneous
-  'SABIK',    // eager
-  'SADYA',    // intentional
-  'SAGIP',    // rescue
-  'SAKIT',    // pain / sickness
-  'SALAG',    // parry / block
-  'SALOK',    // scoop up water
-  'SAMPAL',   // slap
-  'SANDAT',   // armed / full
-  'SANGGA',   // block / guard
-  'SAPA',     // creek / stream
-  'SAPIT',    // arrival / reach
-  'SAYAD',    // grounded / touching bottom
-  'SAYSAY',   // meaning / worth
-  'SIGAW',    // shout / scream
-  'SIKAP',    // diligence / effort
-  'SIKAT',    // rise (sun) / famous
-  'SILAY',    // glance / peek
-  'SIMOY',    // breeze
-  'SINTA',    // beloved / love
-  'SIPAG',    // hard work
-  'SIPAT',    // aim / check alignment
-  'SULYAP',   // quick glance
-  'TALAS',    // sharpness
-  'TALI',     // rope / string
-  'TAMPO',    // sulk / hurt feelings
-  'TAROK',    // comprehend / measure depth
-  'TAYOG',    // height / altitude
-  'TIGIL',    // stop
-  'TINIG',    // voice
-  'TIPON',    // gather
-  'TISOD',    // stumble
-  'TUKO',     // gecko
-  'TURING',   // regard / treat
-  'TUSOK',    // prick / pierce
-  'TUWIN',    // every time
-  'UDYOK',    // urge / prompt
-  'UGONG',    // reverberation / hum
-  'ULIT',     // repeat
-  'UNAW',     // understand (mula sa unawa)
-  'UNOS',     // storm / tempest
-  'USAP',     // conversation
-  'UYAM',     // sarcasm / mock
-  'WAKAS',    // end / conclusion
-  'WALAT',    // destroyed
-  'WANGIS',   // likeness / resemblance
-  'WASAK',    // ruined / smashed
-  'WASTO',    // correct / right
-  'YAKAP',    // embrace / hug
-  'YANGYANG', // dry in the air
-  'YUKO',      // bow / bend head
+  'ABANG',
+  'ABOT',
+  'AGAW',
+  'AGAP',
+  'ALAB',
+  'ALABOK',
+  'ALALAH',
+  'ALANGAN',
+  'ALIN',
+  'ALIS',
+  'AMOY',
+  'ANGAT',
+  'ANGKIN',
+  'ANI',
+  'ANINO',
+  'ANTAY',
+  'APAW',
+  'API',
+  'APOG',
+  'ARUGA',
+  'ASAP',
+  'ASING',
+  'ATAS',
+  'AYOS',
+  'BAKAS',
+  'BAKOD',
+  'BALA',
+  'BALI',
+  'BALOT',
+  'BANAL',
+  'BANTA',
+  'BANTAY',
+  'BANTOG',
+  'BARO',
+  'BASAG',
+  'BASBAS',
+  'BATI',
+  'BATOC',
+  'BAWAT',
+  'BIGKAS',
+  'BIGKIS',
+  'BIGLA',
+  'BINGI',
+  'BIPOL',
+  'BIPOLAR',
+  'BITAW',
+  'BITIN',
+  'BITAG',
+  'BUBUK',
+  'BUBOK',
+  'BUBUAN',
+  'BUBOG',
+  'BUBUOT',
+  'BUKAS',
+  'BUKID',
+  'BULAG',
+  'BULAK',
+  'BUNOT',
+  'BUNYAG',
+  'DALI',
+  'DALANG',
+  'DAMDAM',
+  'DAMOH',
+  'DANAS',
+  'DANGAL',
+  'DAPAT',
+  'DIKIT',
+  'DIPA',
+  'DIWATA',
+  'DUKHA',
+  'DULOS',
+  'DURAN',
+  'GAOD',
+  'GAPANG',
+  'GAPOS',
+  'GATAS',
+  'GAYAK',
+  'GITING',
+  'GUHIT',
+  'GULANG',
+  'GUTOM',
+  'HAGIS',
+  'HALA',
+  'HALAL',
+  'HALIK',
+  'HALIP',
+  'HAMAK',
+  'HAMON',
+  'HANGAD',
+  'HAPIS',
+  'HATOL',
+  'HAWAK',
+  'HAYAG',
+  'HILOM',
+  'HINTO',
+  'HIPON',
+  'HUKOM',
+  'IBABAW',
+  'IBAYO',
+  'IGTING',
+  'ILAP',
+  'INAM',
+  'INAT',
+  'ISAGAD',
+  'KABAN',
+  'KAGAT',
+  'KAPWA',
+  'KILOS',
+  'KINIS',
+  'KIPOT',
+  'KUBLI',
+  'KULOB',
+  'KUPAS',
+  'LAKAS',
+  'LAKBAY',
+  'LAMAD',
+  'LANDAS',
+  'LAPAD',
+  'LAPIT',
+  'LASAP',
+  'LAYAG',
+  'LIGAYA',
+  'LIKHA',
+  'LILOK',
+  'LINGAP',
+  'LIPAD',
+  'LIPON',
+  'LUBAY',
+  'LUMBAY',
+  'LUNAS',
+  'LUNOD',
+  'LUTANG',
+  'MALAY',
+  'MANGHA',
+  'MASID',
+  'MAYARI',
+  'MITHI',
+  'MULAT',
+  'NILAY',
+  'PAGOD',
+  'PALAD',
+  'PANGO',
+  'PANGIL',
+  'PANTAY',
+  'PARUSA',
+  'PATAK',
+  'PATAY',
+  'PAYAPA',
+  'PILAY',
+  'PINTIG',
+  'PISIL',
+  'PUPO',
+  'PUTOL',
+  'SABAY',
+  'SABIK',
+  'SADYA',
+  'SAGIP',
+  'SAKIT',
+  'SALAG',
+  'SALOK',
+  'SAMPAL',
+  'SANDAT',
+  'SANGGA',
+  'SAPA',
+  'SAPIT',
+  'SAYAD',
+  'SAYSAY',
+  'SIGAW',
+  'SIKAP',
+  'SIKAT',
+  'SILAY',
+  'SIMOY',
+  'SINTA',
+  'SIPAG',
+  'SIPAT',
+  'SULYAP',
+  'TALAS',
+  'TALI',
+  'TAMPO',
+  'TAROK',
+  'TAYOG',
+  'TIGIL',
+  'TINIG',
+  'TIPON',
+  'TISOD',
+  'TUKO',
+  'TURING',
+  'TUSOK',
+  'TUWIN',
+  'UDYOK',
+  'UGONG',
+  'ULIT',
+  'UNAW',
+  'UNOS',
+  'USAP',
+  'UYAM',
+  'WAKAS',
+  'WALAT',
+  'WANGIS',
+  'WASAK',
+  'WASTO',
+  'YAKAP',
+  'YANGYANG',
+  'YUKO',
   'DAYA',
   'PANA', 
   'DATI',
   'PAYO',
 
-  // --- Connectors and everyday particles ---
-  'ANG',      // the (marker)
-  'MGA',      // plural marker
-  'HINDI',    // no / not
-  'OPO',      // yes (polite)
-  'WALA',     // none / without
-  'NAMAN',    // also / on the other hand
-  'LAMANG',   // only / just
-  'KUNG',     // if
-  'DAHIL',    // because
-  'NGUNIT',   // but
-  'KAPAG',    // when / whenever
-  'HABANG',   // while
-  'MULA',     // from
-  'PARA',     // for
-  'BAGO',     // before / new
+  'ANG',
+  'MGA',
+  'HINDI',
+  'OPO',
+  'WALA',
+  'NAMAN',
+  'LAMANG',
+  'KUNG',
+  'DAHIL',
+  'NGUNIT',
+  'KAPAG',
+  'HABANG',
+  'MULA',
+  'PARA',
+  'BAGO',
 
-  // --- Family and people ---
-  'INA',      // mother
+  'INA',
   'NANAY',
-  'MAMA',     // stranger
-  'AMA',      // father
-  'ATE',      // older sister
-  'KUYA',     // older brother
-  'LOLA',     // grandmother
-  'LOLO',     // grandfather
-  'ANAK',     // child (offspring)
-  'ASAWA',    // spouse
-  'GURO',     // teacher
-  'HARI',     // king
-  'BINATA',   // young man
-  'DALAGA',   // young woman
-  'LALAKI',   // man / male
-  'BABAE',    // woman / female
-  'BAYANI',   // hero
+  'MAMA',
+  'AMA',
+  'ATE',
+  'KUYA',
+  'LOLA',
+  'LOLO',
+  'ANAK',
+  'ASAWA',
+  'GURO',
+  'HARI',
+  'BINATA',
+  'DALAGA',
+  'LALAKI',
+  'BABAE',
+  'BAYANI',
 
-  // --- Places ---
-  'BAYAN',    // town / nation
-  'NAYON',    // village
-  'DAAN',     // road / path
-  'LIKOD',    // back (behind)
-  'LOOB',     // inside
-  'LABAS',    // outside
-  'ILOG',     // river
-  'LAWA',     // lake
-  'GUBAT',    // forest
-  'BUKID',    // field / farm
-  'PULO',     // island
-  'ISLA',     // island
-  'BUROL',    // hill
-  'LAMBAK',   // valley
-  'BAYBAY',   // shore
-  'BANSA',    // nation
-  'SILID',    // room
-  'PINTO',    // door
-  'SAHIG',    // floor
-  'BUBONG',   // roof
-  'TULAY',    // bridge
+  'BAYAN',
+  'NAYON',
+  'DAAN',
+  'LIKOD',
+  'LOOB',
+  'LABAS',
+  'ILOG',
+  'LAWA',
+  'GUBAT',
+  'BUKID',
+  'PULO',
+  'ISLA',
+  'BUROL',
+  'LAMBAK',
+  'BAYBAY',
+  'BANSA',
+  'SILID',
+  'PINTO',
+  'SAHIG',
+  'BUBONG',
+  'TULAY',
 
-  // --- Food and farm ---
-  'PALAY',    // unhusked rice
-  'BIGAS',    // uncooked rice
-  'KANIN',    // cooked rice
-  'ULAM',     // viand / dish
-  'INUMIN',   // drink
-  'GATAS',    // milk
-  'ITLOG',    // egg
-  'SAGING',   // banana
-  'NIYOG',    // coconut
-  'BUKO',     // young coconut
-  'LUYA',     // ginger
-  'BAWANG',   // garlic
-  'ASIN',     // salt
-  'SUKA',     // vinegar
-  'LANGIS',   // oil
+  'PALAY',
+  'BIGAS',
+  'KANIN',
+  'ULAM',
+  'INUMIN',
+  'GATAS',
+  'ITLOG',
+  'SAGING',
+  'NIYOG',
+  'BUKO',
+  'LUYA',
+  'BAWANG',
+  'ASIN',
+  'SUKA',
+  'LANGIS',
 
-  // --- Animals and plants ---
-  'MANOK',    // chicken
-  'BABOY',    // pig
-  'BAKA',     // cow
-  'ASO',      // dog
-  'PUSA',     // cat
-  'IBON',     // bird
-  'HIPON',    // shrimp
-  'PAGONG',   // turtle
-  'BUWAYA',   // crocodile
-  'HAYOP',    // animal
-  'DAHON',    // leaf
-  'UGAT',     // root
-  'BUNGA',    // fruit
-  'PUNO',     // tree / full
+  'MANOK',
+  'BABOY',
+  'BAKA',
+  'ASO',
+  'PUSA',
+  'IBON',
+  'HIPON',
+  'PAGONG',
+  'BUWAYA',
+  'HAYOP',
+  'DAHON',
+  'UGAT',
+  'BUNGA',
+  'PUNO',
 
-  // --- Nature and weather ---
-  'ULAN',     // rain
-  'BAGYO',    // typhoon
-  'KIDLAT',   // lightning
-  'KULOG',    // thunder
-  'ULAP',     // cloud
-  'LANGIT',   // sky
-  'BITUIN',   // star
-  'BUWAN',    // moon / month
-  'ILAW',     // light / lamp225
-  'DILIM',    // darkness
-  'INIT',     // heat
-  'LAMIG',    // cold
+  'ULAN',
+  'BAGYO',
+  'KIDLAT',
+  'KULOG',
+  'ULAP',
+  'LANGIT',
+  'BITUIN',
+  'BUWAN',
+  'ILAW',
+  'DILIM',
+  'INIT',
+  'LAMIG',
 
-  // --- Body ---
-  'ULO',      // head
-  'BUHOK',    // hair
-  'MUKHA',    // face
-  'NGIPIN',   // teeth
-  'DILA',     // tongue
-  'LABI',     // lip
-  'TENGA',    // ear
-  'ILONG',    // nose
-  'PAA',      // foot
-  'TIYAN',    // stomach
-  'DUGO',     // blood
-  'BUTO',     // bone
-  'BALAT',    // skin
-  'DALIRI',   // finger
-  'DIBDIB',   // chest
-  'LEEG',     // neck
+  'ULO',
+  'BUHOK',
+  'MUKHA',
+  'NGIPIN',
+  'DILA',
+  'LABI',
+  'TENGA',
+  'ILONG',
+  'PAA',
+  'TIYAN',
+  'DUGO',
+  'BUTO',
+  'BALAT',
+  'DALIRI',
+  'DIBDIB',
+  'LEEG',
 
-  // --- Things around the house ---
-  'KAMA',     // bed
-  'UNAN',     // pillow
-  'BASO',     // drinking glass
-  'KAWALI',   // wok / pan
-  'AKLAT',    // book
-  'PAHINA',   // page
-  'DAMIT',    // clothes
-  'BARO',     // shirt / dress
-  'SUOT',     // wear / worn
-  'SUKLAY',   // comb
-  'SUSI',     // key
-  'BANGKA',   // small boat
+  'KAMA',
+  'UNAN',
+  'BASO',
+  'KAWALI',
+  'AKLAT',
+  'PAHINA',
+  'DAMIT',
+  'BARO',
+  'SUOT',
+  'SUKLAY',
+  'SUSI',
+  'BANGKA',
 
-  // --- Money and materials ---
-  'SALAPI',   // money
-  'PILAK',    // silver
-  'GINTO',    // gold
-  'BAKAL',    // iron / steel
-  'TANSO',    // copper
-  'KAHOY',    // wood
+  'SALAPI',
+  'PILAK',
+  'GINTO',
+  'BAKAL',
+  'TANSO',
+  'KAHOY',
 
-  // --- Actions ---
-  'INOM',     // drink (verb)
-  'TULOG',    // sleep
-  'GISING',   // wake up
-  'TAKBO',    // run
-  'LUNDAG',   // jump
-  'UPO',      // sit
-  'TINGIN',   // look
-  'DINIG',    // hear
-  'SALITA',   // word / speak
-  'BASA',     // read
-  'ARAL',     // study
-  'TURO',     // teach
-  'ISIP',     // think / mind
-  'ALAM',     // know
-  'MAHAL',    // love / expensive
-  'IBIG',     // love / like
-  'NAIS',     // want
-  'HANAP',    // search
-  'HINTAY',   // wait
-  'SAGOT',    // answer
-  'TANONG',   // question
-  'TULONG',   // help
-  'BIGAY',    // give
-  'KUHA',     // take
-  'BILI',     // buy
-  'BAYAD',    // pay
-  'LUTO',     // cook
-  'LINIS',    // clean
-  'HUGAS',    // wash
-  'PALIT',    // exchange / change
-  'BUKAS',    // open / tomorrow
-  'SARA',     // close
-  'DALA',     // carry
-  'HILA',     // pull
-  'TULAK',    // push
-  'HAWAK',    // hold
-  'TAPON',    // throw away
-  'LABAN',    // fight
-  'SAMA',     // go along / together
-  'LAGAY',    // put
+  'INOM',
+  'TULOG',
+  'GISING',
+  'TAKBO',
+  'LUNDAG',
+  'UPO',
+  'TINGIN',
+  'DINIG',
+  'SALITA',
+  'BASA',
+  'ARAL',
+  'TURO',
+  'ISIP',
+  'ALAM',
+  'MAHAL',
+  'IBIG',
+  'NAIS',
+  'HANAP',
+  'HINTAY',
+  'SAGOT',
+  'TANONG',
+  'TULONG',
+  'BIGAY',
+  'KUHA',
+  'BILI',
+  'BAYAD',
+  'LUTO',
+  'LINIS',
+  'HUGAS',
+  'PALIT',
+  'BUKAS',
+  'SARA',
+  'DALA',
+  'HILA',
+  'TULAK',
+  'HAWAK',
+  'TAPON',
+  'LABAN',
+  'SAMA',
+  'LAGAY',
 
-  // --- Describing words ---
-  'MALAKI',   // big
-  'MALIIT',   // small
-  'MABAIT',   // kind
-  'MATAAS',   // tall / high
-  'MABABA',   // low
-  'MAINIT',   // hot
-  'MADUMI',   // dirty
-  'MADALI',   // easy
-  'MASAYA',   // happy
-  'LUMA',     // old / worn
-  'MURA',     // cheap
-  'TAMA',     // correct
-  'MALI',     // wrong
-  'TOTOO',    // true
-  'TUNAY',    // real
-  'BUO',      // whole
-  'HATI',     // half / divided
-  'DAMI',     // amount
-  'KAUNTI',   // few
-  'MARAMI',   // many
-  'LAHAT',    // all
-  'IBA',      // other
+  'MALAKI',
+  'MALIIT',
+  'MABAIT',
+  'MATAAS',
+  'MABABA',
+  'MAINIT',
+  'MADUMI',
+  'MADALI',
+  'MASAYA',
+  'LUMA',
+  'MURA',
+  'TAMA',
+  'MALI',
+  'TOTOO',
+  'TUNAY',
+  'BUO',
+  'HATI',
+  'DAMI',
+  'KAUNTI',
+  'MARAMI',
+  'LAHAT',
+  'IBA',
 
-  // --- Feelings and qualities ---
-  'GALIT',    // anger
-  'TUWA',     // joy
-  'TAKOT',    // fear
-  'SAYA',     // joy
-  'LAKAS',    // strength
-  'HINA',     // weakness
-  'TAAS',     // height
-  'BABA',     // lowness
-  'LAKI',     // size
-  'LIIT',     // smallness
-  'BAGAL',    // slowness
-  'BILIS',    // speed
-  'TAPAT',    // honest
-  'TAPANG',   // courage
-  'DANGAL',   // honor
-  'GALANG',   // respect
-  'DIWA',     // spirit / mind
+  'GALIT',
+  'TUWA',
+  'TAKOT',
+  'SAYA',
+  'LAKAS',
+  'HINA',
+  'TAAS',
+  'BABA',
+  'LAKI',
+  'LIIT',
+  'BAGAL',
+  'BILIS',
+  'TAPAT',
+  'TAPANG',
+  'DANGAL',
+  'GALANG',
+  'DIWA',
 
-  // --- Numbers ---
-  'ISA',      // one
-  'DALAWA',   // two
-  'TATLO',    // three
-  'APAT',     // four
-  'LIMA',     // five
-  'ANIM',     // six
-  'PITO',     // seven
-  'WALO',     // eight
-  'SIYAM',    // nine
-  'SAMPU',    // ten
-  'LIBO',     // thousand
+  'ISA',
+  'DALAWA',
+  'TATLO',
+  'APAT',
+  'LIMA',
+  'ANIM',
+  'PITO',
+  'WALO',
+  'SIYAM',
+  'SAMPU',
+  'LIBO',
 
-  // --- Time ---
-  'UMAGA',    // morning
-  'HAPON',    // afternoon
-  'NGAYON',   // now / today
-  'MAMAYA',   // later
-  'NOON',     // then / back then
-  'MINSAN',   // once / sometimes
-  'PALAGI',   // always
-  'TAON',     // year
-  'LINGGO',   // week
+  'UMAGA',
+  'HAPON',
+  'NGAYON',
+  'MAMAYA',
+  'NOON',
+  'MINSAN',
+  'PALAGI',
+  'TAON',
+  'LINGGO',
 
-  // --- Directions ---
-  'KANAN',    // right
-  'KALIWA',   // left
-  'HARAP',    // front
-  'ILALIM',   // under
-  'HILAGA',   // north
-  'TIMOG',    // south
-  'GITNA',    // middle
-  'GILID',    // side
+  'KANAN',
+  'KALIWA',
+  'HARAP',
+  'ILALIM',
+  'HILAGA',
+  'TIMOG',
+  'GITNA',
+  'GILID',
 
-  // --- Colors ---
-  'PULA',     // red
-  'DILAW',    // yellow
-  'PUTI',     // white
-  'ITIM',     // black
-  'KULAY',    // color
+  'PULA',
+  'DILAW',
+  'PUTI',
+  'ITIM',
+  'KULAY',
 
-  // --- Language, culture and ideas ---
-  'WIKA',     // language
-  'HIMIG',    // melody
-  'AWIT',     // song
-  'SAYAW',    // dance
-  'LARO',     // game / play
-  'HANGAD',   // aspiration
-  'ALAGA',    // care
-  'ALAALA',   // memory
-  'LIHAM',    // letter
-  'BALITA',   // news
-  'TULA',     // poem
-  'TANDA',    // remember / sign
+  'WIKA',
+  'HIMIG',
+  'AWIT',
+  'SAYAW',
+  'LARO',
+  'HANGAD',
+  'ALAGA',
+  'ALAALA',
+  'LIHAM',
+  'BALITA',
+  'TULA',
+  'TANDA',
 
-  // ===== Added word batch =====
+  'APO',
+  'TITA',
+  'TITO',
+  'BUNSO',
+  'TATAY',
+  'PARI',
+  'REYNA',
+  'ALIPIN',
+  'DATU',
+  'KAMBAL',
+  'BISITA',
+  'KALARO',
 
-  // --- Family and people ---
-  'APO',     // grandchild
-  'TITA',    // aunt
-  'TITO',    // uncle
-  'BUNSO',   // youngest child
-  'TATAY',   // father
-  'PARI',    // priest
-  'REYNA',   // queen
-  'ALIPIN',  // servant
-  'DATU',    // chieftain
-  'KAMBAL',  // twin
-  'BISITA',  // guest
-  'KALARO',  // playmate
+  'KILAY',
+  'TAINGA',
+  'BIBIG',
+  'BRASO',
+  'KUKO',
+  'BINTI',
+  'PISNGI',
+  'BAGA',
+  'ATAY',
+  'SIKO',
+  'PULSO',
+  'APDO',
 
-  // --- Body ---
-  'KILAY',   // eyebrow
-  'TAINGA',  // ear
-  'BIBIG',   // mouth
-  'BRASO',   // arm
-  'KUKO',    // fingernail
-  'BINTI',   // shin
-  'PISNGI',  // cheek
-  'BAGA',    // lungs
-  'ATAY',    // liver
-  'SIKO',    // elbow
-  'PULSO',   // wrist
-  'APDO',    // gallbladder
+  'BAHA',
+  'LINDOL',
+  'BULKAN',
+  'BATIS',
+  'SANGA',
+  'TANIM',
+  'DAMO',
+  'AMIHAN',
+  'YELO',
+  'LUMOT',
+  'USOK',
+  'ABO',
+  'HAMOG',
+  'DAGTA',
+  'HIBLA',
 
-  // --- Nature ---
-  'BAHA',    // flood
-  'LINDOL',  // earthquake
-  'BULKAN',  // volcano
-  'BATIS',   // stream
-  'SANGA',   // branch
-  'TANIM',   // plant
-  'DAMO',    // grass
-  'AMIHAN',  // northeast monsoon
-  'YELO',    // ice
-  'LUMOT',   // moss
-  'USOK',    // smoke
-  'ABO',     // ash / gray
-  'HAMOG',   // dew
-  'DAGTA',   // sap
-  'HIBLA',   // fiber
+  'LAMOK',
+  'LANGAW',
+  'PALAKA',
+  'PATO',
+  'GANSA',
+  'MAYA',
+  'AGILA',
+  'LAWIN',
+  'UWAK',
+  'SISIW',
+  'PUSIT',
+  'ULANG',
+  'HITO',
+  'BANGUS',
+  'KUHOL',
+  'PUGITA',
+  'AHAS',
+  'BUTIKI',
+  'KUNEHO',
+  'PAKPAK',
+  'BUNTOT',
+  'SUNGAY',
+  'LAMBAT',
+  'TAHONG',
+  'TALABA',
+  'SUGPO',
+  'USA',
+  'PUGO',
 
-  // --- Animals ---
-  'LAMOK',   // mosquito
-  'LANGAW',  // fly
-  'PALAKA',  // frog
-  'PATO',    // duck
-  'GANSA',   // goose
-  'MAYA',    // sparrow
-  'AGILA',   // eagle
-  'LAWIN',   // hawk
-  'UWAK',    // crow
-  'SISIW',   // chick
-  'PUSIT',   // squid
-  'ULANG',   // lobster
-  'HITO',    // catfish
-  'BANGUS',  // milkfish
-  'KUHOL',   // snail
-  'PUGITA',  // octopus
-  'AHAS',    // snake
-  'BUTIKI',  // small lizard
-  'KUNEHO',  // rabbit
-  'PAKPAK',  // wing
-  'BUNTOT',  // tail
-  'SUNGAY',  // horn
-  'LAMBAT',  // net
-  'TAHONG',  // mussel
-  'TALABA',  // oyster
-  'SUGPO',   // prawn
-  'USA',     // deer
-  'PUGO',    // quail
+  'ADOBO',
+  'LUGAW',
+  'TAPA',
+  'TOSINO',
+  'PATIS',
+  'SILI',
+  'TALONG',
+  'SITAW',
+  'PATOLA',
+  'MAIS',
+  'MANGGA',
+  'DUHAT',
+  'SANTOL',
+  'ATIS',
+  'PAKWAN',
+  'LANGKA',
+  'SUMAN',
+  'PUTO',
+  'TURON',
+  'MAMON',
+  'BIKO',
+  'SABAW',
+  'BULALO',
+  'TINOLA',
+  'MENUDO',
+  'NILAGA',
+  'PAKSIW',
+  'KARNE',
+  'KAMOTE',
+  'KAHEL',
+  'UBAS',
+  'PRUTAS',
+  'GULAY',
+  'TINDA',
+  'ASUKAL',
+  'HALAYA',
+  'PINYA',
+  'MUNGGO',
+  'TOKWA',
+  'TAHO',
+  'PRITO',
+  'INIHAW',
+  'DAING',
+  'TINAPA',
 
-  // --- Food ---
-  'ADOBO',   // adobo
-  'LUGAW',   // rice porridge
-  'TAPA',    // cured beef
-  'TOSINO',  // sweet cured pork
-  'PATIS',   // fish sauce
-  'SILI',    // chili
-  'TALONG',  // eggplant
-  'SITAW',   // string beans
-  'PATOLA',  // sponge gourd
-  'MAIS',    // corn
-  'MANGGA',  // mango
-  'DUHAT',   // java plum
-  'SANTOL',  // santol fruit
-  'ATIS',    // sugar apple
-  'PAKWAN',  // watermelon
-  'LANGKA',  // jackfruit
-  'SUMAN',   // rice cake
-  'PUTO',    // steamed rice cake
-  'TURON',   // banana spring roll
-  'MAMON',   // sponge cake
-  'BIKO',    // sweet rice cake
-  'SABAW',   // broth
-  'BULALO',  // beef bone soup
-  'TINOLA',  // chicken ginger soup
-  'MENUDO',  // pork stew
-  'NILAGA',  // boiled soup
-  'PAKSIW',  // vinegar stew
-  'KARNE',   // meat
-  'KAMOTE',  // sweet potato
-  'KAHEL',   // orange
-  'UBAS',    // grapes
-  'PRUTAS',  // fruit
-  'GULAY',   // vegetable
-  'TINDA',   // goods for sale
-  'ASUKAL',  // sugar
-  'HALAYA',  // yam jam
-  'PINYA',   // pineapple
-  'MUNGGO',  // mung bean
-  'TOKWA',   // tofu
-  'TAHO',    // soybean pudding
-  'PRITO',   // fried
-  'INIHAW',  // grilled
-  'DAING',   // dried fish
-  'TINAPA',  // smoked fish
+  'HAGDAN',
+  'KUSINA',
+  'BANYO',
+  'SALA',
+  'UPUAN',
+  'MESA',
+  'BANIG',
+  'TASA',
+  'RADYO',
+  'SILYA',
+  'BAUL',
+  'WALIS',
+  'BASURA',
+  'TIMBA',
+  'SABON',
+  'DUYAN',
+  'LUBID',
+  'KADENA',
+  'SAKO',
+  'BULSA',
+  'HURNO',
+  'PUGON',
+  'KAHON',
+  'KATRE',
+  'BALDE',
+  'BILAO',
+  'PADER',
+  'TUNGKO',
+  'KAWA',
+  'LAMESA',
+  'BANGA',
+  'BARIL',
 
-  // --- Household ---
-  'HAGDAN',  // stairs
-  'KUSINA',  // kitchen
-  'BANYO',   // bathroom
-  'SALA',    // living room
-  'UPUAN',   // seat
-  'MESA',    // table
-  'BANIG',   // mat
-  'TASA',    // cup
-  'RADYO',   // radio
-  'SILYA',   // chair
-  'BAUL',    // chest
-  'WALIS',   // broom
-  'BASURA',  // trash
-  'TIMBA',   // pail
-  'SABON',   // soap
-  'DUYAN',   // cradle
-  'LUBID',   // rope
-  'KADENA',  // chain
-  'SAKO',    // sack
-  'BULSA',   // pocket
-  'HURNO',   // oven
-  'PUGON',   // stove
-  'KAHON',   // box
-  'KATRE',   // bed frame
-  'BALDE',   // bucket
-  'BILAO',   // winnowing tray
-  'PADER',   // wall
-  'TUNGKO',  // hearth
-  'KAWA',    // large pot
-  'LAMESA',  // dining table
-  'BANGA',   // clay jar
-  'BARIL',   // firearm
+  'PALDA',
+  'SINTAS',
+  'PANYO',
+  'HABI',
+  'HIKAW',
+  'BARONG',
+  'ALAHAS',
+  'SANDO',
 
-  // --- Clothes ---
-  'PALDA',   // skirt
-  'SINTAS',  // shoelace
-  'PANYO',   // handkerchief
-  'HABI',    // weave
-  'HIKAW',   // earring
-  'BARONG',  // formal shirt
-  'ALAHAS',  // jewelry
-  'SANDO',   // sleeveless shirt
+  'ARALIN',
+  'LIBRO',
+  'PLUMA',
+  'LAPIS',
+  'PAPEL',
+  'TINTA',
+  'KLASE',
+  'PUNTOS',
+  'TALA',
+  'UTOS',
+  'SAHOD',
+  'BENTA',
+  'UTANG',
+  'PERA',
+  'PISO',
+  'BARYA',
+  'GAWA',
+  'PISARA',
+  'TALATA',
+  'KWENTO',
+  'PIRMA',
+  'TALINO',
 
-  // --- School and work ---
-  'ARALIN',  // lesson
-  'LIBRO',   // book
-  'PLUMA',   // pen
-  'LAPIS',   // pencil
-  'PAPEL',   // paper
-  'TINTA',   // ink
-  'KLASE',   // class
-  'PUNTOS',  // points
-  'TALA',    // record / star
-  'UTOS',    // order
-  'SAHOD',   // wage
-  'BENTA',   // sale
-  'UTANG',   // debt
-  'PERA',    // money
-  'PISO',    // peso
-  'BARYA',   // coin
-  'GAWA',    // work / make
-  'PISARA',  // blackboard
-  'TALATA',  // paragraph
-  'KWENTO',  // story
-  'PIRMA',   // signature
-  'TALINO',  // intelligence
+  'ALAY',
+  'AWAY',
+  'BAGSAK',
+  'BILANG',
+  'BILIN',
+  'BITBIT',
+  'BULONG',
+  'GALAW',
+  'GAMOT',
+  'GANTI',
+  'GULAT',
+  'GUPIT',
+  'HABOL',
+  'HANDA',
+  'HINGA',
+  'HUKAY',
+  'HULA',
+  'HULI',
+  'IHAW',
+  'INGAT',
+  'IWAS',
+  'KANTA',
+  'KAPIT',
+  'LANGOY',
+  'LIPAT',
+  'LIGO',
+  'LUKSO',
+  'PASOK',
+  'PILI',
+  'PUNTA',
+  'SABI',
+  'SAKAY',
+  'SUBOK',
+  'SUKAT',
+  'SUNOD',
+  'SUNOG',
+  'SURI',
+  'TAWA',
+  'TIKIM',
+  'TULOY',
+  'TUPAD',
+  'UWI',
+  'TAWAR',
+  'SULONG',
+  'TAPOS',
+  'PIGIL',
+  'PIKIT',
+  'KITA',
+  'HIMAS',
+  'TUKSO',
+  'KATOK',
+  'LIMOS',
 
-  // --- Actions ---
-  'ALAY',    // offering
-  'AWAY',    // fight
-  'BAGSAK',  // fall
-  'BILANG',  // count
-  'BILIN',   // message
-  'BITBIT',  // carry
-  'BULONG',  // whisper
-  'GALAW',   // move
-  'GAMOT',   // medicine
-  'GANTI',   // repay
-  'GULAT',   // startle
-  'GUPIT',   // cut hair
-  'HABOL',   // chase
-  'HANDA',   // ready
-  'HINGA',   // breathe
-  'HUKAY',   // dig
-  'HULA',    // guess
-  'HULI',    // catch / last
-  'IHAW',    // grill
-  'INGAT',   // care
-  'IWAS',    // avoid
-  'KANTA',   // sing
-  'KAPIT',   // hold on
-  'LANGOY',  // swim
-  'LIPAT',   // move
-  'LIGO',    // bathe
-  'LUKSO',   // jump
-  'PASOK',   // enter
-  'PILI',    // choose
-  'PUNTA',   // go to
-  'SABI',    // say
-  'SAKAY',   // ride
-  'SUBOK',   // try
-  'SUKAT',   // measure
-  'SUNOD',   // follow
-  'SUNOG',   // burn
-  'SURI',    // examine
-  'TAWA',    // laugh
-  'TIKIM',   // taste
-  'TULOY',   // continue
-  'TUPAD',   // fulfill
-  'UWI',     // go home
-  'TAWAR',   // bargain
-  'SULONG',  // advance
-  'TAPOS',   // finish
-  'PIGIL',   // restrain
-  'PIKIT',   // shut
-  'KITA',    // see / earn
-  'HIMAS',   // caress
-  'TUKSO',   // temptation
-  'KATOK',   // knock
-  'LIMOS',   // alms
+  'PANGIT',
+  'GWAPO',
+  'MAHABA',
+  'MAIKLI',
+  'MALAYO',
+  'MAGAAN',
+  'MASAMA',
+  'MABUTI',
+  'MAPAIT',
+  'MAHINA',
+  'MALAYA',
+  'MATABA',
+  'MANHID',
+  'TAMAD',
+  'LIHIM',
+  'TUWID',
+  'GALAK',
+  'UHAW',
+  'ANTOK',
+  'INIP',
+  'TIPID',
+  'BUSOG',
+  'BULOK',
+  'HINOG',
+  'LUBOS',
+  'DAKILA',
+  'LIGTAS',
+  'KULANG',
+  'LIBRE',
+  'SAWA',
+  'ASUL',
+  'BERDE',
+  'LILA',
 
-  // --- Describing words ---
-  'PANGIT',  // ugly
-  'GWAPO',   // handsome
-  'MAHABA',  // long
-  'MAIKLI',  // short
-  'MALAYO',  // far
-  'MAGAAN',  // light
-  'MASAMA',  // bad
-  'MABUTI',  // good
-  'MAPAIT',  // bitter
-  'MAHINA',  // weak
-  'MALAYA',  // free
-  'MATABA',  // fat
-  'MANHID',  // numb
-  'TAMAD',   // lazy
-  'LIHIM',   // secret
-  'TUWID',   // straight
-  'GALAK',   // fierce
-  'UHAW',    // thirsty
-  'ANTOK',   // sleepy
-  'INIP',    // impatient
-  'TIPID',   // thrifty
-  'BUSOG',   // full
-  'BULOK',   // rotten
-  'HINOG',   // ripe
-  'LUBOS',   // complete
-  'DAKILA',  // great
-  'LIGTAS',  // safe
-  'KULANG',  // lacking
-  'LIBRE',   // free of charge
-  'SAWA',    // fed up
-  'ASUL',    // blue
-  'BERDE',   // green
-  'LILA',    // purple
+  'DIYAN',
+  'KAYA',
+  'PERO',
+  'ILAN',
+  'MERON',
+  'KAHIT',
+  'TALAGA',
+  'PARANG',
+  'SOBRA',
+  'UNTI',
+  'MULI',
+  'UNA',
+  'LANG',
+  'NANG',
+  'KASI',
+  'KANYA',
+  'KANILA',
+  'NIYA',
+  'NILA',
+  'MISMO',
+  'ILANG',
 
-  // --- Question and small words ---
-  'DIYAN',   // there (near you)
-  'KAYA',    // so / able
-  'PERO',    // but
-  'ILAN',    // how many
-  'MERON',   // have
-  'KAHIT',   // even if
-  'TALAGA',  // really
-  'PARANG',  // like
-  'SOBRA',   // too much
-  'UNTI',    // gradual
-  'MULI',    // again
-  'UNA',     // first
-  'LANG',    // only
-  'NANG',    // when
-  'KASI',    // because
-  'KANYA',   // his / her
-  'KANILA',  // their
-  'NIYA',    // his / hers
-  'NILA',    // theirs
-  'MISMO',   // same
-  'ILANG',   // some
+  'BARYO',
+  'PUNTOD',
+  'ANITO',
+  'ANYO',
+  'HUGIS',
+  'URI',
+  'UGALI',
+  'NGALAN',
+  'TITIK',
+  'INDAK',
+  'GITARA',
+  'TAMBOL',
+  'TUGTOG',
+  'MUSIKA',
+  'HIYA',
+  'KILIG',
+  'INGGIT',
+  'SELOS',
+  'ALIW',
+  'KABA',
+  'GUNITA',
+  'TIWALA',
+  'HANGA',
+  'BUWIS',
+  'BATAS',
+  'LAYON',
+  'LAHI',
+  'KALOOB',
+  'BIYAYA',
+  'SARILI',
+  'LIKAS',
+  'HIMALA',
+  'HINALA',
+  'HALAGA',
+  'LIGAW',
+  'TAGPO',
 
-  // --- Culture and ideas ---
-  'BARYO',   // barrio
-  'PUNTOD',  // grave
-  'ANITO',   // spirit
-  'ANYO',    // form
-  'HUGIS',   // shape
-  'URI',     // kind
-  'UGALI',   // trait
-  'NGALAN',  // name
-  'TITIK',   // letter
-  'INDAK',   // dance step
-  'GITARA',  // guitar
-  'TAMBOL',  // drum
-  'TUGTOG',  // play music
-  'MUSIKA',  // music
-  'HIYA',    // shyness
-  'KILIG',   // thrill
-  'INGGIT',  // envy
-  'SELOS',   // jealousy
-  'ALIW',    // amusement
-  'KABA',    // nervousness
-  'GUNITA',  // recollection
-  'TIWALA',  // trust
-  'HANGA',   // admiration
-  'BUWIS',   // tax
-  'BATAS',   // law
-  'LAYON',   // intention
-  'LAHI',    // race
-  'KALOOB',  // gift
-  'BIYAYA',  // blessing
-  'SARILI',  // self
-  'LIKAS',   // natural
-  'HIMALA',  // miracle
-  'HINALA',  // suspicion
-  'HALAGA',  // value
-  'LIGAW',   // courtship
-  'TAGPO',   // scene / meeting
+  'LUNES',
+  'MARTES',
+  'SABADO',
+  'ENERO',
+  'MARSO',
+  'ABRIL',
+  'MAYO',
+  'HUNYO',
+  'HULYO',
+  'AGOSTO',
+  'ORAS',
+  'MINUTO',
+  'LAGI',
 
-  // --- Time ---
-  'LUNES',   // Monday
-  'MARTES',  // Tuesday
-  'SABADO',  // Saturday
-  'ENERO',   // January
-  'MARSO',   // March
-  'ABRIL',   // April
-  'MAYO',    // May
-  'HUNYO',   // June
-  'HULYO',   // July
-  'AGOSTO',  // August
-  'ORAS',    // hour
-  'MINUTO',  // minute
-  'LAGI',    // always
+  'BOLA',
+  'SIPA',
+  'SUNGKA',
+  'DAMA',
+  'TAYA',
+  'PANALO',
+  'PALARO',
+  'PALO',
 
-  // --- Games and sports ---
-  'BOLA',    // ball
-  'SIPA',    // kick game
-  'SUNGKA',  // mancala game
-  'DAMA',    // checkers
-  'TAYA',    // bet
-  'PANALO',  // win
-  'PALARO',  // contest
-  'PALO',    // hit
+  'MISA',
+  'KRUS',
+  'DIYOS',
+  'SANTO',
+  'BIBLIA',
+  'ALTAR',
+  'ANGHEL',
 
-  // --- Religion ---
-  'MISA',    // mass
-  'KRUS',    // cross
-  'DIYOS',   // god
-  'SANTO',   // saint
-  'BIBLIA',  // bible
-  'ALTAR',   // altar
-  'ANGHEL',  // angel
+  'KALYE',
+  'BANGKO',
+  'KUBO',
+  'KWARTO',
+  'KOTSE',
+  'TREN',
+  'BAPOR',
+  'PASYAL',
+  'BIYAHE',
+  'KALESA',
+  'SINE',
 
-  // --- Places and travel ---
-  'KALYE',   // street
-  'BANGKO',  // bank
-  'KUBO',    // hut
-  'KWARTO',  // room
-  'KOTSE',   // car
-  'TREN',    // train
-  'BAPOR',   // ship
-  'PASYAL',  // stroll
-  'BIYAHE',  // trip
-  'KALESA',  // horse carriage
-  'SINE',    // movie
+  'ITAK',
+  'ESPADA',
+  'TINIK',
+  'GOMA',
 
-  // --- Objects ---
-  'ITAK',    // bolo knife
-  'ESPADA',  // sword
-  'TINIK',   // thorn
-  'GOMA',    // rubber
-
-  // --- More everyday words ---
-  'AKYAT',   // climb
-  'ALSA',    // lift
-  'AMPON',   // adopt
-  'ANYAYA',  // invite
-  'ASAL',    // behavior
-  'AYAW',    // do not want
-  'BAHALA',  // never mind
-  'BAIT',    // kindness
-  'BANGON',  // rise up
-  'BASTA',   // as long as
-  'BISA',    // effect
-  'BUNGAD',  // entrance
-  'BURA',    // erase
-  'BURDA',   // embroidery
-  'BUTAS',   // hole
-  'BUTIL',   // grain
-  'DAGSA',   // throng
-  'DAHAN',   // slow
-  'DAIG',    // surpass
-  'DALOY',   // flow
-  'DUKOT',   // abduct
-  'DULANG',  // tray table
-  'DULO',    // tip
-  'DUMI',    // dirt
-  'DUNGAW',  // peek
-  'GALING',  // skill / from
-  'GANIT',   // mathematics
-  'GIGIL',   // shiver
-  'GINAW',   // chill
-  'GIPIT',   // in a bind
-  'GISA',    // sauté
-  'HAMBOG',  // boastful
-  'HAMPAS',  // lash
-  'HANAY',   // row
-  'HANDOG',  // offering
-  'HAPAG',   // dining table
-  'HIGIT',   // more
-  'HIGPIT',  // tight
-  'HIWA',    // slice
-  'HUDYAT',  // signal
-  'HUGOT',   // pull out
-  'HULING',  // last
-  'HUSAY',   // orderliness
-  'HUWAD',   // model
-  'IKOT',    // turn
-  'ILIPAT',  // transfer
-  'IMBAK',   // store
-  'INGAY',   // noise
-  'ISANG',   // one (linker)
-  'ITAAS',   // upward
-  'ITAPON',  // throw away
-  'ITIK',    // duck
-  'IWAN',    // leave behind
-  'KABIT',   // connect
-  'KALAT',   // scattered
-  'KANTO',   // corner
-  'KAPAL',   // thick
-  'KASAMA',  // companion
-  'KIBIT',   // hunch
-  'KILALA',  // know
-  'KISLAP',  // sparkle
-  'KITID',   // narrow
-  'KUBETA',  // toilet
-  'KULONG',  // confine
-  'KUSANG',  // voluntary
-  'LAPIDA',  // tombstone
-  'LASING',  // drunk
-  'LASON',   // poison
-  'LAWAK',   // humor
-  'LAWAY',   // saliva
-  'LINYA',   // line
-  'LISTA',   // list
-  'LUBHA',   // severe
-  'LUBOG',   // sink
-  'LUGAR',   // place
-  'LUGI',    // loss
-  'LUHA',    // tears
-  'LUPON',   // committee
-  'PAKO',    // nail
-  'PANTIG',  // syllable
-  'PAPAYA',  // papaya
-  'PERLAS',  // pearl
-  'PINTAS',  // criticism
-  'PISTA',   // feast
-  'PITAKA',  // wallet
-  'PLANO',   // plan
-  'PORMA',   // form
-  'POSO',    // well
-  'PUGAD',   // nest
-  'PUTOK',   // burst
-  'PUWANG',  // space
-  'PUWEDE',  // possible
-  'SAGANA',  // abundant
-  'SAKSI',   // witness
-  'SAKUNA',  // disaster
-  'SANAY',   // used to
-  'SARIWA',  // fresh
-  'SAYANG',  // waste
-  'SIBOL',   // sprout
-  'SIGURO',  // maybe
-  'SILBI',   // service
-  'SIMULA',  // beginning
-  'SINING',  // art
-  'SOBRE',   // envelope
-  'SUHOL',   // bribe
-  'SULO',    // torch
-  'TABI',    // beside
-  'TALON',   // jump
-  'TAMBAL',  // patch
-  'TAMBAY',  // loiter
-  'TANGIS',  // cry
-  'TATAK',   // brand
-  'TIBAY',   // endurance
-  'TILA',    // seems
-  'TIMPLA',  // blend
-  'TUBA',    // coconut wine
-  'TUBO',    // pipe
-  'TUGMA',   // rhyme
-  'TUNGO',   // toward
-  'TUNOG',   // sound
-  'UBO',     // cough
-  'UMPISA',  // start
-  'UNAWA',   // understanding
-  'UNLAD',   // progress
-  'UPANG',   // in order to
-  'UTAK',    // brain
-  'WALANG',  // without
-  'WARI',    // seems
-  'YABANG',  // arrogance
-  'YAYA',    // nanny
-  'ABALA',   // busy
-  'ABISO',   // notice
-  'ABONO',   // fertilizer
-  'AHENTE',  // agent
-  'ALAMAT',  // legend
-  'ALAS',    // ace / hour
-  'ANGAL',   // objection
-  'ARKILA',  // rental
-  'ATRASO',  // delay
-  'BABALA',  // warning
-  'BAGSIK',  // fury
-  'AGWAT',   // gap
-  'TAGAL',   // duration
+  'AKYAT',
+  'ALSA',
+  'AMPON',
+  'ANYAYA',
+  'ASAL',
+  'AYAW',
+  'BAHALA',
+  'BAIT',
+  'BANGON',
+  'BASTA',
+  'BISA',
+  'BUNGAD',
+  'BURA',
+  'BURDA',
+  'BUTAS',
+  'BUTIL',
+  'DAGSA',
+  'DAHAN',
+  'DAIG',
+  'DALOY',
+  'DUKOT',
+  'DULANG',
+  'DULO',
+  'DUMI',
+  'DUNGAW',
+  'GALING',
+  'GANIT',
+  'GIGIL',
+  'GINAW',
+  'GIPIT',
+  'GISA',
+  'HAMBOG',
+  'HAMPAS',
+  'HANAY',
+  'HANDOG',
+  'HAPAG',
+  'HIGIT',
+  'HIGPIT',
+  'HIWA',
+  'HUDYAT',
+  'HUGOT',
+  'HULING',
+  'HUSAY',
+  'HUWAD',
+  'IKOT',
+  'ILIPAT',
+  'IMBAK',
+  'INGAY',
+  'ISANG',
+  'ITAAS',
+  'ITAPON',
+  'ITIK',
+  'IWAN',
+  'KABIT',
+  'KALAT',
+  'KANTO',
+  'KAPAL',
+  'KASAMA',
+  'KIBIT',
+  'KILALA',
+  'KISLAP',
+  'KITID',
+  'KUBETA',
+  'KULONG',
+  'KUSANG',
+  'LAPIDA',
+  'LASING',
+  'LASON',
+  'LAWAK',
+  'LAWAY',
+  'LINYA',
+  'LISTA',
+  'LUBHA',
+  'LUBOG',
+  'LUGAR',
+  'LUGI',
+  'LUHA',
+  'LUPON',
+  'PAKO',
+  'PANTIG',
+  'PAPAYA',
+  'PERLAS',
+  'PINTAS',
+  'PISTA',
+  'PITAKA',
+  'PLANO',
+  'PORMA',
+  'POSO',
+  'PUGAD',
+  'PUTOK',
+  'PUWANG',
+  'PUWEDE',
+  'SAGANA',
+  'SAKSI',
+  'SAKUNA',
+  'SANAY',
+  'SARIWA',
+  'SAYANG',
+  'SIBOL',
+  'SIGURO',
+  'SILBI',
+  'SIMULA',
+  'SINING',
+  'SOBRE',
+  'SUHOL',
+  'SULO',
+  'TABI',
+  'TALON',
+  'TAMBAL',
+  'TAMBAY',
+  'TANGIS',
+  'TATAK',
+  'TIBAY',
+  'TILA',
+  'TIMPLA',
+  'TUBA',
+  'TUBO',
+  'TUGMA',
+  'TUNGO',
+  'TUNOG',
+  'UBO',
+  'UMPISA',
+  'UNAWA',
+  'UNLAD',
+  'UPANG',
+  'UTAK',
+  'WALANG',
+  'WARI',
+  'YABANG',
+  'YAYA',
+  'ABALA',
+  'ABISO',
+  'ABONO',
+  'AHENTE',
+  'ALAMAT',
+  'ALAS',
+  'ANGAL',
+  'ARKILA',
+  'ATRASO',
+  'BABALA',
+  'BAGSIK',
+  'AGWAT',
+  'TAGAL',
 ];
 
 export const TAGALOG_WORD_DATABASE = new Set(

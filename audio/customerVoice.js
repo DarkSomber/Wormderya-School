@@ -23,7 +23,6 @@ export const customerVoice = {
     audio.playVoice('shocked', voice, { ifIdle: true });
   },
 
-  // band: 'impatient' | 'angry'
   patience(voice, band) {
     audio.playVoice(band === 'angry' ? 'sighing' : 'ehem', voice, { ifIdle: true });
   },

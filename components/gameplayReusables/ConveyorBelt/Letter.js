@@ -7,7 +7,6 @@ import { useSpawnAnimation, LETTER_ANIM_STATES } from './Animationsystem';
 const PLATE = require('../../../assets/Final/GameplayUI/plate.png')
 
 function Letter({ letter, left, width, height, onPress }) {
-  // Set once the removal animation has finished; the tile is only then unmounted.
   const [vanished, setVanished] = useState(!letter.active);
   const scale = useSpawnAnimation(letter.animState, () => setVanished(true));
   const opacity = useMemo(
@@ -19,14 +18,10 @@ function Letter({ letter, left, width, height, onPress }) {
     if (letter.active) setVanished(false); 
   }, [letter.active]);
 
-  // A removed tile stays drawn (non-tappable) while it plays its exit animation.
   const showTile =
     letter.active || (letter.animState === LETTER_ANIM_STATES.DISAPPEARING && !vanished);
 
   if (!showTile) {
-    // Reserve the slot (keeps spacing stable) without rendering a tile —
-    // this is the "removed" state the future Word Input System will use,
-    // e.g. [A] [B] [ ] [D] [E] after the player selects "C".
     return <View style={[styles.slot, { left, width, height }]} />;
   }
 
@@ -37,9 +32,6 @@ function Letter({ letter, left, width, height, onPress }) {
       pointerEvents={letter.active ? 'auto' : 'none'}
       style={[styles.slot, { left, width, height, opacity, transform: [{ scale }] }]}
     >
-      {/* onPressIn = the moment the finger lands. The belt keeps sliding the plate away,
-          so waiting for a release over the same spot made plates feel like they needed a hard,
-          precise press. hitSlop grows the touch area back to the whole slot (visuals unchanged). */}
       <TouchableOpacity
         activeOpacity={0.7}
         onPressIn={() => letter.active && onPress && onPress(letter)}
@@ -64,12 +56,6 @@ function Letter({ letter, left, width, height, onPress }) {
 
 const FLY_MS = 460;
 
-/**
- * The plate you just tapped: a copy of it lifts off the belt and eases in toward the table
- * (the word row), shrinking and fading as it lands. ConveyorBelt renders these in a layer
- * that isn't clipped by the belt, and removes each one through `onDone` when it finishes.
- * tile = { key, character, left, dx, dy }  (px, relative to the belt's left edge).
- */
 export function FlyingTile({ tile, width, height, onDone }) {
   const p = useRef(new Animated.Value(0)).current;
   const onDoneRef = useRef(onDone);
@@ -118,8 +104,6 @@ export function FlyingTile({ tile, width, height, onDone }) {
   );
 }
 
-// Memoized: a tile pick/return changes one letter object, so the other tiles
-// (same letter object, slot position and stable onPress) skip re-rendering.
 export default React.memo(Letter);
 
 const styles = StyleSheet.create({

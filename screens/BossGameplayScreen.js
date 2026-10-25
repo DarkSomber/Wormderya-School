@@ -53,7 +53,6 @@ import {
   LevelIntroSequence,
   LevelEndSequence,
 } from "../levels/IntroEndSequence";
-/* global __DEV__ */
 
 import audio from "../audio/AudioManager";
 import { customerVoice } from "../audio/customerVoice";
@@ -65,7 +64,6 @@ const COIN_SPOTS = [
   { x: 0.5, y: -0.05, size: 8, delay: 240 },
 ];
 
-// Boss Customer Configuration
 const BOSS_SPRITES = [
   {
     source: require("../assets/Final/Customers/CustomerBoss.png"),
@@ -100,11 +98,6 @@ const NO_ACHIEVEMENTS = {
   unlockAchievement: () => {},
 };
 
-/**
- * BossGameplayScreen
- * ------------------
- * Boss-themed gameplay shell maintaining customer patience logic and core game loops.
- */
 export default function BossGameplayScreen({
   onOpenStore,
   onBack,
@@ -185,10 +178,8 @@ function BossLevelSession({
   const toastedIdsRef = useRef(new Set());
   const [toastMessages, setToastMessages] = useState([]);
 
-  // Start queued timed upgrades when play begins, not during the intro.
   useEffect(() => {
     if (phase === "playing") safeUpgrades.startNewRound();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
   useEffect(() => {
@@ -247,7 +238,6 @@ function BossLevelSession({
 
   const levelMaker = useLevelMaker(levelConfig, isStoreOpen || showPause);
 
-  // Served counts for the HUD and the end screen (derived, no extra state).
   const customersServed = Math.min(levelMaker.customerIndex, levelConfig.totalCustomers);
   const wordsServed =
     levelMaker.customerIndex * levelConfig.wordsPerCustomer + levelMaker.wordsServedForCustomer;
@@ -264,8 +254,6 @@ function BossLevelSession({
     },
   });
 
-  // One spawner shared by all belts: it makes them spawn the letters of the current
-  // riddle answer (plus dummies). setTarget only resets when the answer actually changes.
   const spawnerRef = useRef(null);
   if (!spawnerRef.current) spawnerRef.current = createWordSpawner(levelConfig.spawnAssist);
   spawnerRef.current.setTarget(hint.hint.answer);
@@ -278,7 +266,7 @@ function BossLevelSession({
 
     if (result.valid) {
       audio.playSfx("correct");
-      customerSpriteRef.current?.bounce(3); // right word: the boss bounces 3 times
+      customerSpriteRef.current?.bounce(3); 
       customerVoice.served(customerVoiceId, {
         lastForCustomer:
           levelMaker.wordsServedForCustomer + 1 >= levelConfig.wordsPerCustomer,
@@ -288,14 +276,14 @@ function BossLevelSession({
       const bonus = hintHit
         ? addBonusScore(Math.round(earned * HINT_BONUS_RATIO.boss))
         : 0;
-      if (!hintHit) hint.reveal(); // real word but not the hint: show what it was
+      if (!hintHit) hint.reveal();
       hopChef(hintHit);
       hint.advance(bonus);
       customerRef.current?.restorePatience(100);
       levelMakerRef.current.registerServedWord();
     } else if (result.word.length > 0) {
       audio.playSfx("wrong");
-      customerSpriteRef.current?.shake(2000); // wrong word: the boss shakes for 2 seconds
+      customerSpriteRef.current?.shake(2000); 
       customerVoice.wrong(customerVoiceId);
       hint.reveal();
       customerRef.current?.applyWrongWordPenalty();
@@ -322,13 +310,10 @@ function BossLevelSession({
     { slotHoldMs: levelConfig.slotHoldMs },
   );
 
-  // Letters already in the input boxes still count toward the answer.
   spawnerRef.current.setHeld(wordInput.currentWord.map((tile) => tile.character));
 
   const [levelResult, setLevelResult] = useState(null);
-    const [isWorried, setIsWorried] = useState(false);
-  // Chef hops right, left, then back to centre: each hop is an arc (up easing out, down
-  // easing in like gravity) with a small squash on landing. A right hint answer hops bigger.
+  const [isWorried, setIsWorried] = useState(false);
   const chefX = useRef(new Animated.Value(0)).current;
   const chefY = useRef(new Animated.Value(0)).current;
   const chefSquash = useRef(new Animated.Value(0)).current;
@@ -358,7 +343,7 @@ function BossLevelSession({
     ]).start();
   };
   const chefHopStyle = {
-    transformOrigin: '50% 100%', // squash from the feet
+    transformOrigin: '50% 100%', 
     transform: [
       { translateX: chefX },
       { translateY: chefY },
@@ -366,14 +351,13 @@ function BossLevelSession({
       { scaleY: chefSquash.interpolate({ inputRange: [0, 1], outputRange: [1, 0.88] }) },
     ],
   };
-  // Like the menu worm: keep the still sprite until the gif has loaded, so it starts clean.
   const [wormReady, setWormReady] = useState(false);
   useEffect(() => {
     if (!isWorried) { setWormReady(false); return undefined; }
     const t = setTimeout(() => setWormReady(true), 400);
     return () => clearTimeout(t);
   }, [isWorried]);
-  const [statsPing, setStatsPing] = useState(0); // chef tap re-shows the counter bubble
+  const [statsPing, setStatsPing] = useState(0); 
 
   const patienceBandRef = useRef("happy");
   const voiceIdRef = useRef(customerVoiceId);
@@ -422,18 +406,14 @@ function BossLevelSession({
     handleLevelEnd(false);
   }, [extraHealth, consumeExtraHealth, handleLevelEnd]);
 
-  // Serve ("Ihain na"): nothing happens with an empty plate. The spam lock after each
-  // press lives in PlateButton (cooldownMs).
   const handleServePlate = () => {
     if (wordInput.currentWord.length === 0) return;
-    wordInput.submitWord(); // scoring/patience handled via onSubmit
+    wordInput.submitWord(); 
   };
   const serveDisabled = wordInput.currentWord.length === 0;
 
   const handleIntroComplete = useCallback(() => setPhase("playing"), []);
 
-  // Lose: retry the boss. Win: leave through onBack, which App routes to the
-  // ending (the boss has no shop visit afterwards).
   const handleEndComplete = () => {
     if (levelResult === "lose") {
       onRetry();
@@ -534,7 +514,6 @@ function BossLevelSession({
           ping={statsPing}
         />
 
-        {/* Coin board + patience meter (one PNG, same layout as GameplayScreen) */}
         <Slot rect={RECTS.coin}>
           <ImageBackground
             source={require("../assets/Final/GameplayUI/CoinPatience.png")}
@@ -603,7 +582,6 @@ function BossLevelSession({
           />
         </Slot>
 
-        {/* Boss Stage Title Indicator */}
         <Slot
           rect={{ x: 175, y: 8, w: 162, h: 50 }}
           style={{ alignItems: "center", justifyContent: "center" }}
@@ -650,7 +628,6 @@ function BossLevelSession({
             targetHoleId={wordInput.targetHoleId}
             lastResult={wordInput.lastResult}
             inputBoxCount={wordInput.inputBoxCount}
-            // "WORD +score" pill: left of the riddle bubble instead of on top of it
             resultMaxWidth={(RECTS.hint.x - RECTS.word.x - 20) * scale}
             resultAlign="left"
           />
@@ -661,9 +638,7 @@ function BossLevelSession({
         </Slot>
 
       <Slot rect={RECTS.chef} scale={scale}>
-        {/* The art can be bigger than the tap area, so it ignores touches... */}
         <Animated.View pointerEvents="none" style={[{ flex: 1 }, chefHopStyle]}>
-          {/* Normal pose, hidden while the worry animation plays. */}
           <Image
             source={require('../assets/Final/MainCharacter.png')}
             style={{ width: '100%', height: '100%', opacity: isWorried && wormReady ? 0 : 1 }}
@@ -689,8 +664,6 @@ function BossLevelSession({
             />
           )}
         </Animated.View>
-        {/* ...and only this inset box taps the chef: it starts right of the serve plate
-            (x 336) and ends above the top belt (y 663), so it can't steal their taps. */}
         <TouchableOpacity
           activeOpacity={1}
           style={{ position: 'absolute', left: '6%', top: 0, width: '94%', height: '89%' }}
@@ -715,7 +688,6 @@ function BossLevelSession({
                 slotDurationMs: levelConfig.conveyorSpeed,
                 slotWidth: 100 * scale,
                 slotHeight: 94 * scale,
-                // how far a tapped plate flies up to the word row
                 flyDy: (RECTS[`belt${row}`].y + RECTS[`belt${row}`].h / 2 - (RECTS.word.y + 24)) * scale,
                 ...getBeltConfig(levelConfig, row),
               }}

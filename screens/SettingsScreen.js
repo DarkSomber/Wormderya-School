@@ -23,14 +23,10 @@ const PANEL_TITLES = {
   achievements: "Achievement",
 };
 
-// Space reserved above AND below the panel so it sits in the middle of the
-// screen. It must clear the back button (top 20 + 48 tall = 68), so 64 + the
-// container's 16 padding = 80px on both sides.
 const PANEL_VERTICAL_MARGIN = 64;
 
 const ART_BORDER = { left: 0.046, right: 0.858, top: 0.02, bottom: 0.979 };
 
-// Gap between the drawn border and the sliders/labels.
 const CONTENT_PAD_X = "10%";
 const CONTENT_PAD_Y = 40;
 
@@ -46,9 +42,8 @@ const ART_STYLE = {
   transform: [{ translateX: 20 }, { translateY: 20 }],
 };
 
-// Re-checks every time the Settings panel opens.
 function ConnectionStatus() {
-  const [online, setOnline] = useState(null); // null = still checking
+  const [online, setOnline] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,12 +90,10 @@ export default function SettingsScreen({
     try {
       await onResetProgress?.();
     } finally {
-      // The session remounts after a reset, but this covers a failed reset too.
       setResetting(false);
       setConfirmReset(false);
     }
   };
-  // Start from the engine's live values (App loads the saved ones into it).
   const [masterVolume, setMasterVolume] = useState(
     () => audio.getVolumes().master,
   );
@@ -109,8 +102,6 @@ export default function SettingsScreen({
   );
   const [sfxVolume, setSfxVolume] = useState(() => audio.getVolumes().sfx);
 
-  // Sliders apply live (you hear the music change as you drag) and are saved
-  // when released. The SFX slider plays a click on release as a preview.
   const liveVolume = (kind, setter) => (value) => {
     setter(value);
     audio.setVolume(kind, value);
@@ -243,8 +234,6 @@ export default function SettingsScreen({
           )}
         </View>
 
-        {/* BACK BUTTON — absolute, so it no longer pushes the panel down.
-            Rendered after the panel so it stays on top and tappable. */}
         <View style={styles.topBar}>
           <TouchableOpacity
             activeOpacity={0.75}

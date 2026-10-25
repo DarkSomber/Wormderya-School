@@ -11,28 +11,23 @@ const INVALID_COLOR = '#c62828';
 const VALID_BG = '#E8F5E9';
 const INVALID_BG = '#FDECEA';
 
-// "WORD — +score" line stays fully
-// visible before it fades out. Edit here for a global change, or pass a
-// different value as the resultFadeDelayMs prop to override per screen.
 export const DEFAULT_RESULT_FADE_DELAY_MS = 2000;
 const RESULT_FADE_DURATION_MS = 300;
 
-// Fixed-size result bubble: text shrinks to fit instead of overflowing.
 const BUBBLE_W = 220;
 const BUBBLE_H = 36;
 
-
 export default function CurrentWordDisplay({
   currentWord,
-  slots: slotsProp, // fixed-length box list from useWordInput (preferred; keeps gaps)
-  onSlotPress, // (boxIndex) => void — tapping an OCCUPIED box; empty boxes ignore taps
-  onHolePress, // (boxIndex) => void — tapping an OPEN (just-emptied) box picks it as the next tile's spot
-  targetHoleId, // id of the open box currently picked, for the highlight
+  slots: slotsProp,
+  onSlotPress,
+  onHolePress,
+  targetHoleId,
   lastResult,
   inputBoxCount = DEFAULT_INPUT_BOX_COUNT,
   resultFadeDelayMs = DEFAULT_RESULT_FADE_DELAY_MS,
-  resultMaxWidth = BUBBLE_W, // px; the screen narrows the pill so it stops short of the hint/riddle bubble
-  resultAlign = 'center',    // 'center' | 'left' (left keeps it clear of a bubble on the right)
+  resultMaxWidth = BUBBLE_W,
+  resultAlign = 'center',
 }) {
   const {
     shakeX,
@@ -48,10 +43,8 @@ export default function CurrentWordDisplay({
   const resultOpacity = useRef(new Animated.Value(0)).current;
   const bubbleScale = useRef(new Animated.Value(1)).current;
   const fadeTimeoutRef = useRef(null);
-  const [resultKey, setResultKey] = useState(0); // remounts the bubble twinkle per result
+  const [resultKey, setResultKey] = useState(0);
 
-  // Track the specific result object we've already animated for, so we
-  // only fire once per submit rather than on every re-render.
   const animatedResultRef = useRef(null);
 
   useEffect(() => {
@@ -63,8 +56,6 @@ export default function CurrentWordDisplay({
       playInvalid();
     }
 
-    // Show the result bubble fully, then fade it out after the configured
-    // delay so it doesn't just sit there forever.
     if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
     setResultKey((k) => k + 1);
     resultOpacity.stopAnimation();
@@ -85,7 +76,6 @@ export default function CurrentWordDisplay({
     }, resultFadeDelayMs);
   }, [lastResult, playValid, playInvalid, resultOpacity, bubbleScale, resultFadeDelayMs]);
 
-  // Clear any pending fade if the component unmounts mid-timeout.
   useEffect(() => () => {
     if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
   }, []);
@@ -96,8 +86,6 @@ export default function CurrentWordDisplay({
   });
   const rippleBackgroundColor = lastResult && lastResult.valid ? VALID_COLOR : INVALID_COLOR;
 
-  // Fixed-length slot list: real letters first, then empty placeholders
-  // Doesn't require all slot filled to pass the word
   const slots = slotsProp ?? (currentWord || []);
 
   return (
@@ -105,8 +93,6 @@ export default function CurrentWordDisplay({
       <Animated.View style={[styles.row, { transform: [{ translateX: shakeX }, { scale: popScale }] }]}>
         {slots.map((letter, i) =>
           letter && letter.held ? (
-            // Open box: its tile was just sent back. Stays here for a few
-            // seconds so the player can drop a different tile into this spot.
             <TouchableOpacity
               key={letter.id}
               activeOpacity={0.7}
@@ -117,7 +103,6 @@ export default function CurrentWordDisplay({
               </View>
             </TouchableOpacity>
           ) : letter ? (
-            // Whole box is the touch target, not just the glyph.
             <TouchableOpacity
               key={letter.id}
               activeOpacity={0.7}
@@ -135,14 +120,11 @@ export default function CurrentWordDisplay({
           )
         )}
 
-        {/* Flash — a color wash over the whole row, red or green. */}
         <Animated.View
           pointerEvents="none"
           style={[styles.overlay, { backgroundColor: flashBackgroundColor, opacity: flashOpacity }]}
         />
 
-        {/* Ripple — only relevant/visible on a valid word; clipped by
-            the row's overflow:hidden*/}
         <Animated.View
           pointerEvents="none"
           style={[
@@ -156,9 +138,6 @@ export default function CurrentWordDisplay({
         />
       </Animated.View>
 
-      {/* Result bubble — floats just above the tile row (a sibling of `row`,
-          so it isn't clipped by row's overflow:hidden) and never covers the
-          tiles the player starts picking for the next word. */}
       {lastResult ? (
         <Animated.View
           pointerEvents="none"
@@ -190,15 +169,15 @@ export default function CurrentWordDisplay({
 }
 
 const ROW_MIN_HEIGHT = 46;
-const BUBBLE_TAIL_GAP = 8; // tail height + a little air above the row
+const BUBBLE_TAIL_GAP = 8;
 
 const styles = StyleSheet.create({
   wrapper: {
     alignItems: 'center',
     paddingVertical: 4,
     width: '100%',
-    zIndex: 3, // table (GameplayScreen) sits at zIndex: 2 and overlaps this via negative marginTop
-    elevation: 3, // Android needs elevation in addition to zIndex for stacking order
+    zIndex: 3,
+    elevation: 3,
   },
   row: {
     flexDirection: 'row',
@@ -206,12 +185,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: ROW_MIN_HEIGHT,
-    minWidth: ROW_MIN_HEIGHT, // guarantees a visible frame even before any tiles mount
+    minWidth: ROW_MIN_HEIGHT,
     maxWidth: '90%',
     borderRadius: 12,
     paddingHorizontal: 6,
     alignSelf: 'center',
-    overflow: 'hidden', // keeps tiles, the flash, and the ripple all clipped to the row
+    overflow: 'hidden',
     position: 'relative',
   },
   emptySlot: {

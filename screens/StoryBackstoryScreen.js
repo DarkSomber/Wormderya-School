@@ -1,8 +1,6 @@
 import React from "react";
 import SlideshowSequence from "../components/SlideshowSequence";
 
-// One entry per slide. Add the real art later like:
-//   { id: '1', image: require('../../assets/story/backstory-1.png') }
 const BACKSTORY_SLIDES = [
   {
     id: "1",

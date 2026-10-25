@@ -2,11 +2,6 @@ import React from 'react';
 import { TouchableOpacity, StyleSheet, View } from 'react-native';
 import Text from '../AppText';
 
-/**
- * [TEST/DEBUG ONLY] Level-select debug controls.
- *   - unlock toggle (existing)
- *   - wipe local save and reset to a fresh game
- */
 export default function DebugButton({ allUnlocked, onPress, onResetSave }) {
   return (
     <View style={styles.row}>

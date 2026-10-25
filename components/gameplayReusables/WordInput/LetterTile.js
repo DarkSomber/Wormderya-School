@@ -5,13 +5,8 @@ import { useTileEntranceAnimation } from './LetterAnimations';
 
 export const TILE_SIZE = 40;
 
-// WordInput/ -> gameplayReusables/ -> components/ -> project root -> assets/...
 export const BLANK_RECTANGLE = require('../../../assets/Placeholder/BlankRectangle.png');
 
-/**
- * A single letter's box. CurrentWordDisplay renders one of these per
- * entry in `currentWord`, keyed by `letter.id` — Animates the black box
- */
 export default function LetterTile({ character }) {
   const { scale, opacity, play } = useTileEntranceAnimation();
   const hasPlayed = useRef(false);
@@ -47,7 +42,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#4a2e0f',
   },
-  // Two-character syllable tiles ('BA', 'WA') need a smaller font to fit the box.
   syllable: {
     fontSize: 16,
   },

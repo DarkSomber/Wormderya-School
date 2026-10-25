@@ -705,7 +705,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     borderWidth: 3,
     borderColor: "#8a5a30",
-    borderRadius: 0, // hole is a square cut-out; rounded ring left bright corner gaps
+    borderRadius: 0,
   },
 
   quit: { width: "100%", height: "100%" },

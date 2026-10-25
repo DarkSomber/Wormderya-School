@@ -1,16 +1,3 @@
-/**
- * Builds audio/audioManifest.js from whatever is in assets/audio/.
- *
- *   assets/audio/sfx/  click.wav, correct.wav, ...            -> SFX.click, ...
- *   assets/audio/va/   eating_1.mp3, goodbye_3.mp3, ...       -> VA.eating_1, ...
- *   assets/audio/bgm/  anything with "menu" in the name       -> BGM.menu
- *                      anything with "level"/"game"/"play"    -> BGM.level
- *
- * Metro needs literal require() paths, so this script writes them for us.
- * Run it after adding or renaming audio:   npm run audio
- * (npm start / android / ios / web run it automatically.)
- * Missing files become `null` and the game simply stays silent for them.
- */
 const fs = require('fs');
 const path = require('path');
 
@@ -18,7 +5,6 @@ const ROOT = path.join(__dirname, '..');
 const AUDIO_DIR = path.join(ROOT, 'assets', 'audio');
 const OUT_FILE = path.join(ROOT, 'audio', 'audioManifest.js');
 
-// Preference order if the same name exists in two formats.
 const EXTS = ['.wav', '.mp3', '.ogg', '.m4a', '.aac', '.flac'];
 
 const EXPECTED = {
@@ -32,7 +18,6 @@ const EXPECTED = {
   bgm: ['menu', 'level'],
 };
 
-// How a BGM file name maps to a track (checked in this order).
 const BGM_MATCH = {
   menu: /menu|title|home|main/i,
   level: /level|game|play|stage|battle|shift/i,
@@ -42,7 +27,6 @@ for (const dir of Object.keys(EXPECTED)) {
   fs.mkdirSync(path.join(AUDIO_DIR, dir), { recursive: true });
 }
 
-/** { baseName: 'file.ext' } for one folder. */
 function scan(dir) {
   const found = {};
   const folder = path.join(AUDIO_DIR, dir);
@@ -64,7 +48,6 @@ function scan(dir) {
 const sfx = scan('sfx');
 const va = scan('va');
 
-// BGM: pick files by name, then fall back to the one leftover file.
 const bgmFiles = scan('bgm');
 const bgm = {};
 const unassigned = new Set(Object.keys(bgmFiles));

@@ -97,7 +97,6 @@ export function hasLevelPreset(levelRef) {
   return findPreset(levelRef) !== undefined;
 }
 
-
 export function getLevelConfigById(levelRef) {
   const preset = findPreset(levelRef);
   if (!preset) {

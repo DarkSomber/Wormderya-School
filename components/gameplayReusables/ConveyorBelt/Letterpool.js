@@ -1,38 +1,16 @@
-/**
- * Test letter pool for the conveyor prototype. Swap this out for the
- * formal Tagalog letter set (or generate it from the word database) once
- * the Word Input System and dictionary are in place — nothing else in
- * the conveyor needs to change to support that swap, since ConveyorBelt
- * only ever pulls from `config.letterPool`.
- */
 export const DEFAULT_LETTER_POOL = [
   'A', 'B', 'K', 'D', 'E', 'G', 'H', 'I', 'L',
   'M', 'N', 'O', 'P', 'R', 'S', 'T', 'U', 'W', 'Y',
 ];
 
-// Tagalog vowels. Fixed on purpose (not derived from the pool) so the
-// vowel/consonant split stays correct even if DEFAULT_LETTER_POOL grows.
 export const VOWELS = ['A', 'E', 'I', 'O', 'U'];
 
-/**
- * Tile modes. A "tile" is whatever one conveyor slot and one input box hold:
- *   letter   -> a single character ('B', 'A', 'Y')
- *   syllable -> a consonant-vowel pair ('BA', 'LE', 'SO')
- * Which mode a level uses is decided by LevelConfig's resolveTileMode().
- */
 export const TILE_MODES = { LETTER: 'letter', SYLLABLE: 'syllable' };
 
-/** Every consonant + vowel combination, e.g. (['B','L']) -> BA BE BI BO BU LA LE LI LO LU. */
 export function buildSyllablePool(consonants, vowels = VOWELS) {
   return consonants.flatMap((c) => vowels.map((v) => c + v));
 }
 
-/**
- * Named syllable pools a level references with `syllablePool: 'basic'`.
- * `extended` is a superset of `basic`, so a level using it gets a wider
- * variety (more consonants -> more distinct tiles) than the level before it.
- * To add a tier, add a consonant list here; nothing else needs to change.
- */
 export const SYLLABLE_CONSONANTS = {
   basic: ['B', 'K', 'L', 'M', 'S', 'T'],
   extended: ['B', 'D', 'G', 'H', 'K', 'L', 'M', 'N', 'P', 'R', 'S', 'T', 'W', 'Y'],
@@ -42,7 +20,6 @@ export const SYLLABLE_POOLS = Object.fromEntries(
   Object.entries(SYLLABLE_CONSONANTS).map(([name, consonants]) => [name, buildSyllablePool(consonants)])
 );
 
-/** 'basic' | 'extended' | a custom array of syllables -> the pool. Unknown names fall back to 'basic'. */
 export function getSyllablePool(nameOrPool = 'basic') {
   if (Array.isArray(nameOrPool) && nameOrPool.length > 0) return nameOrPool;
   return SYLLABLE_POOLS[nameOrPool] ?? SYLLABLE_POOLS.basic;
@@ -56,9 +33,6 @@ export function getConsonantsInPool(pool = DEFAULT_LETTER_POOL) {
   return pool.filter((ch) => !VOWELS.includes(ch));
 }
 
-// Vowel/consonant split per pool array, computed once instead of on every
-// spawned tile. Keyed by the array itself, so a pool that is mutated in place
-// after first use would be stale; pools are treated as immutable everywhere.
 const poolSplitCache = new WeakMap();
 
 export function getPoolSplit(pool = DEFAULT_LETTER_POOL) {
@@ -70,12 +44,6 @@ export function getPoolSplit(pool = DEFAULT_LETTER_POOL) {
   return split;
 }
 
-/**
- * Named vowel-weight profiles a level's `letterDistribution` can reference
- * by name. Each is a [min, max] range — a random value inside it is drawn
- * per pick (see createVowelWeightPicker) so consecutive letters don't all
- * share the exact same weight and become predictable.
- */
 export const LETTER_DISTRIBUTION_PROFILES = {
   balanced: [0.15, 0.20],
   vowelHeavy: [0.60, 0.72],

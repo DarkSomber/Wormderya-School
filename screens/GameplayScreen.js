@@ -43,7 +43,6 @@ const COIN_SPOTS = [
 const SPRITE_TOP = -26;         
 const PATIENCE_OFFSET_X = 72;   
 
-
 const CUSTOMER_SPRITES = [
   { source: require('../assets/Final/Customers/Customer1.png'), voice: 1 },
   { source: require('../assets/Final/Customers/CustomerPicky.png'), bottom: -10, voice: 2, picky: true },
@@ -374,7 +373,6 @@ function LevelSession({
   }, [isWorried]);
   const [statsPing, setStatsPing] = useState(0); 
 
-
   const patienceBandRef = useRef('happy');
   const voiceIdRef = useRef(customerVoiceId);
   voiceIdRef.current = customerVoiceId;
@@ -395,7 +393,6 @@ function LevelSession({
     setLevelResult((prev) => prev ?? (won ? 'win' : 'lose')); 
   }, []);
 
-
   const isLevelComplete = levelMaker.isLevelComplete;
   useEffect(() => {
     if (isLevelComplete) handleLevelEnd(true);
@@ -404,7 +401,6 @@ function LevelSession({
   useEffect(() => {
     if (levelResult) levelMakerRef.current.stop();
   }, [levelResult]);
-
 
   const completionReportedRef = useRef(false);
   useEffect(() => {

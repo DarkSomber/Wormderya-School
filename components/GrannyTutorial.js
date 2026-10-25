@@ -25,10 +25,9 @@ const T = Array.from({ length: STEPS_N + 1 }, (_, i) => i / STEPS_N);
 const HOP_Y = T.map((t) => -22 * Math.abs(Math.sin(Math.PI * HOPS * t)) * (1 - 0.5 * t));
 const HOP_ROT = T.map((t) => `${5 * Math.sin(Math.PI * HOPS * t)}deg`);
 
-// Granny peeking from the corner; tap opens the tutorial.
 export default function GrannyTutorial({ onClose, style, intro }) {
   const [open, setOpen] = useState(false);
-  const [phase, setPhase] = useState(null); // null | "walk" | "talk"
+  const [phase, setPhase] = useState(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
   const talkTimer = useRef(null);
   const walk = useRef(new Animated.Value(0)).current;
@@ -46,7 +45,6 @@ export default function GrannyTutorial({ onClose, style, intro }) {
     return () => clearTimeout(t);
   }, [cooling]);
 
-  // New player pressed Play: Granny hops to the center, then opens the tutorial.
   useEffect(() => {
     if (intro && !open && !phase && box.w > 0) setPhase("walk");
   }, [intro, open, phase, box.w]);
@@ -83,7 +81,6 @@ export default function GrannyTutorial({ onClose, style, intro }) {
     return () => clearInterval(t);
   }, []);
 
-  // Idle 10s, sway slowly for 4s (1s + 2s + 1s), repeat.
   useEffect(() => {
     if (open) return undefined;
     let timer;

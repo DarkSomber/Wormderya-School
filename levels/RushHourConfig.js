@@ -5,40 +5,38 @@ export const RUSH_HOUR_SETTINGS = {
   id: 'rush-hour', 
   title: 'Rush Hour',
 
-  wordsPerStage: 4,          // correct words needed to reach the next stage
+  wordsPerStage: 4,
 
-  startingTimeSeconds: 60,   // default time run
-  maxTimeSeconds: 120,        // the clock can never be restored above this
-  baseTimeBonusSeconds: 8,   // seconds restored per correct word at stage 1
-  minTimeBonusSeconds: 5,    // the restore shrinks with stage, never below this
-  stagesPerBonusStep: 4,     // the restore drops by 1s every this many stages
+  startingTimeSeconds: 60,
+  maxTimeSeconds: 120,
+  baseTimeBonusSeconds: 8,
+  minTimeBonusSeconds: 5,
+  stagesPerBonusStep: 4,
 
-  speedStepMs: 25,           // conveyor slotDurationMs decreases by this per stage
-  minConveyorSpeedMs: 600,   // fastest belt allowed
-  multiplierStep: 0.25,      // scoreMultiplier increase per stage
+  speedStepMs: 25,
+  minConveyorSpeedMs: 600,
+  multiplierStep: 0.25,
   maxScoreMultiplier: 4,
-  stagesPerMinLengthStep: 4, // wordDifficulty.minLength +1 every this many stages
+  stagesPerMinLengthStep: 4,
   maxMinWordLength: 11,
 
-  basePatienceDecayMs: 5000, // same as CustomerMood's default
-  patienceDecayStepMs: 100,  // patience drains faster by this much per stage
+  basePatienceDecayMs: 5000,
+  patienceDecayStepMs: 100,
   minPatienceDecayMs: 3000,
 
+  stagesPerVowelFloorStep: 4,
+  minVowelFloorMiddleBelt: 1,
 
-  stagesPerVowelFloorStep: 4, // each belt's vowel floor drops by 1 every this many stages
-  minVowelFloorMiddleBelt: 1, // belt 2 is the vowel-rich belt; keep at least this many
+  extendedSyllablesFromStage: 2,
 
-  extendedSyllablesFromStage: 2, // stage 1 uses the 'basic' pool; this stage and later use 'extended'
+  rattySpawnRate: 0.08,
+  rattyCheckIntervalMs: 20000,
+  rattyCooldownMs: 60000,
 
-  rattySpawnRate: 0.08,        // normal levels: 0.15 - 0.25
-  rattyCheckIntervalMs: 20000, // normal levels: 15000
-  rattyCooldownMs: 60000,      // min gap between encounters, also after run start
-
-  bossAfterCustomers: 3,     // the boss comes after every 3rd customer
-  bossBonusRatio: 1,         // boss riddle bonus = this x the word's points (normal hint: 0.3)
+  bossAfterCustomers: 3,
+  bossBonusRatio: 1,
 };
 
-// Customer slots cycle: 3 regular customers, then the boss (slots 4, 8, 12...).
 export function isRushHourBoss(customerIndex) {
   const every = Math.max(1, RUSH_HOUR_SETTINGS.bossAfterCustomers);
   return (customerIndex + 1) % (every + 1) === 0;

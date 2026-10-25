@@ -2,7 +2,6 @@ import React from 'react';
 import { Text as RNText, StyleSheet } from 'react-native';
 import { FONT_REGULAR, FONT_MEDIUM, FONT_SEMIBOLD, FONT_BOLD } from './gameplayReusables/Font';
 
-// Custom fonts ignore fontWeight on Android, so map weight -> font file.
 function familyForWeight(weight) {
   switch (String(weight)) {
     case '500': return FONT_MEDIUM;

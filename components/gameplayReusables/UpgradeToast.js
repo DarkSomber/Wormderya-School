@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import Text from '../AppText';
 
-// Self-dismissing toast, shows a short list of upgrade messages for a beat.
 export default function UpgradeToast({ messages, durationMs = 2200, onDone }) {
   const opacity = useRef(new Animated.Value(0)).current;
 

@@ -1,12 +1,3 @@
-/**
- * Achievements.js
- * ---------------
- * The list of achievements that exist in the game.
- * calling achievements.unlockAchievement(ACHIEVEMENTS.FIRST_WORD)
- * as a syntax to make it work
- *
- * Functions like levels/levelPresets.js. Just create the achievements through here
- */
 
 export const ACHIEVEMENTS = {
   FINISH_LEVEL_ONE: {

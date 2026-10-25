@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
 
-//States for Future levels
 export const LETTER_ANIM_STATES = {
   SPAWNING: 'spawning',
   IDLE: 'idle',

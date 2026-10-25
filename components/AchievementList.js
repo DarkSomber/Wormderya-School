@@ -6,11 +6,9 @@ import { ACHIEVEMENTS } from './gameplayReusables/Achievements.js';
 const CARD_CLOSED = require('../assets/Final/card_closed.png');
 const CARD_OPEN = require('../assets/Final/card_open.png');
 
-// Shape of each PNG = width / height.
 const CLOSED_RATIO = 600 / 152;
 const OPEN_RATIO = 600 / 300;
 
-// open PNG header 
 const OPEN_HEADER_PCT = `${(152 / 300) * 100}%`;
 
 const LOCKED_OPACITY = 0.45;
@@ -24,7 +22,6 @@ function AchievementCard({ achievement, unlocked }) {
 
   return (
     <View style={{ opacity: unlocked ? 1 : LOCKED_OPACITY }}>
-      {/* The card itself is just a View now, not tappable */}
       <View style={[styles.card, { aspectRatio: open ? OPEN_RATIO : CLOSED_RATIO }]}>
         <Image
           source={open ? CARD_OPEN : CARD_CLOSED}
@@ -32,7 +29,6 @@ function AchievementCard({ achievement, unlocked }) {
           resizeMode="stretch"
         />
 
-        {/* Only the header toggles open/closed */}
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => setOpen((o) => !o)}
@@ -53,7 +49,6 @@ function AchievementCard({ achievement, unlocked }) {
           <Text style={styles.toggle}>{open ? '✕' : '▼'}</Text>
         </TouchableOpacity>
 
-        {/* Scrollable description box */}
         {open && (
         <View style={styles.descBox}>
           <ScrollView

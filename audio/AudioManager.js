@@ -1,70 +1,39 @@
-/**
- * AudioManager
- * ----------------------------------------------------------------------
- * The one place the game plays sound. Three channels:
- *
- *   SFX    short one-shots (click, correct, win...). Preloaded, replayable.
- *   VOICE  customer lines (VA). ONE line at a time: new lines either wait
- *          in a small queue, play only if the channel is idle, or cut in.
- *   MUSIC  looping BGM with fades. One track at a time ('menu' | 'level').
- *
- * Volumes come from the Settings sliders:
- *   SFX    = master * sfx
- *   VOICE  = master * sfx   (voices ride the "Sound Effects" slider)
- *   MUSIC  = master * music
- *
- * Every public call is safe: a missing file, a failed load, or a browser
- * blocking autoplay is logged in dev and ignored. Audio never crashes the game.
- *
- * Files are listed in ./audioManifest.js, which is generated from the
- * assets/audio folders by `npm run audio` (scripts/generate-audio-manifest.js).
- * ----------------------------------------------------------------------
- */
 import { AppState, Platform } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { SFX, VA, BGM } from './audioManifest';
 
-/* global __DEV__ */
-
-// ---- Tuning ---------------------------------------------------------------
 const DEFAULT_VOLUMES = { master: 0.8, music: 0.8, sfx: 0.8 };
 
-// Optional per-sound settings.
-//   pool       how many copies of the sound can overlap (rapid taps)
-//   minGapMs   ignore a repeat that arrives sooner than this
 const SFX_TUNING = {
   click: { pool: 2, minGapMs: 40 },
   serve_letters: { pool: 3, minGapMs: 30 },
-  // Achievement modals can be mounted twice (gameplay + store): play once.
   trophy: { minGapMs: 800 },
 };
 
-const MUSIC_FADE_MS = 600;   // fade in/out when the track changes
-const DUCK_LEVEL = 0.35;     // music volume while ducked (e.g. Ratty's shop)
+const MUSIC_FADE_MS = 600;
+const DUCK_LEVEL = 0.35;
 const DUCK_FADE_MS = 250;
 const TICK_MS = 50;
 
-const VOICE_MAX_QUEUE = 3;       // lines waiting behind the current one
-const VOICE_FALLBACK_MS = 8000;  // free the voice channel even if "finished" never arrives
+const VOICE_MAX_QUEUE = 3;
+const VOICE_FALLBACK_MS = 8000;
 
-// ---- State ----------------------------------------------------------------
 const volumes = { ...DEFAULT_VOLUMES };
 let persistHandler = null;
 let initialised = false;
 
-const sfxEntries = new Map();   // name -> { players: [], next, lastAt }
-const voicePlayers = new Map(); // 'greetings_1' -> player
-const tracks = new Map();       // 'menu' -> { key, player, level, target, playing }
+const sfxEntries = new Map();
+const voicePlayers = new Map();
+const tracks = new Map();
 
 let currentTrack = null;
 const duck = { cur: 1, target: 1 };
 let tickId = null;
 
-let voiceCurrent = null;        // { key, player }
+let voiceCurrent = null;
 let voiceQueue = [];
 let voiceTimer = null;
 
-// ---- Helpers --------------------------------------------------------------
 const clamp01 = (n) => Math.min(1, Math.max(0, Number.isFinite(n) ? n : 0));
 const sfxVolume = () => clamp01(volumes.master * volumes.sfx);
 const voiceVolume = () => sfxVolume();
@@ -82,7 +51,6 @@ function warn(err) {
   if (__DEV__) console.warn('[Audio]', err?.message ?? err);
 }
 
-// Run a player call, swallowing both thrown errors and rejected promises.
 function safe(fn) {
   try {
     const result = fn();
@@ -100,7 +68,6 @@ function restart(player) {
 const approach = (cur, target, step) =>
   cur < target ? Math.min(target, cur + step) : Math.max(target, cur - step);
 
-// ---- SFX ------------------------------------------------------------------
 function getSfxEntry(name) {
   let entry = sfxEntries.get(name);
   if (entry) return entry;
@@ -140,7 +107,6 @@ function playSfx(name) {
   restart(player);
 }
 
-// ---- Voice (customer VA) ----------------------------------------------------
 function getVoicePlayer(key) {
   let player = voicePlayers.get(key);
   if (player) return player;
@@ -155,8 +121,6 @@ function getVoicePlayer(key) {
     warn(err);
     return null;
   }
-  // When this line ends, move on to the next queued one. If the platform can't
-  // report that, the fallback timer in startVoice() still frees the channel.
   try {
     player.addListener('playbackStatusUpdate', (status) => {
       if (status?.didJustFinish) finishVoice(player);
@@ -184,19 +148,13 @@ function startVoice(key) {
 }
 
 function finishVoice(player) {
-  if (!voiceCurrent || voiceCurrent.player !== player) return; // stale event
+  if (!voiceCurrent || voiceCurrent.player !== player) return;
   clearTimeout(voiceTimer);
   voiceCurrent = null;
   const next = voiceQueue.shift();
   if (next) startVoice(next);
 }
 
-/**
- * playVoice('greetings', 2)  ->  plays greetings_2
- *   queue   wait behind whatever is playing (the usual choice for a scripted sequence)
- *   ifIdle  only play if nothing is playing, otherwise drop (casual reactions)
- *   neither cut off the current line and play now
- */
 function playVoice(type, voiceId, { queue = false, ifIdle = false } = {}) {
   const key = `${type}_${voiceId}`;
   if (!VA[key]) {
@@ -223,7 +181,6 @@ function stopVoice() {
   }
 }
 
-// ---- Music ------------------------------------------------------------------
 function getTrack(key) {
   let track = tracks.get(key);
   if (track) return track;
@@ -267,7 +224,6 @@ function tick() {
       active = true;
     }
     applyTrackVolume(track);
-    // Fully faded out: stop it and rewind so it starts from the top next time.
     if (track.level === 0 && track.target === 0 && track.playing) {
       track.playing = false;
       safe(() => track.player.pause());
@@ -285,7 +241,6 @@ function ensureTicking() {
   if (tickId === null) tickId = setInterval(tick, TICK_MS);
 }
 
-/** setMusic('menu' | 'level' | null). Same track again = no-op. null = fade out. */
 function setMusic(key) {
   const wanted = key ?? null;
   if (wanted === currentTrack) return;
@@ -311,20 +266,17 @@ function setMusic(key) {
   ensureTicking();
 }
 
-/** Lower the music (true) or bring it back (false). Used while Ratty's shop is open. */
 function setDuck(on) {
   duck.target = on ? DUCK_LEVEL : 1;
   ensureTicking();
 }
 
-// Re-issue play() on whatever should be audible (after an autoplay block or app resume).
 function resumeMusic() {
   tracks.forEach((track) => {
     if (track.playing) safe(() => track.player.play());
   });
 }
 
-// ---- Volumes (Settings sliders) ---------------------------------------------
 function getVolumes() {
   return { ...volumes };
 }
@@ -341,7 +293,6 @@ function setVolume(kind, value) {
   setVolumes({ [kind]: value });
 }
 
-/** App registers how to save volumes; sliders call commitVolumes() when released. */
 function setPersistHandler(fn) {
   persistHandler = typeof fn === 'function' ? fn : null;
 }
@@ -350,13 +301,12 @@ function commitVolumes() {
   persistHandler?.({ ...volumes });
 }
 
-// ---- Init ---------------------------------------------------------------------
 function installWebUnlock() {
   if (Platform.OS !== 'web' || typeof document === 'undefined') return;
   const events = ['pointerdown', 'keydown', 'touchstart'];
   const unlock = () => {
     events.forEach((e) => document.removeEventListener(e, unlock, true));
-    resumeMusic(); // browsers refuse to autoplay until the first tap/key
+    resumeMusic();
   };
   events.forEach((e) => document.addEventListener(e, unlock, true));
 }
@@ -367,10 +317,8 @@ function init() {
 
   safe(() => setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: false }));
 
-  // Preload SFX so the first tap isn't late. Voice and music load on first use.
   Object.keys(SFX).forEach((name) => { if (SFX[name]) getSfxEntry(name); });
 
-  // Pause music when the app (or browser tab) leaves the foreground.
   AppState.addEventListener('change', (state) => {
     tracks.forEach((track) => {
       if (!track.playing) return;

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 
-// Spots are fractions (0-1) of the parent box; `size` is in px.
 const DEFAULT_SPOTS = [
   { x: 0.12, y: 0.2, size: 8, delay: 0 },
   { x: 0.86, y: 0.3, size: 6, delay: 500 },
@@ -43,18 +42,12 @@ function Spark({ spot, color, loop }) {
         ],
       }}
     >
-      {/* Plus-shaped sparkle built from two bars. */}
       <View style={{ position: 'absolute', left: 0, top: (size - bar) / 2, width: size, height: bar, backgroundColor: color }} />
       <View style={{ position: 'absolute', top: 0, left: (size - bar) / 2, width: bar, height: size, backgroundColor: color }} />
     </Animated.View>
   );
 }
 
-/**
- * Small sparkles over its parent (the parent must be a sized View).
- * loop (default) keeps twinkling; loop={false} plays one pass on mount,
- * so remount it with a new `key` to replay.
- */
 export default function Twinkle({ spots = DEFAULT_SPOTS, color = '#F9A825', loop = true, style }) {
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, style]}>

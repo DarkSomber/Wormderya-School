@@ -3,25 +3,13 @@ import { View, StyleSheet, ImageBackground } from 'react-native';
 import Text from './AppText';
 import Slider from "@react-native-community/slider";
 
-/**
- * VolumeSlider
- * ----------------------------------------------------------------------
- * A single labeled row: "Label" above a slider. Used for Master Volume,
- * Music Volume, and Sound Effects (SFX) in SettingsScreen, but generic
- * enough to reuse for any other 0–1 value slider later on.
- *
- * Requires: @react-native-community/slider
- *   npx expo install @react-native-community/slider
- * ----------------------------------------------------------------------
- */
-
 export default function VolumeSlider({
   label,
   value,
   onValueChange,
   onSlidingComplete,
   style,
-  backgroundImage, // optional: image drawn behind the whole row (e.g. button.png)
+  backgroundImage,
 }) {
   const slider = (
     <Slider
@@ -44,7 +32,6 @@ export default function VolumeSlider({
         <Text style={styles.percent}>{Math.round(value * 100)}%</Text>
       </View>
       {backgroundImage ? (
-        // Thin strip stretched across the full width of the slider.
         <ImageBackground
           source={backgroundImage}
           resizeMode="stretch"

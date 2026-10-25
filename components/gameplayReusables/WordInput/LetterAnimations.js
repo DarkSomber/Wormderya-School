@@ -1,16 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated } from 'react-native';
 
-/**
- * Reusable animation primitives for the word-input UI.
- *
- * If you already have an AnimationSystem module (referenced in
- * UseWordInput.js's comments for the conveyor's letter-removal
- * animation), these hooks probably belong there instead — merge this
- * file into it rather than keeping two animation modules around.
- */
-
-// Pop-in for a single letter tile: scale + fade from 0 -> 1 on mount.
 export function useTileEntranceAnimation() {
   const scale = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -36,13 +26,10 @@ export function useTileEntranceAnimation() {
   return { scale, opacity, play };
 }
 
-// Shake + color flash + ripple used when a submitted word is judged
-// valid/invalid. Same values/timings as the original CurrentWordDisplay,
-// just moved here so the component only has to call playValid/playInvalid.
 export function useResultFeedbackAnimation() {
   const shakeX = useRef(new Animated.Value(0)).current;
   const flashOpacity = useRef(new Animated.Value(0)).current;
-  const flashColor = useRef(new Animated.Value(0)).current; // 0 = invalid, 1 = valid
+  const flashColor = useRef(new Animated.Value(0)).current;
   const rippleScale = useRef(new Animated.Value(0)).current;
   const rippleOpacity = useRef(new Animated.Value(0)).current;
   const popScale = useRef(new Animated.Value(1)).current;
@@ -55,7 +42,6 @@ export function useResultFeedbackAnimation() {
     popScale.setValue(1);
 
     Animated.parallel([
-      // Quick pop on the row for a valid word.
       Animated.sequence([
         Animated.timing(popScale, { toValue: 1.08, duration: 80, useNativeDriver: true }),
         Animated.spring(popScale, { toValue: 1, friction: 4, useNativeDriver: true }),
@@ -63,7 +49,7 @@ export function useResultFeedbackAnimation() {
       Animated.timing(flashOpacity, {
         toValue: 0,
         duration: 450,
-        useNativeDriver: false, // stays alongside the interpolated color below
+        useNativeDriver: false,
       }),
       Animated.timing(rippleScale, {
         toValue: 2.2,
@@ -110,8 +96,6 @@ export function useResultFeedbackAnimation() {
   };
 }
 
-// Pulses `scale` and bumps `burst` whenever `value` goes up (first render and
-// decreases are ignored). Render <Twinkle key={burst} loop={false} /> only when burst > 0.
 export function useValuePop(value) {
   const scale = useRef(new Animated.Value(1)).current;
   const prev = useRef(value);

@@ -4,13 +4,12 @@ import { View, Image, Text, useWindowDimensions } from 'react-native';
 export const ART_W = 512;
 export const ART_H = 1088;
 
-// Slot rectangles (art units) shared by the normal and boss gameplay screens.
 export const GAMEPLAY_RECTS = {
-  quit:      { x: 18,  y: 18,  w: 80, h: 80 }, // round pause button (buttonPause2.png is ~1:1)
-  coin:      { x: 326, y: 0,   w: 186, h: 300 }, // board + patience meter (one PNG)
-  customer:  { x: 20,   y: 141, w: 230, h: 250 }, // bottom (386) = counter top edge (384)
+  quit:      { x: 18,  y: 18,  w: 80, h: 80 },
+  coin:      { x: 326, y: 0,   w: 186, h: 300 },
+  customer:  { x: 20,   y: 141, w: 230, h: 250 },
   word:      { x: 30,  y: 380, w: 452, h: 100 },
-  hint:      { x: 252, y: 302, w: 244, h: 76  }, // customer speech bubble
+  hint:      { x: 252, y: 302, w: 244, h: 76  },
   serve:     { x: 175, y: 460, w: 161, h: 84  },
   chef:      { x: 330, y: 480, w: 200, h: 200 },
   conveyors: { x: 0,   y: 665, w: 512, h: 328 }, 
@@ -21,7 +20,7 @@ export const GAMEPLAY_RECTS = {
 
 export const PATIENCE_METER_BOX = { left: '29.63%', top: '38.67%', width: '48.15%', height: '57.33%' };
 
-const DEBUG = true; // set to false when everything is placed
+const DEBUG = true;
 
 export function useStage() {
   const { width, height } = useWindowDimensions();

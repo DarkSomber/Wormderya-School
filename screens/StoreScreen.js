@@ -16,7 +16,6 @@ import {
 import Text from "../components/AppText";
 
 const DESIGN_WIDTH = 400;
-// Shrinks or grows the whole item box (art, icon, price). Lower = smaller.
 
 const NO_UPGRADES = {
   getBasePrice: (u) => u.price,
@@ -55,8 +54,6 @@ export default function StoreScreen({
 }) {
   const safeUpgrades = upgrades ?? NO_UPGRADES;
 
-  // The shop art is 512x1088 like the gameplay art. Everything is laid out inside a box
-  // of exactly that shape, fitted to the window, so the art and the UI never drift apart.
   const { w, h } = useStage();
   const styles = useMemo(() => createStyles(w / DESIGN_WIDTH, w, h), [w, h]);
   const renderArrow = (dir, size = 1) =>
@@ -76,10 +73,9 @@ export default function StoreScreen({
     ) : null;
 
   const [rattyOutcome, setRattyOutcome] = useState(null);
-  // Three random offers, chosen once per visit to the store.
   const [offers] = useState(() => pickRandom(UPGRADE_LIST, 3));
   const [selectedId, setSelectedId] = useState(offers[0].id);
-  const [feedback, setFeedback] = useState(null); // last action result, shown in status line
+  const [feedback, setFeedback] = useState(null);
 
   const selected = offers.find((u) => u.id === selectedId) || offers[0];
   const selectedBase = safeUpgrades.getBasePrice(selected);
@@ -103,7 +99,6 @@ export default function StoreScreen({
         type: "error",
         text: `Not enough coins (need ${price}, have ${wallet.currency}).`,
       });
-      // eslint-disable-next-line no-undef
       if (__DEV__) {
         console.log(
           `[Store] buy blocked: need=${price} have=${wallet.currency} id=${selected.id}`,
@@ -112,7 +107,6 @@ export default function StoreScreen({
       return;
     }
 
-    // eslint-disable-next-line no-undef
     if (__DEV__) {
       console.log(
         `[Store] buying "${selected.name}" for ${price} (currency before=${wallet.currency})`,
@@ -169,13 +163,11 @@ export default function StoreScreen({
 
   return (
     <View style={styles.screenWrapper}>
-      {/* One full-screen picture; everything below is laid over it by % */}
       <ImageBackground
         source={SHOP_BACKGROUND}
         style={styles.container}
         imageStyle={styles.stretch}
       >
-        {/* Mr. Ratty sits behind the counter, so he goes under the stall layer */}
         <Image source={SHOP_RATTY} style={styles.ratty} pointerEvents="none" />
         <Image
           source={SHOP_STALL}
@@ -183,7 +175,6 @@ export default function StoreScreen({
           pointerEvents="none"
         />
 
-        {/* Coins */}
         <View style={styles.coinHeader}>
           <View style={styles.coinBoxOuter}>
             <View style={styles.coinBox}>
@@ -198,7 +189,6 @@ export default function StoreScreen({
           </View>
         </View>
 
-        {/* Three random offers, lined up with the boxes in the picture */}
         <View style={styles.boxesRow}>
           {offers.map((item) => {
             const itemOwned = safeUpgrades.ownedPermanent.has(item.id);
@@ -250,7 +240,6 @@ export default function StoreScreen({
           })}
         </View>
 
-        {/* Name, description, status */}
         <View style={styles.textArea}>
           <View style={styles.textBox}>
           <Text style={styles.descriptionText}>{selected.name}</Text>
@@ -292,9 +281,6 @@ export default function StoreScreen({
           </View>
         </View>
 
-        {/* Buy / No thank you, side by side at the bottom.
-            Buy is only hard-disabled when already owned; if not affordable it
-            still taps and shows a clear message. */}
         <View style={styles.buttonRow}>
           <TouchableOpacity
             onPress={handleBuy}
@@ -350,7 +336,6 @@ function createStyles(s, w, h) {
   const COIN_PAD_X = 12 * s; 
   const COIN_PAD_Y = 1 * s; 
   const COIN_BORDER = 3 * s; 
-
 
   const ART_W = 92 * s; 
   const ART_H = 96 * s; 

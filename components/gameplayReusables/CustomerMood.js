@@ -14,9 +14,9 @@ function getMoodImageSource(patience) {
 const CustomerMood = forwardRef(({
   maxPatience = 100,
   decayRateMs = 5000,
-  drainMultiplier = 1, // <1 slower drain, >1 faster. Applied to decayRateMs.
-  resizeMode = 'contain', // 'stretch' to fill its box exactly (used over the board's holder art)
-  isPaused = false, // true while the timer is paused (Ratty popup, shop, achievement): patience holds still
+  drainMultiplier = 1,
+  resizeMode = 'contain',
+  isPaused = false,
   onCustomerLeft,
   onPatienceChange,
   style,
@@ -24,17 +24,12 @@ const CustomerMood = forwardRef(({
   const [patience, setPatience] = useState(maxPatience);
   const hasLeftRef = useRef(false);
 
-  // Read multiplier through a ref so mid-customer changes take effect
-  // without resetting the interval (which would "heal" the customer).
   const drainRef = useRef(drainMultiplier);
   drainRef.current = drainMultiplier;
 
-  // Same idea for pause: a ref, so pausing/resuming never resets the interval.
   const pausedRef = useRef(isPaused);
   pausedRef.current = isPaused;
 
-  // Passive decay. Reschedules on every tick so a live multiplier change
-  // is honored without remounting the customer.
   useEffect(() => {
     let intervalId;
     let cancelled = false;

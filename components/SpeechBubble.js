@@ -49,7 +49,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
-  // Rotated square centered on the bottom edge; only its lower half shows.
   tail: {
     position: 'absolute',
     left: '50%',

@@ -56,7 +56,7 @@ const BG_GIF_FADE_MS = 300;
 const SCENE_W = 512;
 const SCENE_H = 1088;
 const ROOF_H = 284;
-const BOX_K = 0.8; // title box size (1 = original)
+const BOX_K = 0.8;
 const BOX_CX = 260;
 const BOX_CY = 154;
 const pctX = (v) => `${(v / SCENE_W) * 100}%`;
@@ -254,7 +254,6 @@ const TEMP_INDICATOR_HEIGHT = 64;
 const BADGE_W = 130;
 const BADGE_H = Math.round((BADGE_W * 116) / 336);
 
-// Unlocked dots are lit; the newest unlocked one pulses.
 function IndicatorDot({ lit, active, pulse }) {
   const p = useRef(new Animated.Value(0)).current;
   useEffect(() => {

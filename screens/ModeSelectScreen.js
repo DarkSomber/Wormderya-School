@@ -28,12 +28,10 @@ export default function ModeSelectScreen({
           resizeMode="contain"
         />
 
-        {/* ---------- CHARACTER PLACEHOLDER ---------- */}
         <View style={styles.characterPlaceholder}>
           <AnimatedWorm />
         </View>
 
-        {/* ---------- MENU BUTTONS ---------- */}
         <View style={styles.menu}>
           <AppButton
             onPress={onSelectStoryMode}

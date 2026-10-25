@@ -30,7 +30,6 @@ const BOUNCE_DOWN_MS = 190;
 const SHAKE_DISTANCE = 7; 
 const SHAKE_STEP_MS = 55; 
 
-
 const AnimatedNpc = forwardRef(function AnimatedNpc(
   { source, npcKey, unit = 1, worried = false, imageStyle, animatedGif = false, gifVisible = true, onGifLoad },
   ref,

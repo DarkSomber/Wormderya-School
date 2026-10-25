@@ -54,7 +54,6 @@ const LEVEL_ACHIEVEMENTS = {
 const SPLASH_EXTRA_DELAY_MS = 3000;
 const PRELOAD_TIMEOUT_MS = 15000;
 
-
 const PRELOAD_IMAGES = [
   ...Object.values(ACHIEVEMENTS).map((a) => a.icon),
   ...Object.values(UPGRADES).map((u) => u.icon),
@@ -143,11 +142,6 @@ const SCREENS = {
   STORY_ENDING: "STORY_ENDING",
 };
 
-/**
- * Owns the persisted state. Loads once on mount, keeps a single snapshot
- * in memory, and exposes a `patch` function the sub-hooks call to update
- * their slice. Every patch writes the full snapshot immediately.
- */
 function useGameSave() {
   const [loaded, setLoaded] = useState(false);
   const snapshotRef = useRef({ ...DEFAULT_SAVE });
@@ -165,22 +159,17 @@ function useGameSave() {
     };
   }, []);
 
-  // One writer: patch a slice, persist the whole snapshot.
   const patch = useCallback((slice, value) => {
     const next = { ...snapshotRef.current, [slice]: value };
     snapshotRef.current = next;
     saveGameData(next);
   }, []);
 
-  // In-memory snapshot first, so a patch that lands during the clear can't
-  // write the old data back. The caller must also remount whatever holds
-  // hook state (see ScreenSwitcher's onReset).
   const reset = useCallback(async () => {
     snapshotRef.current = createDefaultSave();
     await clearGameData();
   }, []);
 
-  // Always the latest snapshot, for callbacks that outlive a render.
   const getSnapshot = useCallback(() => snapshotRef.current, []);
 
   return { loaded, snapshot: snapshotRef.current, getSnapshot, patch, reset };
@@ -196,12 +185,10 @@ function ScreenSwitcher() {
   const [delayDone, setDelayDone] = useState(false);
   const [offlineNotice, setOfflineNotice] = useState(false);
 
-  // First launch with no internet: explain the smaller word list.
   useEffect(() => {
     shouldShowOfflineNotice().then(setOfflineNotice);
   }, []);
 
-  // Preload images and the saved word cache in parallel with the save load.
   useEffect(() => {
     let cancelled = false;
     Promise.all([
@@ -215,14 +202,12 @@ function ScreenSwitcher() {
     };
   }, []);
 
-  // Extra splash time starts only after the images are done.
   useEffect(() => {
     if (!assetsReady) return undefined;
     const timer = setTimeout(() => setDelayDone(true), SPLASH_EXTRA_DELAY_MS);
     return () => clearTimeout(timer);
   }, [assetsReady]);
 
-  // Keep the splash up until the save, images and extra delay are all done.
   if (!(save.loaded && assetsReady && delayDone)) {
     return <SplashScreen />;
   }
@@ -257,12 +242,8 @@ function GameSession({ save, initialScreen, onReset }) {
   const [currentLevelId, setCurrentLevelId] = useState(snapshot.currentLevelId);
   const [unlockedLevels, setUnlockedLevels] = useState(snapshot.unlockedLevels);
   const [unlockNotice, setUnlockNotice] = useState(null);
-  // Which level Level Select should open on. After a win this is the next
-  // level, so the player can continue straight away; null = the last played.
   const [levelSelectFocusId, setLevelSelectFocusId] = useState(null);
   const [showStore, setShowStore] = useState(false);
-  // True when the store was opened mid-level (Mr. Ratty's visit): leaving it
-  // returns to the running level instead of going to Level Select.
   const [storeResumesGameplay, setStoreResumesGameplay] = useState(false);
   const [showRushHour, setShowRushHour] = useState(false);
   const [gameMode, setGameMode] = useState("normal");
@@ -274,27 +255,20 @@ function GameSession({ save, initialScreen, onReset }) {
     patch("tutorialSeen", true);
   }, [patch]);
 
-  // ---- Audio ----
-  // Start the audio engine once.
   useEffect(() => {
     audio.init();
   }, []);
 
-  // Apply the saved slider values and let the Settings screen persist new ones.
   useEffect(() => {
     audio.setVolumes(snapshot.settings);
     audio.setPersistHandler((volumes) => patch("settings", volumes));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patch]);
 
-  // Menu music everywhere except the splash and gameplay (LevelSession owns
-  // the music while a level is running).
   const menuMusicOn = screen !== SCREENS.SPLASH && screen !== SCREENS.GAMEPLAY;
   useEffect(() => {
     if (menuMusicOn) audio.setMusic("menu");
   }, [menuMusicOn]);
 
-  // Push top-level changes into the save snapshot.
   useEffect(() => {
     patch("unlockedLevels", unlockedLevels);
   }, [unlockedLevels, patch]);
@@ -339,15 +313,11 @@ function GameSession({ save, initialScreen, onReset }) {
     }
   };
 
-  // Clears the stored save, then remounts the session so every in-memory
-  // hook (wallet, upgrades, achievements, levels) restarts from the defaults.
   const handleDebugResetSave = async () => {
     await reset();
     onReset();
   };
 
-  // Settings > Reset Progress: wipe the save, keep the player's volume sliders,
-  // then remount the session and land on the home screen.
   const handleResetProgress = async () => {
     const volumes = audio.getVolumes();
     await reset();
@@ -356,12 +326,9 @@ function GameSession({ save, initialScreen, onReset }) {
   };
 
   const handleLevelComplete = (completedLevelId) => {
-    // Before the early returns below, so replays and the last level still count.
     achievements.unlockAchievement(LEVEL_ACHIEVEMENTS[completedLevelId]);
-    // The boss level leads to the ending (played when the boss screen's onBack fires).
     if (getLevelConfigById(completedLevelId).isBoss) setEndingPending(true);
     const nextId = getNextLevelId(completedLevelId);
-    // Win: Level Select will open on the next level (or stay on the boss).
     setLevelSelectFocusId(nextId ?? completedLevelId);
     if (nextId === null || unlockedLevels.includes(nextId)) return;
     setUnlockedLevels((prev) =>
@@ -370,8 +337,6 @@ function GameSession({ save, initialScreen, onReset }) {
     setUnlockNotice(nextId);
   };
 
-  // Best scores power the "new record" jingle. Normal levels are keyed
-  // 'level-N'; Rush Hour has one shared key.
   const scoreKey =
     gameMode === "rushHour" ? "rushHour" : `level-${currentLevelId}`;
   const getBestScore = useCallback(
@@ -446,7 +411,7 @@ function GameSession({ save, initialScreen, onReset }) {
               if (!hasLevelPreset(levelId)) return;
               setEndingPending(false);
               setGameMode("normal");
-              setLevelSelectFocusId(null); // back to "last played" for the next visit
+              setLevelSelectFocusId(null);
               setCurrentLevelId(levelId);
               if (levelId === 1) setScreen(SCREENS.STORY_BACKSTORY);
               else setScreen(SCREENS.GAMEPLAY);
